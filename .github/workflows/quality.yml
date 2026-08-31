@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   flutter:
-    name: Flutter analyze and test
+    name: Flutter analyze, test and Android build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -31,6 +31,8 @@ jobs:
           fi
       - run: flutter analyze
       - run: flutter test
+      - name: Build Android debug APK
+        run: flutter build apk --debug
 
   admin:
     name: Admin typecheck and build
@@ -40,7 +42,7 @@ jobs:
         working-directory: Admin
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: test-publishable-key
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: test-publishable-key
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
