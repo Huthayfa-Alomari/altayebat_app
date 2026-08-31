@@ -8,7 +8,7 @@ export type AdminStoreContext = {
 };
 
 export async function requireAdminStore(): Promise<AdminStoreContext> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
