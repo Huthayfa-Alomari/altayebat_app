@@ -2,6 +2,15 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAdminStore } from "@/lib/store-context";
 import SupportRequestsManager from "./SupportRequestsManager";
 
+type SupportRequest = {
+  id: string;
+  type: string;
+  status: string;
+  order_id: string | null;
+  created_at: string;
+  customers: { name: string | null; phone: string | null } | null;
+};
+
 export default async function SupportPage() {
   const supabase = await createClient();
   const { storeId } = await requireAdminStore();
@@ -14,6 +23,27 @@ export default async function SupportPage() {
     .eq("store_id", storeId)
     .order("created_at", { ascending: false })
     .limit(100);
+
+  const normalizedRequests: SupportRequest[] = (requests || []).map(
+    (request) => {
+      const relation = request.customers;
+      const customer = Array.isArray(relation) ? relation[0] ?? null : relation;
+
+      return {
+        id: String(request.id),
+        type: String(request.type),
+        status: String(request.status),
+        order_id: request.order_id ? String(request.order_id) : null,
+        created_at: String(request.created_at),
+        customers: customer
+          ? {
+              name: customer.name ?? null,
+              phone: customer.phone ?? null,
+            }
+          : null,
+      };
+    }
+  );
 
   return (
     <div>
@@ -32,9 +62,7 @@ export default async function SupportPage() {
         </div>
       ) : (
         <SupportRequestsManager
-          requests={(requests || []) as Parameters<
-            typeof SupportRequestsManager
-          >[0]["requests"]}
+          requests={normalizedRequests}
           storeId={storeId}
         />
       )}
