@@ -1,18 +1,16 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../config/app_config.dart';
 import '../models/product.dart';
 import '../models/category.dart';
 
-// معرّف مول أسواق الطيبات — كل استعلام بالتطبيق مربوط فيه
-// (لما نبيع النظام لمول جديد، بس بتغيّر هاد الرقم بنسخة التطبيق الخاصة فيه)
-const String storeId = '61e6f35d-7004-4a33-948c-b297ba446678';
-
 class SupabaseService {
-  static final SupabaseClient _client = Supabase.instance.client;
+  static SupabaseClient get _client => Supabase.instance.client;
 
   static Future<void> initialize() async {
+    AppConfig.validate();
     await Supabase.initialize(
-      url: 'https://wfvuojrhxewogdnynytf.supabase.co',
-      anonKey: 'sb_publishable_GZV5SCGFY-32O3fz3ciUkg_2B6hYckJ',
+      url: AppConfig.supabaseUrl,
+      anonKey: AppConfig.supabaseAnonKey,
     );
   }
 
@@ -20,22 +18,31 @@ class SupabaseService {
     final data = await _client
         .from('categories')
         .select()
-        .eq('store_id', storeId)
+        .eq('store_id', AppConfig.storeId)
         .order('sort_order');
+
     return (data as List)
         .map((e) => ProductCategory.fromMap(e as Map<String, dynamic>))
         .toList();
   }
 
-  static Future<List<Product>> fetchProducts({String? categoryId}) async {
+  static Future<List<Product>> fetchProducts({
+    String? categoryId,
+    String? searchQuery,
+  }) async {
     var query = _client
         .from('products')
         .select()
-        .eq('store_id', storeId)
+        .eq('store_id', AppConfig.storeId)
         .eq('is_available', true);
 
     if (categoryId != null) {
       query = query.eq('category_id', categoryId);
+    }
+
+    final normalizedSearch = searchQuery?.trim();
+    if (normalizedSearch != null && normalizedSearch.isNotEmpty) {
+      query = query.ilike('name', '%$normalizedSearch%');
     }
 
     final data = await query.order('created_at', ascending: false);
@@ -44,9 +51,6 @@ class SupabaseService {
         .toList();
   }
 
-  // تسجيل دخول مجهول (بدون تحقق SMS) وحفظ اسم ورقم الزبون
-  // لاحقاً لما يكبر المشروع، منقدر نستبدلها بتحقق SMS حقيقي بدون
-  // ما نغيّر بنية قاعدة البيانات — بس بنبدّل طريقة تسجيل الدخول هون.
   static Future<void> signInAndSaveProfile({
     required String name,
     required String phone,
@@ -72,11 +76,20 @@ class SupabaseService {
     required double total,
   }) async {
     final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      throw StateError('يجب تسجيل الدخول قبل إنشاء الطلب');
+    }
+    if (items.isEmpty) {
+      throw ArgumentError('لا يمكن إنشاء طلب بدون منتجات');
+    }
+    if (total <= 0) {
+      throw ArgumentError('إجمالي الطلب غير صالح');
+    }
 
     final order = await _client
         .from('orders')
         .insert({
-          'store_id': storeId,
+          'store_id': AppConfig.storeId,
           'customer_id': userId,
           'total': total,
           'status': 'pending',
@@ -100,16 +113,14 @@ class SupabaseService {
     return orderId;
   }
 
-  // بث حي لحالة الطلب — يتحدث فور ما صاحب المول يغيّرها من لوحة التحكم
   static Stream<Map<String, dynamic>> watchOrder(String orderId) {
     return _client
         .from('orders')
         .stream(primaryKey: ['id'])
         .eq('id', orderId)
-        .map((rows) => rows.first);
+        .map((rows) => rows.isEmpty ? <String, dynamic>{} : rows.first);
   }
 
-  // بث حي لموقع المندوب أثناء التوصيل
   static Stream<List<Map<String, dynamic>>> watchDriverLocation(
       String orderId) {
     return _client
@@ -121,12 +132,21 @@ class SupabaseService {
   }
 
   static Future<void> requestCall({
-    required String type, // voice | video | chat
+    required String type,
     String? orderId,
   }) async {
+    const supportedTypes = {'voice', 'video', 'chat'};
+    if (!supportedTypes.contains(type)) {
+      throw ArgumentError.value(type, 'type', 'نوع التواصل غير مدعوم');
+    }
+
     final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      throw StateError('يجب تسجيل الدخول قبل طلب التواصل');
+    }
+
     await _client.from('call_requests').insert({
-      'store_id': storeId,
+      'store_id': AppConfig.storeId,
       'order_id': orderId,
       'customer_id': userId,
       'type': type,
