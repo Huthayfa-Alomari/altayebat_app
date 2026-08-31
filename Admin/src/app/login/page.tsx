@@ -1,10 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginShell />}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
@@ -42,20 +50,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <form
-        onSubmit={handleLogin}
-        className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
-      >
-        <h1 className="mb-1 text-xl font-medium">تسجيل دخول</h1>
-        <p className="mb-6 text-sm text-gray-500">الدخول للوحة تحكم المول</p>
+    <LoginShell>
+      {accessError && (
+        <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          الحساب مسجل، لكنه غير مربوط بأي مول. اربطه في جدول store_admins ثم سجّل الدخول مرة ثانية.
+        </p>
+      )}
 
-        {accessError && (
-          <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            الحساب مسجل، لكنه غير مربوط بأي مول. اربطه في جدول store_admins ثم سجّل الدخول مرة ثانية.
-          </p>
-        )}
-
+      <form onSubmit={handleLogin}>
         <label htmlFor="email" className="mb-1 block text-sm text-gray-700">
           البريد الإلكتروني
         </label>
@@ -101,6 +103,18 @@ export default function LoginPage() {
           {loading ? "جاري الدخول..." : "دخول"}
         </button>
       </form>
+    </LoginShell>
+  );
+}
+
+function LoginShell({ children }: { children?: React.ReactNode }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <h1 className="mb-1 text-xl font-medium">تسجيل دخول</h1>
+        <p className="mb-6 text-sm text-gray-500">الدخول للوحة تحكم المول</p>
+        {children}
+      </div>
     </div>
   );
 }
