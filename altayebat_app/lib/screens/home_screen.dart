@@ -15,10 +15,14 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final TextEditingController _searchController = TextEditingController();
+
   List<ProductCategory> _categories = [];
   List<Product> _products = [];
   String? _selectedCategoryId;
+  String? _errorMessage;
   bool _loading = true;
+  bool _loadingProducts = false;
 
   @override
   void initState() {
@@ -26,23 +30,76 @@ class _HomeScreenState extends State<HomeScreen> {
     _load();
   }
 
-  Future<void> _load() async {
-    setState(() => _loading = true);
-    final categories = await SupabaseService.fetchCategories();
-    final products =
-        await SupabaseService.fetchProducts(categoryId: _selectedCategoryId);
-    setState(() {
-      _categories = categories;
-      _products = products;
-      _loading = false;
-    });
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
-  Future<void> _selectCategory(String? categoryId) async {
-    setState(() => _selectedCategoryId = categoryId);
-    final products =
-        await SupabaseService.fetchProducts(categoryId: categoryId);
-    setState(() => _products = products);
+  Future<void> _load() async {
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _errorMessage = null;
+      });
+    }
+
+    try {
+      final results = await Future.wait([
+        SupabaseService.fetchCategories(),
+        SupabaseService.fetchProducts(
+          categoryId: _selectedCategoryId,
+          searchQuery: _searchController.text,
+        ),
+      ]);
+
+      if (!mounted) return;
+      setState(() {
+        _categories = results[0] as List<ProductCategory>;
+        _products = results[1] as List<Product>;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _errorMessage = 'تعذر تحميل المنتجات. تأكد من اتصال الإنترنت وحاول مرة ثانية.';
+      });
+    }
+  }
+
+  Future<void> _loadProducts({String? categoryId}) async {
+    setState(() {
+      _selectedCategoryId = categoryId;
+      _loadingProducts = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final products = await SupabaseService.fetchProducts(
+        categoryId: categoryId,
+        searchQuery: _searchController.text,
+      );
+      if (!mounted) return;
+      setState(() {
+        _products = products;
+        _loadingProducts = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loadingProducts = false;
+        _errorMessage = 'تعذر تحديث المنتجات. حاول مرة ثانية.';
+      });
+    }
+  }
+
+  Future<void> _search() => _loadProducts(categoryId: _selectedCategoryId);
+
+  void _clearSearch() {
+    if (_searchController.text.isEmpty) return;
+    _searchController.clear();
+    _search();
   }
 
   @override
@@ -56,16 +113,29 @@ class _HomeScreenState extends State<HomeScreen> {
               child: _loading
                   ? const Center(
                       child: CircularProgressIndicator(
-                          color: AppColors.primary),
+                        color: AppColors.primary,
+                      ),
                     )
                   : RefreshIndicator(
                       onRefresh: _load,
                       color: AppColors.primary,
                       child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.only(top: 8),
                         children: [
+                          if (_errorMessage != null) _errorState(),
                           _categoryChips(),
-                          _productGrid(),
+                          if (_loadingProducts)
+                            const Padding(
+                              padding: EdgeInsets.all(28),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            )
+                          else
+                            _productGrid(),
                         ],
                       ),
                     ),
@@ -93,21 +163,29 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.shopping_cart_outlined,
-                    color: AppColors.primary, size: 18),
+                child: const Icon(
+                  Icons.shopping_cart_outlined,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 8),
               const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('أسواق الطيبات',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600)),
-                    Text('التوصيل خلال 30 دقيقة',
-                        style: TextStyle(color: Colors.white70, fontSize: 11)),
+                    Text(
+                      'أسواق الطيبات',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      'تسوّق بسهولة ووصل طلبك لباب البيت',
+                      style: TextStyle(color: Colors.white70, fontSize: 11),
+                    ),
                   ],
                 ),
               ),
@@ -115,23 +193,60 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
+          TextField(
+            controller: _searchController,
+            textInputAction: TextInputAction.search,
+            onSubmitted: (_) => _search(),
+            decoration: InputDecoration(
+              hintText: 'دور عالمنتج يلي بدك ياه',
+              prefixIcon: const Icon(
+                Icons.search,
+                size: 20,
+                color: AppColors.textSecondary,
+              ),
+              suffixIcon: _searchController.text.isEmpty
+                  ? null
+                  : IconButton(
+                      onPressed: _clearSearch,
+                      icon: const Icon(Icons.close, size: 18),
+                    ),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
             ),
-            child: const Row(
-              children: [
-                Icon(Icons.search, size: 18, color: AppColors.textSecondary),
-                SizedBox(width: 8),
-                Text('دور عالمنتج يلي بدك ياه',
-                    style:
-                        TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-              ],
-            ),
+            onChanged: (_) => setState(() {}),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _errorState() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Material(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Icon(Icons.wifi_off_rounded, color: Colors.red.shade700),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _errorMessage!,
+                  style: TextStyle(color: Colors.red.shade900, fontSize: 12),
+                ),
+              ),
+              TextButton(onPressed: _load, child: const Text('إعادة')),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -143,11 +258,17 @@ class _HomeScreenState extends State<HomeScreen> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
-          _chip('الكل', _selectedCategoryId == null,
-              () => _selectCategory(null)),
+          _chip(
+            'الكل',
+            _selectedCategoryId == null,
+            () => _loadProducts(categoryId: null),
+          ),
           ..._categories.map(
-            (c) => _chip(c.name, _selectedCategoryId == c.id,
-                () => _selectCategory(c.id)),
+            (c) => _chip(
+              c.name,
+              _selectedCategoryId == c.id,
+              () => _loadProducts(categoryId: c.id),
+            ),
           ),
         ],
       ),
@@ -166,7 +287,8 @@ class _HomeScreenState extends State<HomeScreen> {
             color: selected ? AppColors.primary : Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-                color: selected ? AppColors.primary : AppColors.border),
+              color: selected ? AppColors.primary : AppColors.border,
+            ),
           ),
           child: Text(
             label,
@@ -182,9 +304,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _productGrid() {
     if (_products.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(32),
-        child: Center(child: Text('ما في منتجات بهاد التصنيف لسه')),
+      return Padding(
+        padding: const EdgeInsets.all(32),
+        child: Center(
+          child: Text(
+            _searchController.text.trim().isNotEmpty
+                ? 'ما لقينا منتج مطابق لبحثك'
+                : 'ما في منتجات بهاد التصنيف لسه',
+          ),
+        ),
       );
     }
 
