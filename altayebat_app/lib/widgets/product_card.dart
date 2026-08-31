@@ -32,7 +32,7 @@ class ProductCard extends StatelessWidget {
                 height: 70,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.06),
+                  color: AppColors.primary.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: product.imageUrl != null && product.imageUrl!.isNotEmpty
@@ -41,7 +41,7 @@ class ProductCard extends StatelessWidget {
                         child: Image.network(
                           product.imageUrl!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(
+                          errorBuilder: (_, _, _) => const Icon(
                             Icons.image_not_supported_outlined,
                             color: AppColors.textSecondary,
                             size: 28,
