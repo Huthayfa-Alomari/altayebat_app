@@ -10,7 +10,7 @@ class SupabaseService {
     AppConfig.validate();
     await Supabase.initialize(
       url: AppConfig.supabaseUrl,
-      publishableKey: AppConfig.supabaseAnonKey,
+      publishableKey: AppConfig.supabasePublishableKey,
     );
   }
 
