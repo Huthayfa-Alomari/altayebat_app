@@ -36,9 +36,7 @@ class SupabaseService {
         .eq('store_id', AppConfig.storeId)
         .eq('is_available', true);
 
-    if (categoryId != null) {
-      query = query.eq('category_id', categoryId);
-    }
+    if (categoryId != null) query = query.eq('category_id', categoryId);
 
     final normalizedSearch = searchQuery?.trim();
     if (normalizedSearch != null && normalizedSearch.isNotEmpty) {
@@ -73,32 +71,33 @@ class SupabaseService {
 
   static Future<String> createOrder({
     required List<Map<String, dynamic>> items,
+    required String paymentMethod,
   }) async {
+    const allowedPaymentMethods = {'cash', 'cliq', 'card'};
+    if (!allowedPaymentMethods.contains(paymentMethod)) {
+      throw ArgumentError('طريقة الدفع غير مدعومة');
+    }
+
     final userId = _client.auth.currentUser?.id;
-    if (userId == null) {
-      throw StateError('يجب تسجيل الدخول قبل إنشاء الطلب');
-    }
-    if (items.isEmpty) {
-      throw ArgumentError('لا يمكن إنشاء طلب بدون منتجات');
-    }
+    if (userId == null) throw StateError('يجب تسجيل الدخول قبل إنشاء الطلب');
+    if (items.isEmpty) throw ArgumentError('لا يمكن إنشاء طلب بدون منتجات');
 
     final normalizedItems = <Map<String, dynamic>>[];
     final quantities = <String, int>{};
-
     for (final item in items) {
       final productId = item['product_id'] as String?;
       final quantity = item['quantity'] as int?;
-      if (productId == null || productId.isEmpty || quantity == null || quantity <= 0) {
+      if (productId == null ||
+          productId.isEmpty ||
+          quantity == null ||
+          quantity <= 0) {
         throw ArgumentError('بيانات أحد المنتجات غير صالحة');
       }
       quantities[productId] = (quantities[productId] ?? 0) + quantity;
     }
 
     for (final entry in quantities.entries) {
-      normalizedItems.add({
-        'product_id': entry.key,
-        'quantity': entry.value,
-      });
+      normalizedItems.add({'product_id': entry.key, 'quantity': entry.value});
     }
 
     try {
@@ -107,6 +106,7 @@ class SupabaseService {
         params: {
           'p_store_id': AppConfig.storeId,
           'p_items': normalizedItems,
+          'p_payment_method': paymentMethod,
         },
       );
 
@@ -125,15 +125,48 @@ class SupabaseService {
       if (message.contains('customer profile')) {
         throw StateError('بيانات الحساب غير مكتملة');
       }
+      if (message.contains('payment method')) {
+        throw StateError('طريقة الدفع غير مدعومة');
+      }
       rethrow;
     }
   }
 
+  static Future<String> startCardPayment(String orderId) async {
+    try {
+      final response = await _client.functions.invoke(
+        'create-card-payment',
+        body: {'order_id': orderId},
+      );
+      if (response.status < 200 || response.status >= 300) {
+        throw StateError('تعذر بدء الدفع بالبطاقة');
+      }
+      final data = response.data;
+      if (data is! Map || data['redirect_url'] is! String) {
+        throw StateError('بوابة الدفع لم ترجع رابطًا صالحًا');
+      }
+      return data['redirect_url'] as String;
+    } on FunctionException catch (error) {
+      final details = error.details?.toString() ?? '';
+      if (details.contains('not configured')) {
+        throw StateError('الدفع بالبطاقة يحتاج تفعيل بيانات PayTabs أولًا');
+      }
+      throw StateError('تعذر بدء الدفع بالبطاقة');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getStorePaymentConfig() async {
+    final data = await _client
+        .from('stores')
+        .select('cliq_alias, cliq_recipient_name')
+        .eq('id', AppConfig.storeId)
+        .maybeSingle();
+    return data ?? <String, dynamic>{};
+  }
+
   static Stream<Map<String, dynamic>> watchOrder(String orderId) {
     final userId = _client.auth.currentUser?.id;
-    if (userId == null) {
-      return Stream.value(<String, dynamic>{});
-    }
+    if (userId == null) return Stream.value(<String, dynamic>{});
 
     return _client
         .from('orders')
@@ -143,8 +176,7 @@ class SupabaseService {
         .map((rows) => rows.isEmpty ? <String, dynamic>{} : rows.first);
   }
 
-  static Stream<List<Map<String, dynamic>>> watchDriverLocation(
-      String orderId) {
+  static Stream<List<Map<String, dynamic>>> watchDriverLocation(String orderId) {
     return _client
         .from('driver_locations')
         .stream(primaryKey: ['id'])
@@ -153,19 +185,14 @@ class SupabaseService {
         .limit(1);
   }
 
-  static Future<void> requestCall({
-    required String type,
-    String? orderId,
-  }) async {
+  static Future<void> requestCall({required String type, String? orderId}) async {
     const supportedTypes = {'voice', 'video', 'chat'};
     if (!supportedTypes.contains(type)) {
       throw ArgumentError.value(type, 'type', 'نوع التواصل غير مدعوم');
     }
 
     final userId = _client.auth.currentUser?.id;
-    if (userId == null) {
-      throw StateError('يجب تسجيل الدخول قبل طلب التواصل');
-    }
+    if (userId == null) throw StateError('يجب تسجيل الدخول قبل طلب التواصل');
 
     await _client.from('call_requests').insert({
       'store_id': AppConfig.storeId,
