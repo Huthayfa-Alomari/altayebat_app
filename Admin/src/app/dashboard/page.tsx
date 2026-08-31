@@ -11,7 +11,7 @@ const statusLabels: Record<string, string> = {
 };
 
 export default async function OrdersPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { storeId } = await requireAdminStore();
 
   const { data: orders, error } = await supabase
