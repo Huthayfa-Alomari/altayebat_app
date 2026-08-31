@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:flutter/foundation.dart';
 import '../models/product.dart';
 import '../models/cart_item.dart';
@@ -5,7 +7,7 @@ import '../models/cart_item.dart';
 class CartProvider extends ChangeNotifier {
   final Map<String, CartItem> _items = {};
 
-  List<CartItem> get items => _items.values.toList();
+  List<CartItem> get items => UnmodifiableListView(_items.values);
 
   int get itemCount => _items.values.fold(0, (sum, item) => sum + item.quantity);
 
@@ -14,19 +16,27 @@ class CartProvider extends ChangeNotifier {
 
   bool get isEmpty => _items.isEmpty;
 
-  void add(Product product) {
-    if (_items.containsKey(product.id)) {
-      _items[product.id]!.quantity++;
+  bool add(Product product) {
+    if (!product.isAvailable || product.stockQty <= 0) return false;
+
+    final current = _items[product.id];
+    if (current != null) {
+      if (current.quantity >= product.stockQty) return false;
+      current.quantity++;
     } else {
       _items[product.id] = CartItem(product: product);
     }
+
     notifyListeners();
+    return true;
   }
 
   void decrement(Product product) {
-    if (!_items.containsKey(product.id)) return;
-    if (_items[product.id]!.quantity > 1) {
-      _items[product.id]!.quantity--;
+    final current = _items[product.id];
+    if (current == null) return;
+
+    if (current.quantity > 1) {
+      current.quantity--;
     } else {
       _items.remove(product.id);
     }
@@ -34,14 +44,21 @@ class CartProvider extends ChangeNotifier {
   }
 
   void remove(String productId) {
-    _items.remove(productId);
-    notifyListeners();
+    if (_items.remove(productId) != null) {
+      notifyListeners();
+    }
   }
 
   void clear() {
+    if (_items.isEmpty) return;
     _items.clear();
     notifyListeners();
   }
 
   int quantityOf(String productId) => _items[productId]?.quantity ?? 0;
+
+  bool canAdd(Product product) {
+    if (!product.isAvailable || product.stockQty <= 0) return false;
+    return quantityOf(product.id) < product.stockQty;
+  }
 }
