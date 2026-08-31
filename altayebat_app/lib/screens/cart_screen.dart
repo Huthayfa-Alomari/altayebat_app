@@ -113,25 +113,49 @@ class _CartScreenState extends State<CartScreen> {
         ),
         child: Row(
           children: [
-            Radio<String>(
-              value: value,
-              groupValue: _paymentMethod,
-              onChanged: _submitting
-                  ? null
-                  : (v) {
-                      if (v != null) setState(() => _paymentMethod = v);
-                    },
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: selected ? AppColors.primary : AppColors.textSecondary,
+                  width: 2,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: selected
+                  ? Container(
+                      width: 10,
+                      height: 10,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.primary,
+                      ),
+                    )
+                  : null,
             ),
-            Icon(icon, color: selected ? AppColors.primary : AppColors.textSecondary),
+            const SizedBox(width: 12),
+            Icon(
+              icon,
+              color: selected ? AppColors.primary : AppColors.textSecondary,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   Text(
                     subtitle,
-                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -166,8 +190,12 @@ class _CartScreenState extends State<CartScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(item.product.name,
-                                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                                  Text(
+                                    item.product.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                   const SizedBox(height: 4),
                                   Text(
                                     '${item.product.price.toStringAsFixed(2)} د.أ للحبة',
@@ -182,14 +210,18 @@ class _CartScreenState extends State<CartScreen> {
                                         onPressed: _submitting
                                             ? null
                                             : () => cart.decrement(item.product),
-                                        icon: const Icon(Icons.remove_circle_outline),
+                                        icon: const Icon(
+                                          Icons.remove_circle_outline,
+                                        ),
                                       ),
                                       Text('${item.quantity}'),
                                       IconButton(
                                         onPressed: _submitting || !canAdd
                                             ? null
                                             : () => cart.add(item.product),
-                                        icon: const Icon(Icons.add_circle_outline),
+                                        icon: const Icon(
+                                          Icons.add_circle_outline,
+                                        ),
                                       ),
                                       TextButton(
                                         onPressed: _submitting
@@ -204,7 +236,9 @@ class _CartScreenState extends State<CartScreen> {
                             ),
                             Text(
                               '${item.subtotal.toStringAsFixed(2)} د.أ',
-                              style: const TextStyle(fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ],
                         ),
@@ -213,7 +247,10 @@ class _CartScreenState extends State<CartScreen> {
                   );
                 }),
                 const SizedBox(height: 8),
-                const Text('طريقة الدفع', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Text(
+                  'طريقة الدفع',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
                 _paymentOption(
                   value: 'cash',
                   title: 'كاش عند الاستلام',
@@ -242,7 +279,9 @@ class _CartScreenState extends State<CartScreen> {
                 padding: const EdgeInsets.all(16),
                 decoration: const BoxDecoration(
                   color: Colors.white,
-                  border: Border(top: BorderSide(color: AppColors.border)),
+                  border: Border(
+                    top: BorderSide(color: AppColors.border),
+                  ),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -253,7 +292,9 @@ class _CartScreenState extends State<CartScreen> {
                         Text('المجموع (${cart.itemCount} قطعة)'),
                         Text(
                           '${cart.total.toStringAsFixed(2)} د.أ',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ],
                     ),
