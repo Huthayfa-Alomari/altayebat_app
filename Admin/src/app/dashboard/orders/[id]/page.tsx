@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdminStore } from "@/lib/store-context";
 import OrderStatusSelect from "../OrderStatusSelect";
+import PaymentStatusControl from "../PaymentStatusControl";
 
 const statusLabels: Record<string, string> = {
   pending: "بانتظار التأكيد",
@@ -11,6 +12,21 @@ const statusLabels: Record<string, string> = {
   delivered: "تم التسليم",
   cancelled: "ملغي",
 };
+
+const paymentMethodLabels: Record<string, string> = {
+  cash: "كاش عند الاستلام",
+  cliq: "CliQ",
+  card: "Visa / Mastercard",
+};
+
+function jordanWhatsAppNumber(phone: string | null | undefined) {
+  if (!phone) return null;
+  let digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("00962")) digits = digits.slice(2);
+  if (digits.startsWith("962")) return digits;
+  if (digits.startsWith("0")) digits = digits.slice(1);
+  return digits ? `962${digits}` : null;
+}
 
 type OrderItemRow = {
   id: string;
@@ -32,7 +48,9 @@ export default async function OrderDetailsPage({
     await Promise.all([
       supabase
         .from("orders")
-        .select("id, status, total, created_at, customers(name, phone)")
+        .select(
+          "id, status, total, created_at, payment_method, payment_status, payment_reference, customers(name, phone)"
+        )
         .eq("id", id)
         .eq("store_id", storeId)
         .maybeSingle(),
@@ -49,15 +67,13 @@ export default async function OrderDetailsPage({
     phone: string | null;
   } | null;
   const orderItems = (items || []) as unknown as OrderItemRow[];
+  const whatsapp = jordanWhatsAppNumber(customer?.phone);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <Link
-            href="/dashboard"
-            className="mb-2 inline-block text-sm text-brand hover:underline"
-          >
+          <Link href="/dashboard" className="mb-2 inline-block text-sm text-brand hover:underline">
             ← رجوع للطلبات
           </Link>
           <h1 className="text-xl font-semibold">
@@ -77,9 +93,7 @@ export default async function OrderDetailsPage({
 
       <div className="grid gap-4 md:grid-cols-2">
         <section className="rounded-xl border border-gray-200 bg-white p-4">
-          <h2 className="mb-3 text-sm font-semibold text-gray-900">
-            بيانات الزبون
-          </h2>
+          <h2 className="mb-3 text-sm font-semibold text-gray-900">بيانات الزبون</h2>
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between gap-4">
               <dt className="text-gray-500">الاسم</dt>
@@ -90,38 +104,66 @@ export default async function OrderDetailsPage({
               <dd dir="ltr">{customer?.phone || "—"}</dd>
             </div>
           </dl>
+          {customer?.phone && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <a
+                href={`tel:${customer.phone}`}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-gray-50"
+              >
+                اتصال
+              </a>
+              {whatsapp && (
+                <a
+                  href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(
+                    `مرحبًا، معك أسواق الطيبات بخصوص طلبك #${order.id.slice(0, 8).toUpperCase()}`
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700"
+                >
+                  واتساب
+                </a>
+              )}
+            </div>
+          )}
         </section>
 
         <section className="rounded-xl border border-gray-200 bg-white p-4">
-          <h2 className="mb-3 text-sm font-semibold text-gray-900">
-            ملخص الطلب
-          </h2>
+          <h2 className="mb-3 text-sm font-semibold text-gray-900">الدفع والطلب</h2>
           <dl className="space-y-2 text-sm">
+            <div className="flex justify-between gap-4">
+              <dt className="text-gray-500">طريقة الدفع</dt>
+              <dd className="font-medium">
+                {paymentMethodLabels[order.payment_method] || order.payment_method}
+              </dd>
+            </div>
+            {order.payment_reference && (
+              <div className="flex justify-between gap-4">
+                <dt className="text-gray-500">مرجع الدفع</dt>
+                <dd dir="ltr" className="font-mono text-xs">{order.payment_reference}</dd>
+              </div>
+            )}
             <div className="flex justify-between gap-4">
               <dt className="text-gray-500">عدد الأصناف</dt>
               <dd>{orderItems.length}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-gray-500">إجمالي القطع</dt>
-              <dd>
-                {orderItems.reduce(
-                  (sum, item) => sum + Number(item.quantity || 0),
-                  0
-                )}
-              </dd>
             </div>
             <div className="flex justify-between gap-4 border-t border-gray-100 pt-2 font-semibold">
               <dt>المجموع</dt>
               <dd>{Number(order.total).toFixed(2)} د.أ</dd>
             </div>
           </dl>
+          <div className="mt-4">
+            <PaymentStatusControl
+              orderId={order.id}
+              storeId={storeId}
+              currentStatus={order.payment_status}
+            />
+          </div>
         </section>
       </div>
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-gray-900">
-          محتويات الطلب
-        </h2>
+        <h2 className="mb-3 text-sm font-semibold text-gray-900">محتويات الطلب</h2>
         {itemsError ? (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             تعذر تحميل محتويات الطلب.
@@ -144,13 +186,9 @@ export default async function OrderDetailsPage({
               <tbody>
                 {orderItems.map((item) => (
                   <tr key={item.id} className="border-t border-gray-100">
-                    <td className="px-4 py-3">
-                      {item.products?.name || "منتج محذوف"}
-                    </td>
+                    <td className="px-4 py-3">{item.products?.name || "منتج محذوف"}</td>
                     <td className="px-4 py-3">{item.quantity}</td>
-                    <td className="px-4 py-3">
-                      {Number(item.unit_price).toFixed(2)} د.أ
-                    </td>
+                    <td className="px-4 py-3">{Number(item.unit_price).toFixed(2)} د.أ</td>
                     <td className="px-4 py-3 font-medium">
                       {(Number(item.unit_price) * Number(item.quantity)).toFixed(2)} د.أ
                     </td>
