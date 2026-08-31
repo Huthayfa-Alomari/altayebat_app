@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdminStore } from "@/lib/store-context";
 import OrderStatusSelect from "./orders/OrderStatusSelect";
@@ -47,9 +48,10 @@ export default async function OrdersPage() {
         </p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-          <table className="min-w-[720px] w-full text-right text-sm">
+          <table className="min-w-[780px] w-full text-right text-sm">
             <thead className="bg-gray-50 text-gray-500">
               <tr>
+                <th className="px-4 py-3 font-normal">رقم الطلب</th>
                 <th className="px-4 py-3 font-normal">الزبون</th>
                 <th className="px-4 py-3 font-normal">المجموع</th>
                 <th className="px-4 py-3 font-normal">الحالة</th>
@@ -64,6 +66,15 @@ export default async function OrdersPage() {
                 } | null;
                 return (
                   <tr key={order.id} className="border-t border-gray-100">
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/dashboard/orders/${order.id}`}
+                        className="font-medium text-brand hover:underline"
+                        dir="ltr"
+                      >
+                        #{order.id.slice(0, 8).toUpperCase()}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">
                         {customer?.name || "زبون"}
