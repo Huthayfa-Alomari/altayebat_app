@@ -13,6 +13,8 @@ class ProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
     final qty = cart.quantityOf(product.id);
+    final canAdd = cart.canAdd(product);
+    final outOfStock = !product.isAvailable || product.stockQty <= 0;
 
     return Container(
       padding: const EdgeInsets.all(8),
@@ -33,14 +35,24 @@ class ProductCard extends StatelessWidget {
                   color: AppColors.primary.withOpacity(0.06),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: product.imageUrl != null
+                child: product.imageUrl != null && product.imageUrl!.isNotEmpty
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(10),
-                        child: Image.network(product.imageUrl!,
-                            fit: BoxFit.cover),
+                        child: Image.network(
+                          product.imageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(
+                            Icons.image_not_supported_outlined,
+                            color: AppColors.textSecondary,
+                            size: 28,
+                          ),
+                        ),
                       )
-                    : const Icon(Icons.shopping_basket_outlined,
-                        color: AppColors.primary, size: 28),
+                    : const Icon(
+                        Icons.shopping_basket_outlined,
+                        color: AppColors.primary,
+                        size: 28,
+                      ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -48,44 +60,77 @@ class ProductCard extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 2),
               Text(
                 '${product.price.toStringAsFixed(2)} د.أ',
                 style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary),
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
               ),
+              if (outOfStock)
+                const Padding(
+                  padding: EdgeInsets.only(top: 3),
+                  child: Text(
+                    'غير متوفر حاليًا',
+                    style: TextStyle(fontSize: 10, color: Colors.redAccent),
+                  ),
+                )
+              else if (product.stockQty <= 5)
+                Padding(
+                  padding: const EdgeInsets.only(top: 3),
+                  child: Text(
+                    'متبقي ${product.stockQty}',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
             ],
           ),
           Positioned(
             bottom: 0,
             left: 0,
             child: qty == 0
-                ? _addButton(context)
-                : _stepper(context, qty),
+                ? _addButton(context, enabled: canAdd)
+                : _stepper(context, qty, canAdd: canAdd),
           ),
         ],
       ),
     );
   }
 
-  Widget _addButton(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.read<CartProvider>().add(product),
-      child: Container(
-        width: 26,
-        height: 26,
-        decoration: const BoxDecoration(
-          color: AppColors.primary,
-          shape: BoxShape.circle,
+  Widget _addButton(BuildContext context, {required bool enabled}) {
+    return Semantics(
+      button: true,
+      label: 'إضافة ${product.name} للسلة',
+      child: InkWell(
+        onTap: enabled
+            ? () {
+                final added = context.read<CartProvider>().add(product);
+                if (!added) _showStockMessage(context);
+              }
+            : null,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: enabled ? AppColors.primary : AppColors.border,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.add, color: Colors.white, size: 17),
         ),
-        child: const Icon(Icons.add, color: Colors.white, size: 16),
       ),
     );
   }
 
-  Widget _stepper(BuildContext context, int qty) {
+  Widget _stepper(BuildContext context, int qty, {required bool canAdd}) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.primary,
@@ -96,21 +141,40 @@ class ProductCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
+            tooltip: 'تقليل الكمية',
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
             icon: const Icon(Icons.remove, color: Colors.white, size: 14),
             onPressed: () => context.read<CartProvider>().decrement(product),
           ),
-          Text('$qty',
-              style: const TextStyle(color: Colors.white, fontSize: 12)),
+          Text(
+            '$qty',
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+          ),
           IconButton(
+            tooltip: canAdd ? 'زيادة الكمية' : 'وصلت للكمية المتوفرة',
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
-            icon: const Icon(Icons.add, color: Colors.white, size: 14),
-            onPressed: () => context.read<CartProvider>().add(product),
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            icon: Icon(
+              Icons.add,
+              color: canAdd ? Colors.white : Colors.white54,
+              size: 14,
+            ),
+            onPressed: canAdd
+                ? () {
+                    final added = context.read<CartProvider>().add(product);
+                    if (!added) _showStockMessage(context);
+                  }
+                : null,
           ),
         ],
       ),
+    );
+  }
+
+  void _showStockMessage(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('وصلت للكمية المتوفرة من المنتج')),
     );
   }
 }
