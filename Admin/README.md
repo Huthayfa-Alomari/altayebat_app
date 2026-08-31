@@ -21,7 +21,7 @@ cp .env.local.example .env.local
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_YOUR_KEY
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_YOUR_KEY
 ```
 
 لا يوجد `NEXT_PUBLIC_STORE_ID`. هوية المول تؤخذ على السيرفر من `store_admins` بناءً على المستخدم المسجل دخوله.
