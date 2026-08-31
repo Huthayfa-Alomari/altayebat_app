@@ -3,7 +3,7 @@ import { requireAdminStore } from "@/lib/store-context";
 import ProductsManager from "./ProductsManager";
 
 export default async function ProductsPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { storeId } = await requireAdminStore();
 
   const [{ data: products }, { data: categories }] = await Promise.all([
