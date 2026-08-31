@@ -1,9 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-// عميل Supabase يشتغل بالسيرفر — يستخدم بالـ Server Components و Server Actions
-export function createClient() {
-  const cookieStore = cookies();
+export async function createClient() {
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,7 +18,8 @@ export function createClient() {
               cookieStore.set(name, value, options)
             );
           } catch {
-            // بيصير تجاهله لو انستدعت من Server Component ما بتقدر تكتب كوكيز
+            // Server Components cannot always write cookies. Middleware handles
+            // session refresh for navigations; writable contexts still persist.
           }
         },
       },
