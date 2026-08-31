@@ -1,30 +1,40 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:altayebat_app/main.dart';
+import 'package:altayebat_app/models/product.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  group('Product', () {
+    test('parses Supabase row safely', () {
+      final product = Product.fromMap({
+        'id': 'product-1',
+        'name': 'حليب طازج',
+        'description': '1 لتر',
+        'price': 1.25,
+        'image_url': null,
+        'stock_qty': 8,
+        'is_available': true,
+        'category_id': 'dairy',
+      });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+      expect(product.id, 'product-1');
+      expect(product.name, 'حليب طازج');
+      expect(product.price, 1.25);
+      expect(product.stockQty, 8);
+      expect(product.isAvailable, isTrue);
+      expect(product.categoryId, 'dairy');
+    });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    test('uses safe defaults for optional inventory fields', () {
+      final product = Product.fromMap({
+        'id': 'product-2',
+        'name': 'مياه',
+        'price': 0.35,
+      });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+      expect(product.stockQty, 0);
+      expect(product.isAvailable, isTrue);
+      expect(product.description, isNull);
+      expect(product.imageUrl, isNull);
+      expect(product.categoryId, isNull);
+    });
   });
 }
