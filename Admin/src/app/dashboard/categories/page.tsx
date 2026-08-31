@@ -3,7 +3,7 @@ import { requireAdminStore } from "@/lib/store-context";
 import CategoriesManager from "./CategoriesManager";
 
 export default async function CategoriesPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { storeId } = await requireAdminStore();
 
   const { data: categories } = await supabase
