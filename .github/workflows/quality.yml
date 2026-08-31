@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   flutter:
     name: Flutter analyze and test
@@ -20,6 +23,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
       - run: flutter test
 
@@ -31,12 +35,15 @@ jobs:
         working-directory: Admin
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: test-publishable-key
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Admin/package.json
       - run: npm install --no-audit --no-fund
-      - run: npx tsc --noEmit
+      - run: npm run typecheck
       - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
