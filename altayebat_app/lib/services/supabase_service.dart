@@ -82,7 +82,9 @@ class SupabaseService {
       throw ArgumentError('لا يمكن إنشاء طلب بدون منتجات');
     }
 
+    final normalizedItems = <Map<String, dynamic>>[];
     final quantities = <String, int>{};
+
     for (final item in items) {
       final productId = item['product_id'] as String?;
       final quantity = item['quantity'] as int?;
@@ -92,81 +94,39 @@ class SupabaseService {
       quantities[productId] = (quantities[productId] ?? 0) + quantity;
     }
 
-    final productIds = quantities.keys.toList(growable: false);
-    final productRows = await _client
-        .from('products')
-        .select('id, price, stock_qty, is_available')
-        .eq('store_id', AppConfig.storeId)
-        .eq('is_available', true)
-        .inFilter('id', productIds);
-
-    final productsById = <String, Map<String, dynamic>>{
-      for (final row in (productRows as List))
-        (row as Map<String, dynamic>)['id'] as String: row,
-    };
-
-    if (productsById.length != productIds.length) {
-      throw StateError('أحد المنتجات لم يعد متوفرًا');
-    }
-
-    double total = 0;
-    final orderItems = <Map<String, dynamic>>[];
-
     for (final entry in quantities.entries) {
-      final product = productsById[entry.key]!;
-      final stockQty = (product['stock_qty'] as num?)?.toInt() ?? 0;
-      final price = (product['price'] as num).toDouble();
-
-      if (entry.value > stockQty) {
-        throw StateError('الكمية المطلوبة غير متوفرة لأحد المنتجات');
-      }
-
-      total += price * entry.value;
-      orderItems.add({
+      normalizedItems.add({
         'product_id': entry.key,
         'quantity': entry.value,
-        'unit_price': price,
       });
     }
 
-    if (total <= 0) {
-      throw StateError('إجمالي الطلب غير صالح');
-    }
-
-    final order = await _client
-        .from('orders')
-        .insert({
-          'store_id': AppConfig.storeId,
-          'customer_id': userId,
-          'total': total,
-          'status': 'pending',
-        })
-        .select()
-        .single();
-
-    final orderId = order['id'] as String;
-
     try {
-      await _client.from('order_items').insert(
-            orderItems
-                .map((item) => {
-                      ...item,
-                      'order_id': orderId,
-                    })
-                .toList(),
-          );
-    } catch (_) {
-      // Best-effort cleanup. Production database migration should also expose
-      // an atomic RPC for order creation to guarantee transaction semantics.
-      await _client
-          .from('orders')
-          .delete()
-          .eq('id', orderId)
-          .eq('customer_id', userId);
+      final result = await _client.rpc(
+        'create_order',
+        params: {
+          'p_store_id': AppConfig.storeId,
+          'p_items': normalizedItems,
+        },
+      );
+
+      if (result is! String || result.isEmpty) {
+        throw StateError('تعذر إنشاء الطلب');
+      }
+      return result;
+    } on PostgrestException catch (error) {
+      final message = error.message.toLowerCase();
+      if (message.contains('insufficient stock')) {
+        throw StateError('الكمية المطلوبة لم تعد متوفرة');
+      }
+      if (message.contains('unavailable')) {
+        throw StateError('أحد المنتجات لم يعد متوفرًا');
+      }
+      if (message.contains('customer profile')) {
+        throw StateError('بيانات الحساب غير مكتملة');
+      }
       rethrow;
     }
-
-    return orderId;
   }
 
   static Stream<Map<String, dynamic>> watchOrder(String orderId) {
