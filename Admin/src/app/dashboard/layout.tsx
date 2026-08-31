@@ -6,6 +6,7 @@ const navItems = [
   { href: "/dashboard", label: "الطلبات" },
   { href: "/dashboard/products", label: "المنتجات" },
   { href: "/dashboard/categories", label: "التصنيفات" },
+  { href: "/dashboard/support", label: "طلبات التواصل" },
 ];
 
 export default async function DashboardLayout({
