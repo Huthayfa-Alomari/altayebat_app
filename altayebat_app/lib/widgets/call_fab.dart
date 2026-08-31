@@ -22,14 +22,17 @@ class CallFab extends StatelessWidget {
           border: Border.all(color: AppColors.primary, width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.12),
+              color: Colors.black.withValues(alpha: 0.12),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: const Icon(Icons.headset_mic_outlined,
-            color: AppColors.primary, size: 22),
+        child: const Icon(
+          Icons.headset_mic_outlined,
+          color: AppColors.primary,
+          size: 22,
+        ),
       ),
     );
   }
