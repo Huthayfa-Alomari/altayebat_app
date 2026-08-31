@@ -2,11 +2,6 @@ import 'package:flutter/material.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 
-// شاشة اختيار نوع التواصل مع موظف المول.
-// ملاحظة تقنية: الاتصال الفعلي (صوت/فيديو) بيحتاج دمج SDK متخصص
-// متل Agora أو Stream — هاي الشاشة جاهزة لتستقبل ذاك الدمج، وهلأ
-// بتسجل طلب التواصل بقاعدة البيانات (call_requests) والموظف يشوفه
-// من لوحة التحكم ويرد.
 class CallScreen extends StatefulWidget {
   final String? orderId;
 
@@ -19,17 +14,28 @@ class CallScreen extends StatefulWidget {
 class _CallScreenState extends State<CallScreen> {
   bool _loading = false;
   String? _requestedType;
+  String? _error;
 
   Future<void> _requestCall(String type) async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
     try {
       await SupabaseService.requestCall(
         type: type,
         orderId: widget.orderId,
       );
+      if (!mounted) return;
       setState(() => _requestedType = type);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'تعذر إرسال طلب التواصل. تأكد من الإنترنت وجرب مرة ثانية.';
+      });
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -37,40 +43,78 @@ class _CallScreenState extends State<CallScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('تواصل مع موظف')),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: _requestedType != null
-            ? _waitingState()
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'كيف بدك تتواصل مع موظف الطيبات؟',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 20),
-                  _optionCard(
-                    icon: Icons.call_outlined,
-                    title: 'مكالمة صوتية',
-                    subtitle: 'اتصال صوتي مباشر مع موظف',
-                    onTap: () => _requestCall('voice'),
-                  ),
-                  const SizedBox(height: 12),
-                  _optionCard(
-                    icon: Icons.videocam_outlined,
-                    title: 'مكالمة فيديو',
-                    subtitle: 'يشوفك الموظف ويساعدك تختار',
-                    onTap: () => _requestCall('video'),
-                  ),
-                  const SizedBox(height: 12),
-                  _optionCard(
-                    icon: Icons.chat_bubble_outline,
-                    title: 'شات مباشر',
-                    subtitle: 'راسل الموظف كتابياً',
-                    onTap: () => _requestCall('chat'),
-                  ),
-                ],
-              ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: _requestedType != null
+              ? _waitingState()
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'كيف بدك تتواصل مع موظف الطيبات؟',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'أرسل الطلب، والموظف رح يتواصل معك حسب النوع اللي اخترته.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          _error!,
+                          style: TextStyle(
+                            color: Colors.red.shade800,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    _optionCard(
+                      icon: Icons.call_outlined,
+                      title: 'مكالمة صوتية',
+                      subtitle: 'اطلب من الموظف يتصل فيك صوتيًا',
+                      onTap: () => _requestCall('voice'),
+                    ),
+                    const SizedBox(height: 12),
+                    _optionCard(
+                      icon: Icons.videocam_outlined,
+                      title: 'مكالمة فيديو',
+                      subtitle: 'اطلب مساعدة مرئية باختيار المنتجات',
+                      onTap: () => _requestCall('video'),
+                    ),
+                    const SizedBox(height: 12),
+                    _optionCard(
+                      icon: Icons.chat_bubble_outline,
+                      title: 'شات مباشر',
+                      subtitle: 'أرسل طلب محادثة كتابية مع الموظف',
+                      onTap: () => _requestCall('chat'),
+                    ),
+                    if (_loading) ...[
+                      const SizedBox(height: 20),
+                      const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -103,12 +147,20 @@ class _CallScreenState extends State<CallScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title,
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w600)),
-                    Text(subtitle,
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary)),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -121,15 +173,39 @@ class _CallScreenState extends State<CallScreen> {
   }
 
   Widget _waitingState() {
+    const typeLabels = {
+      'voice': 'المكالمة الصوتية',
+      'video': 'مكالمة الفيديو',
+      'chat': 'الشات',
+    };
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const CircularProgressIndicator(color: AppColors.primary),
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.08),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.support_agent,
+            color: AppColors.primary,
+            size: 34,
+          ),
+        ),
         const SizedBox(height: 20),
-        const Text(
-          'طلبك وصل لموظف الطيبات، بانتظار الرد...',
+        Text(
+          'طلب ${typeLabels[_requestedType] ?? 'التواصل'} وصل للموظف',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 14),
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'رح يتم التواصل معك بمجرد ما يكون الموظف متاح.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
       ],
     );
