@@ -164,6 +164,15 @@ class SupabaseService {
     return data ?? <String, dynamic>{};
   }
 
+  static Future<Map<String, dynamic>> getStoreContactConfig() async {
+    final data = await _client
+        .from('stores')
+        .select('name, phone')
+        .eq('id', AppConfig.storeId)
+        .maybeSingle();
+    return data ?? <String, dynamic>{};
+  }
+
   static Stream<Map<String, dynamic>> watchOrder(String orderId) {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return Stream.value(<String, dynamic>{});
