@@ -4,7 +4,8 @@
     <application
         android:label="أسواق الطيبات"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/ic_altayebat_launcher"
+        android:roundIcon="@drawable/ic_altayebat_launcher"
         android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
