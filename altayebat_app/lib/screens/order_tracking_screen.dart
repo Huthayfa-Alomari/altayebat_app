@@ -11,6 +11,19 @@ const Map<String, String> _statusLabels = {
   'cancelled': 'ملغي',
 };
 
+const Map<String, String> _paymentMethodLabels = {
+  'cash': 'الدفع عند الاستلام',
+  'cliq': 'CliQ',
+  'card': 'Visa / Mastercard',
+};
+
+const Map<String, String> _paymentStatusLabels = {
+  'pending': 'بانتظار تأكيد الدفع',
+  'paid': 'مدفوع',
+  'failed': 'فشل الدفع',
+  'refunded': 'مسترد',
+};
+
 const List<String> _statusOrder = [
   'pending',
   'preparing',
@@ -52,7 +65,12 @@ class OrderTrackingScreen extends StatelessWidget {
             );
           }
 
-          final status = snapshot.data!['status'] as String? ?? 'pending';
+          final order = snapshot.data!;
+          final status = order['status'] as String? ?? 'pending';
+          final paymentMethod = order['payment_method'] as String? ?? 'cash';
+          final paymentStatus = order['payment_status'] as String? ?? 'pending';
+          final paymentReference = order['payment_reference'] as String?;
+
           if (status == 'cancelled') {
             return _cancelledState();
           }
@@ -111,7 +129,45 @@ class OrderTrackingScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    children: [
+                      _infoRow(
+                        icon: Icons.account_balance_wallet_outlined,
+                        label: 'طريقة الدفع',
+                        value: _paymentMethodLabels[paymentMethod] ?? paymentMethod,
+                      ),
+                      const SizedBox(height: 10),
+                      _infoRow(
+                        icon: paymentStatus == 'paid'
+                            ? Icons.verified_outlined
+                            : Icons.schedule_outlined,
+                        label: 'حالة الدفع',
+                        value: _paymentStatusLabels[paymentStatus] ?? paymentStatus,
+                        valueColor: paymentStatus == 'paid'
+                            ? Colors.green.shade700
+                            : AppColors.textPrimary,
+                      ),
+                      if (paymentReference != null && paymentReference.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        _infoRow(
+                          icon: Icons.tag,
+                          label: 'مرجع الدفع',
+                          value: paymentReference,
+                          ltr: true,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 22),
                 for (int i = 0; i < _statusOrder.length; i++)
                   _stepTile(
                     label: _statusLabels[_statusOrder[i]]!,
@@ -175,11 +231,46 @@ class OrderTrackingScreen extends StatelessWidget {
     );
   }
 
+  Widget _infoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    Color valueColor = AppColors.textPrimary,
+    bool ltr = false,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppColors.textSecondary),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const Spacer(),
+        Flexible(
+          child: Text(
+            value,
+            textDirection: ltr ? TextDirection.ltr : null,
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: valueColor,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _cancelledState() {
     return _messageState(
       icon: Icons.cancel_outlined,
       title: 'تم إلغاء الطلب',
-      subtitle: 'إذا عندك استفسار عن الإلغاء، استخدم زر التواصل مع الموظف.',
+      subtitle: 'إذا عندك استفسار عن الإلغاء، استخدم زر التواصل مع المول.',
       iconColor: Colors.redAccent,
     );
   }
