@@ -38,20 +38,18 @@ class ProductCard extends StatelessWidget {
                 child: product.imageUrl != null && product.imageUrl!.isNotEmpty
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Padding(
-                          padding: const EdgeInsets.all(3),
-                          child: Image.network(
-                            product.imageUrl!,
-                            width: double.infinity,
-                            height: double.infinity,
-                            fit: BoxFit.contain,
-                            filterQuality: FilterQuality.medium,
-                            errorBuilder: (_, _, _) => const Center(
-                              child: Icon(
-                                Icons.image_not_supported_outlined,
-                                color: AppColors.textSecondary,
-                                size: 34,
-                              ),
+                        child: Image.network(
+                          product.imageUrl!,
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.cover,
+                          alignment: Alignment.center,
+                          filterQuality: FilterQuality.medium,
+                          errorBuilder: (_, _, _) => const Center(
+                            child: Icon(
+                              Icons.image_not_supported_outlined,
+                              color: AppColors.textSecondary,
+                              size: 34,
                             ),
                           ),
                         ),
