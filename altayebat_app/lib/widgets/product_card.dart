@@ -20,7 +20,7 @@ class ProductCard extends StatelessWidget {
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
       ),
       child: Stack(
@@ -29,46 +29,58 @@ class ProductCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                height: 70,
+                height: 125,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(10),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: product.imageUrl != null && product.imageUrl!.isNotEmpty
                     ? ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.network(
-                          product.imageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => const Icon(
-                            Icons.image_not_supported_outlined,
-                            color: AppColors.textSecondary,
-                            size: 28,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(3),
+                          child: Image.network(
+                            product.imageUrl!,
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.medium,
+                            errorBuilder: (_, _, _) => const Center(
+                              child: Icon(
+                                Icons.image_not_supported_outlined,
+                                color: AppColors.textSecondary,
+                                size: 34,
+                              ),
+                            ),
                           ),
                         ),
                       )
-                    : const Icon(
-                        Icons.shopping_basket_outlined,
-                        color: AppColors.primary,
-                        size: 28,
+                    : const Center(
+                        child: Icon(
+                          Icons.shopping_basket_outlined,
+                          color: AppColors.primary,
+                          size: 34,
+                        ),
                       ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 9),
               Text(
                 product.name,
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 13,
-                  fontWeight: FontWeight.w600,
+                  height: 1.25,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
                 '${product.price.toStringAsFixed(2)} د.أ',
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
                   color: AppColors.textSecondary,
                 ),
               ),
@@ -116,15 +128,15 @@ class ProductCard extends StatelessWidget {
                 if (!added) _showStockMessage(context);
               }
             : null,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         child: Container(
-          width: 30,
-          height: 30,
+          width: 36,
+          height: 36,
           decoration: BoxDecoration(
             color: enabled ? AppColors.primary : AppColors.border,
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.add, color: Colors.white, size: 17),
+          child: const Icon(Icons.add, color: Colors.white, size: 21),
         ),
       ),
     );
