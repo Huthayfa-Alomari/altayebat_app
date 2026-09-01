@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 
@@ -12,109 +13,187 @@ class CallScreen extends StatefulWidget {
 }
 
 class _CallScreenState extends State<CallScreen> {
-  bool _loading = false;
-  String? _requestedType;
+  bool _loading = true;
+  String? _phone;
+  String _storeName = 'أسواق الطيبات';
   String? _error;
 
-  Future<void> _requestCall(String type) async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  @override
+  void initState() {
+    super.initState();
+    _loadContact();
+  }
 
+  Future<void> _loadContact() async {
     try {
-      await SupabaseService.requestCall(
-        type: type,
-        orderId: widget.orderId,
-      );
+      final config = await SupabaseService.getStoreContactConfig();
       if (!mounted) return;
-      setState(() => _requestedType = type);
+      setState(() {
+        _storeName = (config['name'] as String?)?.trim().isNotEmpty == true
+            ? config['name'] as String
+            : 'أسواق الطيبات';
+        _phone = (config['phone'] as String?)?.trim();
+        _loading = false;
+      });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error = 'تعذر إرسال طلب التواصل. تأكد من الإنترنت وجرب مرة ثانية.';
+        _loading = false;
+        _error = 'تعذر تحميل بيانات التواصل. حاول مرة ثانية.';
       });
-    } finally {
-      if (mounted) setState(() => _loading = false);
     }
+  }
+
+  String? _jordanWhatsAppNumber(String? phone) {
+    if (phone == null || phone.trim().isEmpty) return null;
+    var digits = phone.replaceAll(RegExp(r'\D'), '');
+    if (digits.startsWith('00962')) digits = digits.substring(2);
+    if (digits.startsWith('962')) return digits;
+    if (digits.startsWith('0')) digits = digits.substring(1);
+    return digits.isEmpty ? null : '962$digits';
+  }
+
+  Future<void> _launchPhone() async {
+    final phone = _phone;
+    if (phone == null || phone.isEmpty) return;
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      _showLaunchError('تعذر فتح تطبيق الاتصال');
+    }
+  }
+
+  Future<void> _launchWhatsApp() async {
+    final whatsapp = _jordanWhatsAppNumber(_phone);
+    if (whatsapp == null) return;
+    final orderText = widget.orderId == null || widget.orderId!.isEmpty
+        ? ''
+        : ' بخصوص طلبي #${_shortOrderId(widget.orderId!)}';
+    final message = 'مرحبًا، بدي أتواصل مع $_storeName$orderText';
+    final uri = Uri.parse(
+      'https://wa.me/$whatsapp?text=${Uri.encodeComponent(message)}',
+    );
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      _showLaunchError('تعذر فتح واتساب');
+    }
+  }
+
+  void _showLaunchError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _shortOrderId(String id) {
+    if (id.length <= 8) return id.toUpperCase();
+    return id.substring(0, 8).toUpperCase();
   }
 
   @override
   Widget build(BuildContext context) {
+    final hasPhone = _phone != null && _phone!.isNotEmpty;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('تواصل مع موظف')),
+      appBar: AppBar(title: const Text('تواصل مع المول')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
-          child: _requestedType != null
-              ? _waitingState()
+          child: _loading
+              ? const Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                )
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'كيف بدك تتواصل مع موظف الطيبات؟',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
+                    Text(
+                      'تواصل مباشرة مع $_storeName',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     const Text(
-                      'أرسل الطلب، والموظف رح يتواصل معك حسب النوع اللي اخترته.',
+                      'للاستفسار عن طلبك أو أي منتج، اختار الطريقة الأنسب إلك.',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
                       ),
                     ),
                     if (_error != null) ...[
-                      const SizedBox(height: 14),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          _error!,
-                          style: TextStyle(
-                            color: Colors.red.shade800,
-                            fontSize: 12,
-                          ),
-                        ),
+                      const SizedBox(height: 16),
+                      _notice(_error!, Colors.red.shade50, Colors.red.shade800),
+                    ],
+                    if (!hasPhone) ...[
+                      const SizedBox(height: 16),
+                      _notice(
+                        'رقم المول سيتم تفعيله عند اعتماد النسخة النهائية. خيارات الاتصال وواتساب جاهزة للربط مباشرة.',
+                        AppColors.primary.withValues(alpha: 0.06),
+                        AppColors.textPrimary,
                       ),
                     ],
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 22),
                     _optionCard(
                       icon: Icons.call_outlined,
-                      title: 'مكالمة صوتية',
-                      subtitle: 'اطلب من الموظف يتصل فيك صوتيًا',
-                      onTap: () => _requestCall('voice'),
+                      title: 'اتصال عادي',
+                      subtitle: hasPhone
+                          ? 'اتصل بالمول مباشرة'
+                          : 'يتم تفعيله عند إضافة رقم المول',
+                      enabled: hasPhone,
+                      onTap: _launchPhone,
                     ),
                     const SizedBox(height: 12),
                     _optionCard(
-                      icon: Icons.videocam_outlined,
-                      title: 'مكالمة فيديو',
-                      subtitle: 'اطلب مساعدة مرئية باختيار المنتجات',
-                      onTap: () => _requestCall('video'),
+                      icon: Icons.chat_outlined,
+                      title: 'واتساب',
+                      subtitle: hasPhone
+                          ? 'افتح محادثة واتساب مع المول'
+                          : 'يتم تفعيله عند إضافة رقم المول',
+                      enabled: hasPhone,
+                      onTap: _launchWhatsApp,
                     ),
-                    const SizedBox(height: 12),
-                    _optionCard(
-                      icon: Icons.chat_bubble_outline,
-                      title: 'شات مباشر',
-                      subtitle: 'أرسل طلب محادثة كتابية مع الموظف',
-                      onTap: () => _requestCall('chat'),
-                    ),
-                    if (_loading) ...[
-                      const SizedBox(height: 20),
-                      const Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.primary,
-                        ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.border),
                       ),
-                    ],
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.verified_user_outlined,
+                            color: AppColors.textSecondary,
+                          ),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'التواصل يتم من خلال رقم المول الرسمي فقط.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
         ),
+      ),
+    );
+  }
+
+  Widget _notice(String text, Color background, Color foreground) {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(fontSize: 12, color: foreground),
       ),
     );
   }
@@ -123,91 +202,61 @@ class _CallScreenState extends State<CallScreen> {
     required IconData icon,
     required String title,
     required String subtitle,
+    required bool enabled,
     required VoidCallback onTap,
   }) {
     return Card(
       child: InkWell(
-        onTap: _loading ? null : onTap,
+        onTap: enabled ? onTap : null,
         borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
-                  shape: BoxShape.circle,
+        child: Opacity(
+          opacity: enabled ? 1 : 0.55,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: AppColors.primary, size: 23),
                 ),
-                child: Icon(icon, color: AppColors.primary, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const Icon(Icons.arrow_back_ios, size: 14),
-            ],
+                Icon(
+                  enabled ? Icons.arrow_back_ios_new : Icons.lock_outline,
+                  size: 15,
+                  color: AppColors.textSecondary,
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _waitingState() {
-    const typeLabels = {
-      'voice': 'المكالمة الصوتية',
-      'video': 'مكالمة الفيديو',
-      'chat': 'الشات',
-    };
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.08),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            Icons.support_agent,
-            color: AppColors.primary,
-            size: 34,
-          ),
-        ),
-        const SizedBox(height: 20),
-        Text(
-          'طلب ${typeLabels[_requestedType] ?? 'التواصل'} وصل للموظف',
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'رح يتم التواصل معك بمجرد ما يكون الموظف متاح.',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-        ),
-      ],
     );
   }
 }
