@@ -53,4 +53,29 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run typecheck
       - run: npm run build
-      - run: npm audit --omit=dev --audit-level=high
+      - name: Audit production dependencies
+        shell: bash
+        run: |
+          set +e
+          for attempt in 1 2 3; do
+            audit_output="$(npm audit --omit=dev --audit-level=high 2>&1)"
+            audit_status=$?
+            printf '%s\n' "$audit_output"
+
+            if [ "$audit_status" -eq 0 ]; then
+              exit 0
+            fi
+
+            if printf '%s\n' "$audit_output" | grep -Eiq '503|Service Unavailable|audit endpoint returned an error|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN'; then
+              echo "::warning::npm audit service unavailable (attempt ${attempt}/3)."
+              sleep $((attempt * 5))
+              continue
+            fi
+
+            # A normal non-zero audit result means npm found vulnerabilities at
+            # or above the configured severity threshold. Fail the job.
+            exit "$audit_status"
+          done
+
+          echo "::warning::npm audit service remained unavailable after 3 attempts; build/typecheck passed, so CI will not fail on registry availability alone."
+          exit 0
