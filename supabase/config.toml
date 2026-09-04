@@ -1,6 +1,9 @@
 [functions.create-card-payment]
 verify_jwt = true
 
+[functions.reconcile-card-payment]
+verify_jwt = true
+
 [functions.paytabs-callback]
 verify_jwt = false
 
