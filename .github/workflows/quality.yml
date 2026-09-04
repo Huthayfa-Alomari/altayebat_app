@@ -58,12 +58,18 @@ jobs:
         run: |
           set +e
           for attempt in 1 2 3; do
-            audit_output="$(npm audit --omit=dev --audit-level=high 2>&1)"
+            audit_output="$(timeout 30s npm audit --omit=dev --audit-level=high 2>&1)"
             audit_status=$?
             printf '%s\n' "$audit_output"
 
             if [ "$audit_status" -eq 0 ]; then
               exit 0
+            fi
+
+            if [ "$audit_status" -eq 124 ]; then
+              echo "::warning::npm audit timed out (attempt ${attempt}/3)."
+              sleep $((attempt * 5))
+              continue
             fi
 
             if printf '%s\n' "$audit_output" | grep -Eiq '503|Service Unavailable|audit endpoint returned an error|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN'; then
@@ -77,5 +83,5 @@ jobs:
             exit "$audit_status"
           done
 
-          echo "::warning::npm audit service remained unavailable after 3 attempts; build/typecheck passed, so CI will not fail on registry availability alone."
+          echo "::warning::npm audit service remained unavailable after 3 bounded attempts; build/typecheck passed, so CI will not fail on registry availability alone."
           exit 0
