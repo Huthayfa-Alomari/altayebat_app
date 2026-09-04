@@ -58,20 +58,32 @@ Deno.serve(async (req: Request) => {
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
     });
-    const { error } = await admin
-      .from("orders")
-      .update({
-        payment_reference: tranRef,
-        payment_status: paymentStatus,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", orderId)
-      .eq("payment_method", "card");
+    const { data: finalization, error } = await admin.rpc(
+      "finalize_card_payment",
+      {
+        p_order_id: orderId,
+        p_tran_ref: tranRef,
+        p_payment_status: paymentStatus,
+      },
+    );
 
     if (error) {
-      console.error(error);
+      console.error("Card finalization failed", error);
       return new Response("Database update failed", { status: 500 });
     }
+
+    if (finalization === "failed_requires_review") {
+      console.warn(
+        "Card payment failed after fulfilment advanced; admin review required",
+        { orderId, tranRef },
+      );
+    } else if (finalization === "cancelled" && paymentStatus === "paid") {
+      console.error(
+        "Authorised payment arrived for an already cancelled/restocked order",
+        { orderId, tranRef },
+      );
+    }
+
     return new Response("OK", { status: 200 });
   } catch (error) {
     console.error(error);
