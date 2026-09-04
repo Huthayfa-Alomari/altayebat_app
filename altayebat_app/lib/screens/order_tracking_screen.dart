@@ -18,6 +18,7 @@ const Map<String, String> _paymentMethodLabels = {
 };
 
 const Map<String, String> _paymentStatusLabels = {
+  'unpaid': 'غير مدفوع',
   'pending': 'بانتظار تأكيد الدفع',
   'paid': 'مدفوع',
   'failed': 'فشل الدفع',
@@ -31,17 +32,71 @@ const List<String> _statusOrder = [
   'delivered',
 ];
 
-class OrderTrackingScreen extends StatelessWidget {
+class OrderTrackingScreen extends StatefulWidget {
   final String orderId;
 
   const OrderTrackingScreen({super.key, required this.orderId});
+
+  @override
+  State<OrderTrackingScreen> createState() => _OrderTrackingScreenState();
+}
+
+class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
+  bool _checkingPayment = false;
+
+  Future<void> _reconcileCardPayment() async {
+    if (_checkingPayment) return;
+    setState(() => _checkingPayment = true);
+
+    try {
+      final result = await SupabaseService.reconcileCardPayment(widget.orderId);
+      if (!mounted) return;
+
+      final finalization = result['finalization'] as String?;
+      final retryAfterSeconds = result['retry_after_seconds'] as num?;
+      String message;
+
+      switch (finalization) {
+        case 'paid':
+          message = 'تم تأكيد الدفع من PayTabs.';
+        case 'paid_requires_refund':
+          message =
+              'تم تأكيد الدفع، لكن الطلب ملغي. تواصل مع المول لمراجعة استرداد المبلغ.';
+        case 'cancelled':
+          message = 'لم يكتمل الدفع وتم إلغاء الطلب وإرجاع الكمية للمخزون.';
+        case 'failed_requires_review':
+          message = 'فشل الدفع بعد بدء تجهيز الطلب. المول سيراجع الحالة.';
+        default:
+          if (retryAfterSeconds != null && retryAfterSeconds > 0) {
+            final minutes = (retryAfterSeconds / 60).ceil();
+            message = 'لسا حالة الدفع غير نهائية. جرّب بعد حوالي $minutes دقيقة.';
+          } else {
+            message = 'لسا حالة الدفع غير نهائية. جرّب التحقق مرة ثانية لاحقًا.';
+          }
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    } on StateError catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر التحقق من حالة الدفع الآن')),
+      );
+    } finally {
+      if (mounted) setState(() => _checkingPayment = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('تتبع الطلب')),
       body: StreamBuilder<Map<String, dynamic>>(
-        stream: SupabaseService.watchOrder(orderId),
+        stream: SupabaseService.watchOrder(widget.orderId),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return _messageState(
@@ -71,12 +126,20 @@ class OrderTrackingScreen extends StatelessWidget {
           final paymentStatus = order['payment_status'] as String? ?? 'pending';
           final paymentReference = order['payment_reference'] as String?;
 
+          if (status == 'cancelled' &&
+              paymentMethod == 'card' &&
+              paymentStatus == 'paid') {
+            return _cancelledPaidCardState();
+          }
+
           if (status == 'cancelled') {
             return _cancelledState();
           }
 
           final currentIndex = _statusOrder.indexOf(status);
           final safeIndex = currentIndex < 0 ? 0 : currentIndex;
+          final canReconcileCard =
+              paymentMethod == 'card' && paymentStatus != 'paid';
 
           return Padding(
             padding: const EdgeInsets.all(20),
@@ -108,7 +171,7 @@ class OrderTrackingScreen extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              _shortOrderId(orderId),
+                              _shortOrderId(widget.orderId),
                               textDirection: TextDirection.ltr,
                               style: const TextStyle(
                                 fontSize: 13,
@@ -131,7 +194,10 @@ class OrderTrackingScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
@@ -155,13 +221,38 @@ class OrderTrackingScreen extends StatelessWidget {
                             ? Colors.green.shade700
                             : AppColors.textPrimary,
                       ),
-                      if (paymentReference != null && paymentReference.isNotEmpty) ...[
+                      if (paymentReference != null &&
+                          paymentReference.isNotEmpty) ...[
                         const SizedBox(height: 10),
                         _infoRow(
                           icon: Icons.tag,
                           label: 'مرجع الدفع',
                           value: paymentReference,
                           ltr: true,
+                        ),
+                      ],
+                      if (canReconcileCard) ...[
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed:
+                                _checkingPayment ? null : _reconcileCardPayment,
+                            icon: _checkingPayment
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.refresh),
+                            label: Text(
+                              _checkingPayment
+                                  ? 'جاري التحقق...'
+                                  : 'تحقق من حالة الدفع',
+                            ),
+                          ),
                         ),
                       ],
                     ],
@@ -227,7 +318,7 @@ class OrderTrackingScreen extends StatelessWidget {
           );
         },
       ),
-      floatingActionButton: CallFab(orderId: orderId),
+      floatingActionButton: CallFab(orderId: widget.orderId),
     );
   }
 
@@ -272,6 +363,16 @@ class OrderTrackingScreen extends StatelessWidget {
       title: 'تم إلغاء الطلب',
       subtitle: 'إذا عندك استفسار عن الإلغاء، استخدم زر التواصل مع المول.',
       iconColor: Colors.redAccent,
+    );
+  }
+
+  Widget _cancelledPaidCardState() {
+    return _messageState(
+      icon: Icons.warning_amber_rounded,
+      title: 'الدفع مؤكد والطلب ملغي',
+      subtitle:
+          'PayTabs أكد عملية الدفع بعد إلغاء الطلب. تواصل مع المول لمراجعة استرداد المبلغ.',
+      iconColor: Colors.orange.shade800,
     );
   }
 
