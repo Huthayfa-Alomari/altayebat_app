@@ -156,6 +156,7 @@ export default async function OrderDetailsPage({
             <PaymentStatusControl
               orderId={order.id}
               storeId={storeId}
+              orderStatus={order.status}
               paymentMethod={order.payment_method}
               currentStatus={order.payment_status}
             />
