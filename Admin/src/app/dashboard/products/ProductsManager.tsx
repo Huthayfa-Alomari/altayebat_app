@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
+import { BarcodeField } from "@/components/products/barcode-field";
+import { validateAdminBarcode } from "@/lib/barcode";
 import { createClient } from "@/lib/supabase/client";
 
 type Product = {
@@ -41,6 +43,16 @@ function storagePathFromPublicUrl(url: string | null) {
   }
 }
 
+function barcodeErrorMessage(reason?: string, productName?: string) {
+  if (reason === "DUPLICATE") {
+    return `هذا الباركود مستخدم${productName ? ` للمنتج: ${productName}` : " لمنتج آخر"}.`;
+  }
+  if (reason === "BARCODE_TOO_LONG") {
+    return "الباركود أطول من الحد المسموح.";
+  }
+  return "تعذر التحقق من الباركود. حاول مرة ثانية.";
+}
+
 export default function ProductsManager({
   initialProducts,
   categories,
@@ -57,9 +69,17 @@ export default function ProductsManager({
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
   const [categoryId, setCategoryId] = useState(categories[0]?.id || "");
+  const [barcode, setBarcode] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
+
   const [saving, setSaving] = useState(false);
   const [busyProductId, setBusyProductId] = useState<string | null>(null);
+
+  const [loadingBarcodeId, setLoadingBarcodeId] = useState<string | null>(null);
+  const [editingBarcodeProductId, setEditingBarcodeProductId] = useState<string | null>(null);
+  const [editingBarcodeValue, setEditingBarcodeValue] = useState("");
+  const [savingBarcode, setSavingBarcode] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
   function validateImage(file: File | null) {
@@ -97,6 +117,7 @@ export default function ProductsManager({
     setError(null);
 
     const normalizedName = name.trim();
+    const normalizedBarcode = barcode.trim();
     const parsedPrice = Number(price);
     const parsedStock = stock.trim() === "" ? 0 : Number(stock);
     const imageValidationError = validateImage(imageFile);
@@ -122,6 +143,18 @@ export default function ProductsManager({
     let uploadedPath: string | null = null;
 
     try {
+      if (normalizedBarcode) {
+        const barcodeStatus = await validateAdminBarcode(supabase, {
+          storeId,
+          barcode: normalizedBarcode,
+        });
+
+        if (!barcodeStatus.valid || !barcodeStatus.available) {
+          setError(barcodeErrorMessage(barcodeStatus.reason, barcodeStatus.product_name));
+          return;
+        }
+      }
+
       let imageUrl: string | null = null;
       if (imageFile) {
         const uploaded = await uploadImage(imageFile);
@@ -137,6 +170,7 @@ export default function ProductsManager({
         stock_qty: parsedStock,
         is_available: parsedStock > 0,
         image_url: imageUrl,
+        barcode: normalizedBarcode || null,
       });
 
       if (insertError) {
@@ -149,12 +183,24 @@ export default function ProductsManager({
       setName("");
       setPrice("");
       setStock("");
+      setBarcode("");
       setImageFile(null);
+
       const fileInput = document.getElementById("product-image") as HTMLInputElement | null;
       if (fileInput) fileInput.value = "";
+
       router.refresh();
-    } catch {
-      setError("تعذر إضافة المنتج أو رفع الصورة. تأكد من الصورة وحاول مرة ثانية.");
+    } catch (caught) {
+      const code =
+        typeof caught === "object" && caught !== null && "code" in caught
+          ? String((caught as { code?: unknown }).code ?? "")
+          : "";
+
+      setError(
+        code === "23505"
+          ? "هذا الباركود مستخدم لمنتج آخر."
+          : "تعذر إضافة المنتج أو رفع الصورة. تأكد من البيانات وحاول مرة ثانية.",
+      );
     } finally {
       setSaving(false);
     }
@@ -175,7 +221,79 @@ export default function ProductsManager({
       setError("تعذر تحديث حالة المنتج.");
       return;
     }
+
     router.refresh();
+  }
+
+  async function beginBarcodeEdit(product: Product) {
+    setError(null);
+    setLoadingBarcodeId(product.id);
+
+    try {
+      const { data, error: fetchError } = await supabase
+        .from("products")
+        .select("barcode")
+        .eq("id", product.id)
+        .eq("store_id", storeId)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+
+      setEditingBarcodeProductId(product.id);
+      setEditingBarcodeValue(
+        typeof data?.barcode === "string" ? data.barcode : "",
+      );
+    } catch {
+      setError("تعذر تحميل باركود المنتج.");
+    } finally {
+      setLoadingBarcodeId(null);
+    }
+  }
+
+  async function saveProductBarcode(product: Product) {
+    const normalizedBarcode = editingBarcodeValue.trim();
+    setError(null);
+    setSavingBarcode(true);
+
+    try {
+      if (normalizedBarcode) {
+        const barcodeStatus = await validateAdminBarcode(supabase, {
+          storeId,
+          barcode: normalizedBarcode,
+          excludeProductId: product.id,
+        });
+
+        if (!barcodeStatus.valid || !barcodeStatus.available) {
+          setError(barcodeErrorMessage(barcodeStatus.reason, barcodeStatus.product_name));
+          return;
+        }
+      }
+
+      const { error: updateError } = await supabase
+        .from("products")
+        .update({ barcode: normalizedBarcode || null })
+        .eq("id", product.id)
+        .eq("store_id", storeId);
+
+      if (updateError) throw updateError;
+
+      setEditingBarcodeProductId(null);
+      setEditingBarcodeValue("");
+      router.refresh();
+    } catch (caught) {
+      const code =
+        typeof caught === "object" && caught !== null && "code" in caught
+          ? String((caught as { code?: unknown }).code ?? "")
+          : "";
+
+      setError(
+        code === "23505"
+          ? "هذا الباركود مستخدم لمنتج آخر."
+          : "تعذر حفظ باركود المنتج.",
+      );
+    } finally {
+      setSavingBarcode(false);
+    }
   }
 
   async function deleteProduct(product: Product) {
@@ -217,6 +335,7 @@ export default function ProductsManager({
           onChange={(e) => setName(e.target.value)}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand sm:col-span-2"
         />
+
         <input
           placeholder="السعر"
           type="number"
@@ -226,6 +345,7 @@ export default function ProductsManager({
           onChange={(e) => setPrice(e.target.value)}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand"
         />
+
         <input
           placeholder="الكمية"
           type="number"
@@ -235,6 +355,7 @@ export default function ProductsManager({
           onChange={(e) => setStock(e.target.value)}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand"
         />
+
         <select
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
@@ -247,6 +368,7 @@ export default function ProductsManager({
             </option>
           ))}
         </select>
+
         <label className="flex cursor-pointer items-center justify-center rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm text-gray-600 hover:border-brand hover:text-brand">
           <span className="truncate">{imageFile ? imageFile.name : "اختيار صورة"}</span>
           <input
@@ -268,6 +390,17 @@ export default function ProductsManager({
             }}
           />
         </label>
+
+        <div className="sm:col-span-6">
+          <BarcodeField
+            supabase={supabase}
+            storeId={storeId}
+            value={barcode}
+            onChange={setBarcode}
+            disabled={saving}
+          />
+        </div>
+
         <button
           type="submit"
           disabled={saving}
@@ -275,9 +408,11 @@ export default function ProductsManager({
         >
           {saving ? "جاري رفع الصورة وإضافة المنتج..." : "إضافة منتج"}
         </button>
+
         <p className="text-xs text-gray-500 sm:col-span-6">
-          الصور المدعومة: JPG / PNG / WebP، وبحد أقصى 5MB.
+          الصور المدعومة: JPG / PNG / WebP، وبحد أقصى 5MB. الباركود اختياري، لكنه مطلوب لتفعيل البحث والمسح للمنتج.
         </p>
+
         {error && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 sm:col-span-6">
             {error}
@@ -297,6 +432,7 @@ export default function ProductsManager({
               <th className="px-4 py-3 font-normal"></th>
             </tr>
           </thead>
+
           <tbody>
             {initialProducts.length === 0 ? (
               <tr>
@@ -307,55 +443,114 @@ export default function ProductsManager({
             ) : (
               initialProducts.map((product) => {
                 const busy = busyProductId === product.id;
+                const barcodeLoading = loadingBarcodeId === product.id;
+                const editingBarcode = editingBarcodeProductId === product.id;
+
                 return (
-                  <tr key={product.id} className="border-t border-gray-100">
-                    <td className="px-4 py-3">
-                      {product.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={product.image_url}
-                          alt={product.name}
-                          className="h-14 w-14 rounded-lg border border-gray-100 object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-gray-100 text-[10px] text-gray-400">
-                          بدون صورة
+                  <Fragment key={product.id}>
+                    <tr className="border-t border-gray-100">
+                      <td className="px-4 py-3">
+                        {product.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={product.image_url}
+                            alt={product.name}
+                            className="h-14 w-14 rounded-lg border border-gray-100 object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-gray-100 text-[10px] text-gray-400">
+                            بدون صورة
+                          </div>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-3">{product.name}</td>
+                      <td className="px-4 py-3">{Number(product.price).toFixed(2)} د.أ</td>
+                      <td className="px-4 py-3">{product.stock_qty}</td>
+
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => toggleAvailability(product)}
+                          className={`rounded-full px-3 py-1 text-xs disabled:opacity-50 ${
+                            product.is_available
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-500"
+                          }`}
+                        >
+                          {busy ? "..." : product.is_available ? "متوفر" : "غير متوفر"}
+                        </button>
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            type="button"
+                            disabled={busy || barcodeLoading || savingBarcode}
+                            onClick={() => void beginBarcodeEdit(product)}
+                            className="text-xs font-medium text-gray-700 hover:underline disabled:opacity-50"
+                          >
+                            {barcodeLoading ? "..." : "باركود"}
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => deleteProduct(product)}
+                            className="text-xs text-red-600 hover:underline disabled:opacity-50"
+                          >
+                            حذف
+                          </button>
                         </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">{product.name}</td>
-                    <td className="px-4 py-3">{Number(product.price).toFixed(2)} د.أ</td>
-                    <td className="px-4 py-3">{product.stock_qty}</td>
-                    <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => toggleAvailability(product)}
-                        className={`rounded-full px-3 py-1 text-xs disabled:opacity-50 ${
-                          product.is_available
-                            ? "bg-green-100 text-green-700"
-                            : "bg-gray-100 text-gray-500"
-                        }`}
-                      >
-                        {busy
-                          ? "..."
-                          : product.is_available
-                            ? "متوفر"
-                            : "غير متوفر"}
-                      </button>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => deleteProduct(product)}
-                        className="text-xs text-red-600 hover:underline disabled:opacity-50"
-                      >
-                        حذف
-                      </button>
-                    </td>
-                  </tr>
+                      </td>
+                    </tr>
+
+                    {editingBarcode && (
+                      <tr className="border-t border-gray-100 bg-gray-50/60">
+                        <td colSpan={6} className="px-4 py-4">
+                          <div className="mx-auto max-w-2xl rounded-xl border border-gray-200 bg-white p-4">
+                            <p className="mb-3 text-sm font-semibold text-gray-800">
+                              باركود: {product.name}
+                            </p>
+
+                            <BarcodeField
+                              supabase={supabase}
+                              storeId={storeId}
+                              productId={product.id}
+                              value={editingBarcodeValue}
+                              onChange={setEditingBarcodeValue}
+                              disabled={savingBarcode}
+                            />
+
+                            <div className="mt-3 flex justify-end gap-2">
+                              <button
+                                type="button"
+                                disabled={savingBarcode}
+                                onClick={() => {
+                                  setEditingBarcodeProductId(null);
+                                  setEditingBarcodeValue("");
+                                }}
+                                className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                              >
+                                إلغاء
+                              </button>
+
+                              <button
+                                type="button"
+                                disabled={savingBarcode}
+                                onClick={() => void saveProductBarcode(product)}
+                                className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-50"
+                              >
+                                {savingBarcode ? "جاري الحفظ..." : "حفظ الباركود"}
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })
             )}
