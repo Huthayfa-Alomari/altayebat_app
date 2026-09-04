@@ -19,11 +19,13 @@ const allowedStatusesByMethod: Record<string, string[]> = {
 export default function PaymentStatusControl({
   orderId,
   storeId,
+  orderStatus,
   paymentMethod,
   currentStatus,
 }: {
   orderId: string;
   storeId: string;
+  orderStatus: string;
   paymentMethod: string;
   currentStatus: string;
 }) {
@@ -31,16 +33,58 @@ export default function PaymentStatusControl({
   const supabase = createClient();
   const [value, setValue] = useState(currentStatus);
   const [saving, setSaving] = useState(false);
+  const [checking, setChecking] = useState(false);
+
+  async function reconcileCardPayment() {
+    if (checking) return;
+    setChecking(true);
+    const { data, error } = await supabase.functions.invoke(
+      "reconcile-card-payment",
+      { body: { order_id: orderId } }
+    );
+    setChecking(false);
+
+    if (error) {
+      window.alert("تعذر التحقق من PayTabs الآن. حاول مرة ثانية.");
+      return;
+    }
+
+    if (data?.finalization === "paid_requires_refund") {
+      window.alert(
+        "تم العثور على دفعة ناجحة لطلب ملغي. يجب مراجعة العملية وإجراء الاسترداد من PayTabs."
+      );
+    }
+    router.refresh();
+  }
 
   if (paymentMethod === "card") {
+    const needsRefund = currentStatus === "paid" && orderStatus === "cancelled";
     return (
-      <div className="space-y-1">
-        <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700">
+      <div className="space-y-2">
+        <div
+          className={`inline-flex rounded-lg border px-3 py-2 text-sm font-medium ${
+            needsRefund
+              ? "border-red-200 bg-red-50 text-red-700"
+              : "border-gray-200 bg-gray-50 text-gray-700"
+          }`}
+        >
           {statusLabels[currentStatus] || currentStatus}
         </div>
-        <p className="text-xs text-gray-500">
-          حالة الدفع بالبطاقة تُحدّث تلقائيًا بعد التحقق من PayTabs ولا يمكن تعديلها يدويًا.
+        <p className={`text-xs ${needsRefund ? "text-red-700" : "text-gray-500"}`}>
+          {needsRefund
+            ? "الطلب ملغي لكن PayTabs أكد الدفع. يلزم مراجعة واسترداد المبلغ."
+            : "حالة الدفع بالبطاقة تُدار تلقائيًا من PayTabs ولا يمكن تعديلها يدويًا."}
         </p>
+        {currentStatus !== "paid" && (
+          <button
+            type="button"
+            disabled={checking}
+            onClick={reconcileCardPayment}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-60"
+          >
+            {checking ? "جاري التحقق..." : "تحقق من PayTabs"}
+          </button>
+        )}
       </div>
     );
   }
