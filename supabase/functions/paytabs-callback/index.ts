@@ -51,7 +51,8 @@ Deno.serve(async (req: Request) => {
       ? "paid"
       : responseStatus === "D" ||
           responseStatus === "E" ||
-          responseStatus === "X"
+          responseStatus === "X" ||
+          responseStatus === "V"
       ? "failed"
       : "pending";
 
@@ -77,9 +78,9 @@ Deno.serve(async (req: Request) => {
         "Card payment failed after fulfilment advanced; admin review required",
         { orderId, tranRef },
       );
-    } else if (finalization === "cancelled" && paymentStatus === "paid") {
+    } else if (finalization === "paid_requires_refund") {
       console.error(
-        "Authorised payment arrived for an already cancelled/restocked order",
+        "Authorised payment arrived for an already cancelled/restocked order; refund review required",
         { orderId, tranRef },
       );
     }
