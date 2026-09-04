@@ -32,29 +32,43 @@ flutter build appbundle --release \
 
 ## قاعدة البيانات
 
-قبل اعتماد checkout الجديد، راجع ثم طبّق الملف:
+راجع ثم طبّق ملفات Supabase بالترتيب التالي على الـschema المطلوب:
 
-`../supabase/production_hardening.sql`
+1. `../supabase/production_hardening.sql`
+2. `../supabase/production_runtime_sync.sql`
 
-الملف يضيف:
+الملف الأول يضيف طبقة الـRLS والمساعدات الأمنية والـcheckout الذري الأساسية. الملف الثاني يزامن عقد التشغيل الحالي الموجود في الإنتاج، بما يشمل:
 
-- RLS للجداول المكشوفة للتطبيق ولوحة الإدارة.
-- عزل كل مدير على المول المرتبط به في `store_admins`.
-- RPC باسم `create_order` لإنشاء الطلب بشكل ذري داخل PostgreSQL.
-- التحقق من السعر والمخزون داخل قاعدة البيانات بدل الوثوق بقيم العميل.
+- RPC باسم `create_order` يدعم `cash` و`cliq` و`card`.
+- احتساب السعر ورسوم التوصيل داخل قاعدة البيانات بدل الوثوق بقيم العميل.
 - خصم المخزون داخل نفس transaction.
-- سياسات وصول للطلبات، عناصر الطلب، مواقع التوصيل، وطلبات التواصل.
-- فهارس للاستعلامات الأساسية.
+- تخزين `payment_method` و`payment_status`.
+- إنشاء سجل أولي في `order_status_history`.
+- إبقاء active store قابلًا للقراءة من تطبيق الزبون مع المحافظة على عزل إدارة المولات.
+- فهارس لمسارات الاستعلام الخاصة بحالة ومرجع الدفع.
 
-**مهم:** لا يعمل checkout الإنتاجي قبل تطبيق SQL وإنشاء الدالة `public.create_order` في مشروع Supabase.
+**مهم:** لا يعمل checkout الإنتاجي قبل وجود الدالة ذات التوقيع التالي:
 
-## Android
+```text
+public.create_order(p_store_id, p_items, p_payment_method)
+```
+
+تفاصيل وظائف PayTabs والأسرار المطلوبة موجودة في `../supabase/README.md`.
+
+## Android release signing
 
 Application ID الحالي:
 
 `com.altayebat.app`
 
-الـrelease build ما زال يستخدم debug signing لتسهيل التشغيل المحلي. قبل النشر على Google Play أنشئ keystore خاص بالإنتاج وعدّل `android/app/build.gradle.kts` لاستخدام release signing الحقيقي. لا ترفع ملف keystore أو كلمات المرور إلى GitHub.
+الـrelease build لم يعد يسمح بالنشر الفعلي اعتمادًا على debug signing. قبل بناء نسخة Release:
+
+1. أنشئ upload/release keystore خاصًا بالتطبيق.
+2. انسخ `android/key.properties.example` إلى `android/key.properties`.
+3. ضع بيانات الـkeystore الحقيقية في `key.properties` وعدّل `storeFile` لمسار ملف الـJKS.
+4. شغّل `flutter build appbundle --release ...`.
+
+`key.properties` وملفات `*.jks`/`*.keystore` مستثناة من Git، لذلك لا ترفع كلمات المرور أو ملف المفتاح إلى GitHub.
 
 ## فحوص الجودة
 
@@ -74,3 +88,4 @@ flutter test
 - السعر النهائي لا يؤخذ من السلة؛ يتم احتسابه في قاعدة البيانات من جدول `products`.
 - البحث يتم عبر Supabase على اسم المنتج.
 - تتبع الطلب يعتمد على Supabase Realtime/stream، لذلك يجب أن تسمح إعدادات Realtime بالجدول المطلوب بحسب إعداد مشروعك.
+- طلبات البطاقة تخصم المخزون عند إنشاء الطلب قبل اكتمال الدفع لمنع overselling. لذلك يجب أن توجد سياسة تشغيلية لإلغاء/إرجاع مخزون الطلبات التي يفشل أو يُترك دفعها.
