@@ -155,6 +155,35 @@ class SupabaseService {
     }
   }
 
+  static Future<Map<String, dynamic>> reconcileCardPayment(
+    String orderId,
+  ) async {
+    try {
+      final response = await _client.functions.invoke(
+        'reconcile-card-payment',
+        body: {'order_id': orderId},
+      );
+      if (response.status < 200 || response.status >= 300) {
+        throw StateError('تعذر التحقق من حالة الدفع');
+      }
+
+      final data = response.data;
+      if (data is! Map) {
+        throw StateError('بوابة الدفع لم ترجع حالة صالحة');
+      }
+      return Map<String, dynamic>.from(data);
+    } on FunctionException catch (error) {
+      final details = error.details?.toString().toLowerCase() ?? '';
+      if (details.contains('not configured')) {
+        throw StateError('الدفع بالبطاقة يحتاج تفعيل بيانات PayTabs أولًا');
+      }
+      if (details.contains('forbidden') || details.contains('unauthorized')) {
+        throw StateError('لا تملك صلاحية التحقق من هذا الطلب');
+      }
+      throw StateError('تعذر التحقق من حالة الدفع الآن');
+    }
+  }
+
   static Future<Map<String, dynamic>> getStorePaymentConfig() async {
     final data = await _client
         .from('stores')
