@@ -156,6 +156,7 @@ export default async function OrderDetailsPage({
             <PaymentStatusControl
               orderId={order.id}
               storeId={storeId}
+              paymentMethod={order.payment_method}
               currentStatus={order.payment_status}
             />
           </div>
@@ -183,14 +184,16 @@ export default async function OrderDetailsPage({
                   <th className="px-4 py-3 font-normal">الإجمالي</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-100">
                 {orderItems.map((item) => (
-                  <tr key={item.id} className="border-t border-gray-100">
-                    <td className="px-4 py-3">{item.products?.name || "منتج محذوف"}</td>
+                  <tr key={item.id}>
+                    <td className="px-4 py-3 font-medium text-gray-900">
+                      {item.products?.name || "منتج"}
+                    </td>
                     <td className="px-4 py-3">{item.quantity}</td>
                     <td className="px-4 py-3">{Number(item.unit_price).toFixed(2)} د.أ</td>
                     <td className="px-4 py-3 font-medium">
-                      {(Number(item.unit_price) * Number(item.quantity)).toFixed(2)} د.أ
+                      {(Number(item.unit_price) * item.quantity).toFixed(2)} د.أ
                     </td>
                   </tr>
                 ))}
