@@ -350,9 +350,8 @@ begin
           updated_at = now()
       where id = p_order_id;
 
-      insert into public.order_status_history(order_id, status, changed_by)
-      values (p_order_id, 'cancelled', null);
-
+      -- order_status_history is written by the automation_order_status trigger
+      -- when orders.status changes, so do not insert a duplicate row here.
       return 'cancelled';
     end if;
 
