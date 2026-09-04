@@ -259,6 +259,122 @@ revoke execute on function public.create_order(uuid, jsonb)
 grant execute on function public.create_order(uuid, jsonb)
   to authenticated;
 
+-- ---------------------------------------------------------------------------
+-- Server-only card finalization.
+--
+-- The PayTabs callback verifies the transaction with PayTabs first, then calls
+-- this RPC using the service-role client. Failed payments only auto-cancel while
+-- the order is still pending. The cancelled order status acts as the idempotency
+-- marker, so repeated callbacks cannot restore stock twice.
+-- ---------------------------------------------------------------------------
+create or replace function public.finalize_card_payment(
+  p_order_id uuid,
+  p_tran_ref text,
+  p_payment_status text
+)
+returns text
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_order public.orders%rowtype;
+begin
+  if p_payment_status not in ('pending', 'paid', 'failed') then
+    raise exception 'Unsupported payment status' using errcode = '22023';
+  end if;
+
+  select *
+    into v_order
+  from public.orders
+  where id = p_order_id
+    and payment_method = 'card'
+  for update;
+
+  if not found then
+    raise exception 'Card order not found' using errcode = 'P0002';
+  end if;
+
+  -- Never downgrade an authorised payment because of a duplicate/out-of-order
+  -- callback.
+  if v_order.payment_status = 'paid' then
+    return 'paid';
+  end if;
+
+  if p_payment_status = 'paid' then
+    -- A previously cancelled order has already had its stock restored. Do not
+    -- revive it automatically; it requires operator review instead.
+    if v_order.status = 'cancelled' then
+      return 'cancelled';
+    end if;
+
+    update public.orders
+    set payment_reference = p_tran_ref,
+        payment_status = 'paid',
+        updated_at = now()
+    where id = p_order_id;
+
+    return 'paid';
+  end if;
+
+  if p_payment_status = 'failed' then
+    if v_order.status = 'pending' then
+      update public.products p
+      set stock_qty = coalesce(p.stock_qty, 0) + restored.quantity,
+          is_available = case
+            when coalesce(p.stock_qty, 0) <= 0
+              and coalesce(p.stock_qty, 0) + restored.quantity > 0
+              then true
+            else p.is_available
+          end,
+          updated_at = now()
+      from (
+        select oi.product_id, sum(oi.quantity)::integer as quantity
+        from public.order_items oi
+        where oi.order_id = p_order_id
+        group by oi.product_id
+      ) restored
+      where p.id = restored.product_id;
+
+      update public.orders
+      set payment_reference = p_tran_ref,
+          payment_status = 'failed',
+          status = 'cancelled',
+          updated_at = now()
+      where id = p_order_id;
+
+      insert into public.order_status_history(order_id, status, changed_by)
+      values (p_order_id, 'cancelled', null);
+
+      return 'cancelled';
+    end if;
+
+    -- If fulfilment has already advanced, do not change inventory automatically.
+    -- Preserve the payment failure for admin review.
+    update public.orders
+    set payment_reference = p_tran_ref,
+        payment_status = 'failed',
+        updated_at = now()
+    where id = p_order_id;
+
+    return 'failed_requires_review';
+  end if;
+
+  update public.orders
+  set payment_reference = p_tran_ref,
+      payment_status = 'pending',
+      updated_at = now()
+  where id = p_order_id;
+
+  return 'pending';
+end;
+$$;
+
+revoke execute on function public.finalize_card_payment(uuid, text, text)
+  from public, anon, authenticated;
+grant execute on function public.finalize_card_payment(uuid, text, text)
+  to service_role;
+
 -- Customers need the active store row for public contact/CliQ configuration;
 -- administrators retain access to their assigned store even if it is inactive.
 drop policy if exists altayebat_stores_select on public.stores;
