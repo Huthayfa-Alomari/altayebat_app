@@ -301,6 +301,13 @@ begin
     return 'paid';
   end if;
 
+  -- A failed card payment that this function already cancelled has already had
+  -- its stock restored. Return the same terminal result for duplicate callbacks
+  -- rather than raising a false manual-review signal.
+  if v_order.status = 'cancelled' and v_order.payment_status = 'failed' then
+    return 'cancelled';
+  end if;
+
   if p_payment_status = 'paid' then
     -- A previously cancelled order has already had its stock restored. Do not
     -- revive it automatically; it requires operator review instead.
