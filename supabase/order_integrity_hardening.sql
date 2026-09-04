@@ -31,12 +31,13 @@ alter table public.orders
   );
 
 -- ---------------------------------------------------------------------------
--- Authenticated store admins only need operational order mutation. Revoke the
--- table-wide UPDATE privilege so ownership, totals and gateway references cannot
--- be changed through the Data API even when RLS allows access to the row.
+-- Authenticated store admins only need payment confirmation for cash/CliQ,
+-- timestamps and driver assignment. Order lifecycle/status mutations are handled
+-- by admin_update_order_status() so transition rules and inventory restoration
+-- cannot be bypassed through a direct table update.
 -- ---------------------------------------------------------------------------
 revoke update on public.orders from authenticated;
-grant update (status, payment_status, updated_at, driver_id)
+grant update (payment_status, updated_at, driver_id)
   on public.orders to authenticated;
 
 -- ---------------------------------------------------------------------------
