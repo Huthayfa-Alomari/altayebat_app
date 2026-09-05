@@ -1,1 +1,6 @@
 *.tsbuildinfo
+/altayebat_delivery_ui_patch/
+/altayebat_phase3_analyze_hotfix/
+/altayebat_final_integration/
+/_phase3_backup_*/
+/_phase3_hotfix_backup_*/
