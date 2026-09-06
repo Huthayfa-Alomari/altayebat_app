@@ -104,7 +104,10 @@ class SupabaseService {
     }
 
     return quantities.entries
-        .map((entry) => {'product_id': entry.key, 'quantity': entry.value})
+        .map((entry) => {
+              'product_id': entry.key,
+              'quantity': entry.value,
+            })
         .toList(growable: false);
   }
 
@@ -162,10 +165,9 @@ class SupabaseService {
         .order('created_at', ascending: false);
 
     return (data as List)
-        .map(
-          (row) =>
-              CustomerAddress.fromMap(Map<String, dynamic>.from(row as Map)),
-        )
+        .map((row) => CustomerAddress.fromMap(
+              Map<String, dynamic>.from(row as Map),
+            ))
         .toList(growable: false);
   }
 
@@ -433,6 +435,7 @@ class SupabaseService {
     return parts.join('، ');
   }
 
+
   static Future<Map<String, dynamic>?> lookupProductByBarcode(
     String barcode,
   ) async {
@@ -441,7 +444,10 @@ class SupabaseService {
 
     final result = await _client.rpc(
       'lookup_product_by_barcode',
-      params: {'p_store_id': AppConfig.storeId, 'p_barcode': normalized},
+      params: {
+        'p_store_id': AppConfig.storeId,
+        'p_barcode': normalized,
+      },
     );
 
     if (result == null) return null;
@@ -601,9 +607,7 @@ class SupabaseService {
         .map((rows) => rows.isEmpty ? <String, dynamic>{} : rows.first);
   }
 
-  static Stream<List<Map<String, dynamic>>> watchDriverLocation(
-    String orderId,
-  ) {
+  static Stream<List<Map<String, dynamic>>> watchDriverLocation(String orderId) {
     return _client
         .from('driver_locations')
         .stream(primaryKey: ['id'])
@@ -612,10 +616,7 @@ class SupabaseService {
         .limit(1);
   }
 
-  static Future<void> requestCall({
-    required String type,
-    String? orderId,
-  }) async {
+  static Future<void> requestCall({required String type, String? orderId}) async {
     const supportedTypes = {'voice', 'video', 'chat'};
     if (!supportedTypes.contains(type)) {
       throw ArgumentError.value(type, 'type', 'نوع التواصل غير مدعوم');

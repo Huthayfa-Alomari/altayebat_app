@@ -9,7 +9,10 @@ import '../services/supabase_service.dart';
 class OrderTrackingScreen extends StatefulWidget {
   final String orderId;
 
-  const OrderTrackingScreen({super.key, required this.orderId});
+  const OrderTrackingScreen({
+    super.key,
+    required this.orderId,
+  });
 
   @override
   State<OrderTrackingScreen> createState() => _OrderTrackingScreenState();
@@ -53,8 +56,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
       if (!mounted) return;
       setState(() {
-        _order = results[0];
-        _paymentConfig = results[1];
+        _order = results[0] as Map<String, dynamic>;
+        _paymentConfig = results[1] as Map<String, dynamic>;
         _error = null;
       });
     } catch (error) {
@@ -114,7 +117,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       await SupabaseService.reconcileCardPayment(widget.orderId);
       await _refreshOrder(silent: true);
       if (!mounted) return;
-      _show('ØªÙ… ØªØ­Ø¯ÙŠØ« Ø­Ø§Ù„Ø© Ø§Ù„Ø¯ÙØ¹');
+      _show('تم تحديث حالة الدفع');
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = _message(error));
@@ -133,12 +136,11 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     try {
       final configured = await SupabaseService.isCardPaymentConfigured();
       if (!configured) {
-        throw StateError(
-          'Ø§Ù„Ø¯ÙØ¹ Ø¨Ø§Ù„Ø¨Ø·Ø§Ù‚Ø© ØºÙŠØ± Ù…ÙØ¹Ù‘Ù„ Ø­Ø§Ù„ÙŠÙ‹Ø§',
-        );
+        throw StateError('الدفع بالبطاقة غير مفعّل حاليًا');
       }
 
-      final paymentUrl = await SupabaseService.startCardPayment(widget.orderId);
+      final paymentUrl =
+          await SupabaseService.startCardPayment(widget.orderId);
       await _refreshOrder(silent: true);
 
       final opened = await launchUrl(
@@ -147,10 +149,11 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       );
 
       if (!opened) {
-        throw StateError('ØªØ¹Ø°Ø± ÙØªØ­ ØµÙØ­Ø© PayTabs');
+        throw StateError('تعذر فتح صفحة PayTabs');
       }
     } catch (error) {
-      final reference = _order['payment_reference']?.toString().trim() ?? '';
+      final reference =
+          _order['payment_reference']?.toString().trim() ?? '';
 
       if (reference.isEmpty) {
         final cancelled = await SupabaseService.cancelUnstartedCardOrder(
@@ -161,7 +164,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
           if (!mounted) return;
           setState(() {
             _error =
-                'ØªØ¹Ø°Ø± Ø¨Ø¯Ø¡ Ø§Ù„Ø¯ÙØ¹ØŒ Ù„Ø°Ù„Ùƒ Ø£ÙÙ„ØºÙŠ Ø§Ù„Ø·Ù„Ø¨ ÙˆØ£ÙØ¹ÙŠØ¯ Ø§Ù„Ù…Ø®Ø²ÙˆÙ† ØªÙ„Ù‚Ø§Ø¦ÙŠÙ‹Ø§.';
+                'تعذر بدء الدفع، لذلك أُلغي الطلب وأُعيد المخزون تلقائيًا.';
           });
           return;
         }
@@ -178,49 +181,57 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     final alias = _cliqAlias;
     if (alias.isEmpty) return;
     await Clipboard.setData(ClipboardData(text: alias));
-    if (mounted) _show('ØªÙ… Ù†Ø³Ø® CliQ Alias');
+    if (mounted) _show('تم نسخ CliQ Alias');
   }
 
   Future<void> _sendCliqProof() async {
     final phone = _storePhoneDigits;
     if (phone.isEmpty) {
-      _show('Ø±Ù‚Ù… ÙˆØ§ØªØ³Ø§Ø¨ Ø§Ù„Ù…ÙˆÙ„ ØºÙŠØ± Ù…Ø¶Ø§Ù Ø¨Ø¹Ø¯');
+      _show('رقم واتساب المول غير مضاف بعد');
       return;
     }
 
     final shortId = _shortOrderId;
     final amount = _money(_order['total']);
     final message =
-        'Ù…Ø±Ø­Ø¨Ø§Ù‹ØŒ Ø£Ø±ÙÙ‚ Ø¥Ø«Ø¨Ø§Øª ØªØ­ÙˆÙŠÙ„ CliQ Ù„Ù„Ø·Ù„Ø¨ #$shortId Ø¨Ù‚ÙŠÙ…Ø© $amount.';
+        'مرحباً، أرفق إثبات تحويل CliQ للطلب #$shortId بقيمة $amount.';
 
     final uri = Uri.parse(
       'https://wa.me/$phone?text=${Uri.encodeComponent(message)}',
     );
 
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final opened = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
 
     if (!opened && mounted) {
-      _show('ØªØ¹Ø°Ø± ÙØªØ­ ÙˆØ§ØªØ³Ø§Ø¨');
+      _show('تعذر فتح واتساب');
     }
   }
 
   Future<void> _callStore() async {
     final phone = _storePhoneDigits;
     if (phone.isEmpty) {
-      _show('Ø±Ù‚Ù… Ø§Ù„Ù…ÙˆÙ„ ØºÙŠØ± Ù…Ø¶Ø§Ù Ø¨Ø¹Ø¯');
+      _show('رقم المول غير مضاف بعد');
       return;
     }
 
     final uri = Uri.parse('tel:+$phone');
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final opened = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
 
     if (!opened && mounted) {
-      _show('ØªØ¹Ø°Ø± ÙØªØ­ Ø§Ù„Ø§ØªØµØ§Ù„');
+      _show('تعذر فتح الاتصال');
     }
   }
 
   void _show(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text)),
+    );
   }
 
   String _message(Object error) => error
@@ -263,7 +274,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
-  String _money(dynamic value) => '${_number(value).toStringAsFixed(2)} Ø¯.Ø£';
+  String _money(dynamic value) =>
+      '${_number(value).toStringAsFixed(2)} د.أ';
 
   String _paymentMethodLabel() {
     switch (_paymentMethod) {
@@ -272,47 +284,47 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       case 'cliq':
         return 'CliQ';
       case 'cash':
-        return 'ÙƒØ§Ø´ Ø¹Ù†Ø¯ Ø§Ù„Ø§Ø³ØªÙ„Ø§Ù…';
+        return 'كاش عند الاستلام';
       default:
-        return 'â€”';
+        return '—';
     }
   }
 
   String _paymentStatusLabel() {
     if (_paymentMethod == 'cash' && _paymentStatus == 'unpaid') {
-      return 'Ø§Ù„Ø¯ÙØ¹ Ø¹Ù†Ø¯ Ø§Ù„Ø§Ø³ØªÙ„Ø§Ù…';
+      return 'الدفع عند الاستلام';
     }
 
     switch (_paymentStatus) {
       case 'paid':
-        return 'ØªÙ… Ø§Ù„Ø¯ÙØ¹';
+        return 'تم الدفع';
       case 'failed':
-        return 'ÙØ´Ù„ Ø§Ù„Ø¯ÙØ¹';
+        return 'فشل الدفع';
       case 'refunded':
-        return 'ØªÙ… Ø±Ø¯ Ø§Ù„Ù…Ø¨Ù„Øº';
+        return 'تم رد المبلغ';
       case 'pending':
-        return 'Ø¨Ø§Ù†ØªØ¸Ø§Ø± ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ø¯ÙØ¹';
+        return 'بانتظار تأكيد الدفع';
       case 'unpaid':
-        return 'ØºÙŠØ± Ù…Ø¯ÙÙˆØ¹';
+        return 'غير مدفوع';
       default:
-        return 'â€”';
+        return '—';
     }
   }
 
   String _orderStatusLabel() {
     switch (_orderStatus) {
       case 'pending':
-        return 'Ø¨Ø§Ù†ØªØ¸Ø§Ø± ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ù…ÙˆÙ„';
+        return 'بانتظار تأكيد المول';
       case 'preparing':
-        return 'Ù‚ÙŠØ¯ Ø§Ù„ØªØ­Ø¶ÙŠØ±';
+        return 'قيد التحضير';
       case 'out_for_delivery':
-        return 'Ø¨Ø§Ù„ØªÙˆØµÙŠÙ„ Ø¥Ù„ÙŠÙƒ';
+        return 'بالتوصيل إليك';
       case 'delivered':
-        return 'ØªÙ… Ø§Ù„ØªØ³Ù„ÙŠÙ…';
+        return 'تم التسليم';
       case 'cancelled':
-        return 'ØªÙ… Ø¥Ù„ØºØ§Ø¡ Ø§Ù„Ø·Ù„Ø¨';
+        return 'تم إلغاء الطلب';
       default:
-        return 'Ø¨Ø§Ù†ØªØ¸Ø§Ø± Ø§Ù„ØªØ­Ø¯ÙŠØ«';
+        return 'بانتظار التحديث';
     }
   }
 
@@ -335,19 +347,21 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme.primary;
     final cancelled = _orderStatus == 'cancelled';
-    final cardPending = _paymentMethod == 'card' && _paymentStatus == 'pending';
-    final cardReference = _order['payment_reference']?.toString().trim() ?? '';
+    final cardPending =
+        _paymentMethod == 'card' && _paymentStatus == 'pending';
+    final cardReference =
+        _order['payment_reference']?.toString().trim() ?? '';
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ØªØªØ¨Ø¹ Ø§Ù„Ø·Ù„Ø¨'),
+        title: const Text('تتبع الطلب'),
         centerTitle: true,
       ),
       floatingActionButton: _storePhoneDigits.isEmpty
           ? null
           : FloatingActionButton.small(
               onPressed: _callStore,
-              tooltip: 'Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ù…ÙˆÙ„',
+              tooltip: 'اتصال بالمول',
               child: const Icon(Icons.headset_mic_outlined),
             ),
       body: _loading
@@ -370,8 +384,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                     busy: _actionBusy,
                     showCardAction: cardPending,
                     cardActionLabel: cardReference.isEmpty
-                        ? 'Ø¥ÙƒÙ…Ø§Ù„ Ø§Ù„Ø¯ÙØ¹ Ø¨Ø§Ù„Ø¨Ø·Ø§Ù‚Ø©'
-                        : 'ØªØ­Ù‚Ù‚ Ù…Ù† Ø­Ø§Ù„Ø© Ø§Ù„Ø¯ÙØ¹',
+                        ? 'إكمال الدفع بالبطاقة'
+                        : 'تحقق من حالة الدفع',
                     onCardAction: cardReference.isEmpty
                         ? _retryCardPayment
                         : _reconcileCardPayment,
@@ -390,17 +404,23 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                   ],
                   if (_error != null) ...[
                     const SizedBox(height: 14),
-                    _MessageBox(text: _error!, error: true),
+                    _MessageBox(
+                      text: _error!,
+                      error: true,
+                    ),
                   ],
                   const SizedBox(height: 22),
                   if (cancelled)
                     const _MessageBox(
                       text:
-                          'Ù‡Ø°Ø§ Ø§Ù„Ø·Ù„Ø¨ Ù…Ù„ØºÙŠ. Ø¥Ø°Ø§ ÙƒÙ†Øª Ù…Ø§ Ø²Ù„Øª ØªØ±ÙŠØ¯ Ø§Ù„Ù…Ù†ØªØ¬Ø§ØªØŒ Ø§Ø±Ø¬Ø¹ Ù„Ù„Ø³Ù„Ø© ÙˆØ£Ù†Ø´Ø¦ Ø·Ù„Ø¨Ù‹Ø§ Ø¬Ø¯ÙŠØ¯Ù‹Ø§.',
+                          'هذا الطلب ملغي. إذا كنت ما زلت تريد المنتجات، ارجع للسلة وأنشئ طلبًا جديدًا.',
                       error: true,
                     )
                   else
-                    _Timeline(currentIndex: _stageIndex, color: color),
+                    _Timeline(
+                      currentIndex: _stageIndex,
+                      color: color,
+                    ),
                 ],
               ),
             ),
@@ -432,7 +452,9 @@ class _OrderHeaderCard extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            cancelled ? Icons.cancel_outlined : Icons.receipt_long_outlined,
+            cancelled
+                ? Icons.cancel_outlined
+                : Icons.receipt_long_outlined,
             color: primary,
             size: 30,
           ),
@@ -442,8 +464,11 @@ class _OrderHeaderCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Ø±Ù‚Ù… Ø§Ù„Ø·Ù„Ø¨',
-                  style: TextStyle(color: Color(0xFF6B7280), fontSize: 12),
+                  'رقم الطلب',
+                  style: TextStyle(
+                    color: Color(0xFF6B7280),
+                    fontSize: 12,
+                  ),
                 ),
                 Text(
                   '#$shortId',
@@ -459,7 +484,9 @@ class _OrderHeaderCard extends StatelessWidget {
             status,
             textAlign: TextAlign.end,
             style: TextStyle(
-              color: cancelled ? const Color(0xFFB91C1C) : primary,
+              color: cancelled
+                  ? const Color(0xFFB91C1C)
+                  : primary,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -496,13 +523,13 @@ class _PaymentCard extends StatelessWidget {
           children: [
             _InfoRow(
               icon: Icons.account_balance_wallet_outlined,
-              label: 'Ø·Ø±ÙŠÙ‚Ø© Ø§Ù„Ø¯ÙØ¹',
+              label: 'طريقة الدفع',
               value: method,
             ),
             const SizedBox(height: 12),
             _InfoRow(
               icon: Icons.schedule_outlined,
-              label: 'Ø­Ø§Ù„Ø© Ø§Ù„Ø¯ÙØ¹',
+              label: 'حالة الدفع',
               value: paymentStatus,
             ),
             if (showCardAction) ...[
@@ -515,7 +542,9 @@ class _PaymentCard extends StatelessWidget {
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ),
                         )
                       : const Icon(Icons.refresh),
                   label: Text(cardActionLabel),
@@ -558,19 +587,24 @@ class _CliqCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'Ø¥ÙƒÙ…Ø§Ù„ Ø¯ÙØ¹ CliQ',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+              'إكمال دفع CliQ',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 16,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Ø­ÙˆÙ‘Ù„ $amount Ø«Ù… Ø£Ø±Ø³Ù„ Ø¥Ø«Ø¨Ø§Øª Ø§Ù„ØªØ­ÙˆÙŠÙ„ Ù„Ù„Ù…ÙˆÙ„.',
-              style: const TextStyle(color: Color(0xFF6B7280)),
+              'حوّل $amount ثم أرسل إثبات التحويل للمول.',
+              style: const TextStyle(
+                color: Color(0xFF6B7280),
+              ),
             ),
             const SizedBox(height: 14),
             if (!configured)
               const _MessageBox(
                 text:
-                    'CliQ Alias ØºÙŠØ± Ù…Ø¶Ø§Ù Ø¨Ø¹Ø¯. ØªÙˆØ§ØµÙ„ Ù…Ø¹ Ø§Ù„Ù…ÙˆÙ„ Ù‚Ø¨Ù„ Ø§Ù„ØªØ­ÙˆÙŠÙ„.',
+                    'CliQ Alias غير مضاف بعد. تواصل مع المول قبل التحويل.',
                 error: true,
               )
             else ...[
@@ -584,7 +618,8 @@ class _CliqCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
                         children: [
                           const Text(
                             'CliQ Alias',
@@ -603,14 +638,16 @@ class _CliqCard extends StatelessWidget {
                           if (recipient.isNotEmpty)
                             Text(
                               recipient,
-                              style: const TextStyle(color: Color(0xFF6B7280)),
+                              style: const TextStyle(
+                                color: Color(0xFF6B7280),
+                              ),
                             ),
                         ],
                       ),
                     ),
                     IconButton(
                       onPressed: onCopy,
-                      tooltip: 'Ù†Ø³Ø® Alias',
+                      tooltip: 'نسخ Alias',
                       icon: const Icon(Icons.copy_outlined),
                     ),
                   ],
@@ -620,16 +657,17 @@ class _CliqCard extends StatelessWidget {
               FilledButton.icon(
                 onPressed: canSendProof ? onSendProof : null,
                 icon: const Icon(Icons.chat_outlined),
-                label: const Text(
-                  'Ø¥Ø±Ø³Ø§Ù„ Ø¥Ø«Ø¨Ø§Øª Ø§Ù„Ø¯ÙØ¹ Ø¹Ø¨Ø± ÙˆØ§ØªØ³Ø§Ø¨',
-                ),
+                label: const Text('إرسال إثبات الدفع عبر واتساب'),
               ),
               if (!canSendProof) ...[
                 const SizedBox(height: 8),
                 const Text(
-                  'Ø±Ù‚Ù… ÙˆØ§ØªØ³Ø§Ø¨ Ø§Ù„Ù…ÙˆÙ„ ØºÙŠØ± Ù…Ø¶Ø§Ù Ø¨Ø¹Ø¯.',
+                  'رقم واتساب المول غير مضاف بعد.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF9CA3AF),
+                  ),
                 ),
               ],
             ],
@@ -655,12 +693,25 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, color: const Color(0xFF6B7280)),
+        Icon(
+          icon,
+          color: const Color(0xFF6B7280),
+        ),
         const SizedBox(width: 10),
         Expanded(
-          child: Text(label, style: const TextStyle(color: Color(0xFF6B7280))),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF6B7280),
+            ),
+          ),
         ),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
+        Text(
+          value,
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
       ],
     );
   }
@@ -670,13 +721,16 @@ class _Timeline extends StatelessWidget {
   final int currentIndex;
   final Color color;
 
-  const _Timeline({required this.currentIndex, required this.color});
+  const _Timeline({
+    required this.currentIndex,
+    required this.color,
+  });
 
   static const labels = [
-    'Ø¨Ø§Ù†ØªØ¸Ø§Ø± ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ù…ÙˆÙ„',
-    'Ù‚ÙŠØ¯ Ø§Ù„ØªØ­Ø¶ÙŠØ±',
-    'Ø¨Ø§Ù„ØªÙˆØµÙŠÙ„ Ø¥Ù„ÙŠÙƒ',
-    'ØªÙ… Ø§Ù„ØªØ³Ù„ÙŠÙ…',
+    'بانتظار تأكيد المول',
+    'قيد التحضير',
+    'بالتوصيل إليك',
+    'تم التسليم',
   ];
 
   @override
@@ -734,8 +788,8 @@ class _TimelineStep extends StatelessWidget {
                     current
                         ? Icons.check
                         : active
-                        ? Icons.check
-                        : Icons.circle,
+                            ? Icons.check
+                            : Icons.circle,
                     size: current ? 20 : 10,
                     color: Colors.white,
                   ),
@@ -760,7 +814,8 @@ class _TimelineStep extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                  fontWeight: current ? FontWeight.w900 : FontWeight.w600,
+                  fontWeight:
+                      current ? FontWeight.w900 : FontWeight.w600,
                   color: active
                       ? const Color(0xFF111827)
                       : const Color(0xFF9CA3AF),
@@ -779,20 +834,27 @@ class _MessageBox extends StatelessWidget {
   final String text;
   final bool error;
 
-  const _MessageBox({required this.text, required this.error});
+  const _MessageBox({
+    required this.text,
+    required this.error,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: error ? const Color(0xFFFEF2F2) : const Color(0xFFF0FDF4),
+        color: error
+            ? const Color(0xFFFEF2F2)
+            : const Color(0xFFF0FDF4),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
         text,
         style: TextStyle(
-          color: error ? const Color(0xFFB91C1C) : const Color(0xFF166534),
+          color: error
+              ? const Color(0xFFB91C1C)
+              : const Color(0xFF166534),
           fontWeight: FontWeight.w700,
         ),
       ),

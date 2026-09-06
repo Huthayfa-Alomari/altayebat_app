@@ -151,7 +151,9 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
     if (selected == null) return;
 
     final updated = await Navigator.of(context).push<CustomerAddress>(
-      MaterialPageRoute(builder: (_) => AddressEditorScreen(address: selected)),
+      MaterialPageRoute(
+        builder: (_) => AddressEditorScreen(address: selected),
+      ),
     );
 
     if (updated == null || !mounted) return;
@@ -243,9 +245,8 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
         } catch (error) {
           // If PayTabs never created a transaction, cancel the just-created
           // order atomically and restore stock so the customer can retry.
-          final cancelled = await SupabaseService.cancelUnstartedCardOrder(
-            orderId,
-          );
+          final cancelled =
+              await SupabaseService.cancelUnstartedCardOrder(orderId);
 
           if (!mounted) return;
 
@@ -270,9 +271,9 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
       if (!mounted) return;
 
       if (paymentWarning != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(paymentWarning)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(paymentWarning)),
+        );
       }
 
       Navigator.of(context).pushReplacement(
@@ -287,10 +288,8 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
     }
   }
 
-  String _message(Object error) => error
-      .toString()
-      .replaceFirst('Bad state: ', '')
-      .replaceFirst('Exception: ', '');
+  String _message(Object error) =>
+      error.toString().replaceFirst('Bad state: ', '').replaceFirst('Exception: ', '');
 
   double _number(dynamic value) {
     if (value is num) return value.toDouble();
@@ -343,10 +342,7 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
                                   alignment: AlignmentDirectional.centerStart,
                                   child: TextButton.icon(
                                     onPressed: _editSelectedAddress,
-                                    icon: const Icon(
-                                      Icons.edit_outlined,
-                                      size: 18,
-                                    ),
+                                    icon: const Icon(Icons.edit_outlined, size: 18),
                                     label: const Text('تعديل العنوان المحدد'),
                                   ),
                                 ),
@@ -362,53 +358,52 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
                             child: LinearProgressIndicator(),
                           )
                         : quote == null
-                        ? const Text(
-                            'اختر عنوانًا حتى نحسب رسوم التوصيل والسعر النهائي.',
-                            style: TextStyle(color: Color(0xFF6B7280)),
-                          )
-                        : Column(
-                            children: [
-                              if (!serviceable)
-                                const _StatusBox(
-                                  success: false,
-                                  text:
-                                      'هذا العنوان خارج مناطق التوصيل الحالية.',
-                                )
-                              else ...[
-                                _SummaryRow(
-                                  label: 'مجموع المنتجات',
-                                  value: _money(quote['subtotal']),
-                                ),
-                                _SummaryRow(
-                                  label: 'رسوم التوصيل',
-                                  value: _money(quote['delivery_fee']),
-                                ),
-                                const Divider(height: 22),
-                                _SummaryRow(
-                                  label: 'الإجمالي',
-                                  value: _money(quote['total']),
-                                  strong: true,
-                                ),
-                                if (!meetsMin) ...[
-                                  const SizedBox(height: 10),
-                                  _StatusBox(
-                                    success: false,
-                                    text:
-                                        'أضف ${_money(quote['amount_to_min_order'])} للوصول للحد الأدنى.',
-                                  ),
+                            ? const Text(
+                                'اختر عنوانًا حتى نحسب رسوم التوصيل والسعر النهائي.',
+                                style: TextStyle(color: Color(0xFF6B7280)),
+                              )
+                            : Column(
+                                children: [
+                                  if (!serviceable)
+                                    const _StatusBox(
+                                      success: false,
+                                      text: 'هذا العنوان خارج مناطق التوصيل الحالية.',
+                                    )
+                                  else ...[
+                                    _SummaryRow(
+                                      label: 'مجموع المنتجات',
+                                      value: _money(quote['subtotal']),
+                                    ),
+                                    _SummaryRow(
+                                      label: 'رسوم التوصيل',
+                                      value: _money(quote['delivery_fee']),
+                                    ),
+                                    const Divider(height: 22),
+                                    _SummaryRow(
+                                      label: 'الإجمالي',
+                                      value: _money(quote['total']),
+                                      strong: true,
+                                    ),
+                                    if (!meetsMin) ...[
+                                      const SizedBox(height: 10),
+                                      _StatusBox(
+                                        success: false,
+                                        text:
+                                            'أضف ${_money(quote['amount_to_min_order'])} للوصول للحد الأدنى.',
+                                      ),
+                                    ],
+                                    if (service['eta_min_minutes'] != null ||
+                                        service['eta_max_minutes'] != null) ...[
+                                      const SizedBox(height: 10),
+                                      _StatusBox(
+                                        success: true,
+                                        text:
+                                            'وقت التوصيل المتوقع: ${service['eta_min_minutes'] ?? '—'}–${service['eta_max_minutes'] ?? '—'} دقيقة',
+                                      ),
+                                    ],
+                                  ],
                                 ],
-                                if (service['eta_min_minutes'] != null ||
-                                    service['eta_max_minutes'] != null) ...[
-                                  const SizedBox(height: 10),
-                                  _StatusBox(
-                                    success: true,
-                                    text:
-                                        'وقت التوصيل المتوقع: ${service['eta_min_minutes'] ?? '—'}–${service['eta_max_minutes'] ?? '—'} دقيقة',
-                                  ),
-                                ],
-                              ],
-                            ],
-                          ),
+                              ),
                   ),
                   const SizedBox(height: 12),
                   _Section(
@@ -516,8 +511,7 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
             ],
           ),
           child: FilledButton(
-            onPressed:
-                _placing ||
+            onPressed: _placing ||
                     _loading ||
                     _quoting ||
                     !open ||
@@ -570,7 +564,11 @@ class _Section extends StatelessWidget {
   final Widget child;
   final Widget? trailing;
 
-  const _Section({required this.title, required this.child, this.trailing});
+  const _Section({
+    required this.title,
+    required this.child,
+    this.trailing,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -614,7 +612,9 @@ class _StoreStateCard extends StatelessWidget {
     final open = openState?['open'] == true;
     return _StatusBox(
       success: open,
-      text: open ? 'المتجر يستقبل الطلبات الآن' : 'المتجر لا يستقبل طلبات الآن',
+      text: open
+          ? 'المتجر يستقبل الطلبات الآن'
+          : 'المتجر لا يستقبل طلبات الآن',
     );
   }
 }
@@ -692,9 +692,9 @@ class _AddressOption extends StatelessWidget {
               width: selected ? 2 : 1,
             ),
             color: selected
-                ? Theme.of(
-                    context,
-                  ).colorScheme.primaryContainer.withValues(alpha: 0.28)
+                ? Theme.of(context).colorScheme.primaryContainer.withValues(
+                      alpha: 0.28,
+                    )
                 : Colors.white,
           ),
           child: Row(
@@ -780,7 +780,10 @@ class _PaymentOption extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(icon, color: enabled ? null : const Color(0xFFB6B8BC)),
+              Icon(
+                icon,
+                color: enabled ? null : const Color(0xFFB6B8BC),
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -813,8 +816,8 @@ class _PaymentOption extends StatelessWidget {
                 color: !enabled
                     ? const Color(0xFFD1D5DB)
                     : selected
-                    ? Theme.of(context).colorScheme.primary
-                    : const Color(0xFF9CA3AF),
+                        ? Theme.of(context).colorScheme.primary
+                        : const Color(0xFF9CA3AF),
               ),
             ],
           ),
@@ -861,12 +864,10 @@ class _StatusBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final background = success
-        ? const Color(0xFFF0FDF4)
-        : const Color(0xFFFFF1F2);
-    final foreground = success
-        ? const Color(0xFF166534)
-        : const Color(0xFF9F1239);
+    final background =
+        success ? const Color(0xFFF0FDF4) : const Color(0xFFFFF1F2);
+    final foreground =
+        success ? const Color(0xFF166534) : const Color(0xFF9F1239);
 
     return Container(
       padding: const EdgeInsets.all(11),
@@ -884,7 +885,10 @@ class _StatusBox extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: TextStyle(color: foreground, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                color: foreground,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
