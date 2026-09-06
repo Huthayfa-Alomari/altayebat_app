@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BarcodeField } from "@/components/products/barcode-field";
 import { validateAdminBarcode } from "@/lib/barcode";
@@ -82,21 +82,6 @@ export default function ProductsManager({
 
   const [error, setError] = useState<string | null>(null);
 
-  const [quickBarcode, setQuickBarcode] = useState("");
-  const [quickBarcodeBusy, setQuickBarcodeBusy] = useState(false);
-  const [quickBarcodeMessage, setQuickBarcodeMessage] = useState<string | null>(null);
-  const [highlightProductId, setHighlightProductId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      document
-        .querySelector<HTMLInputElement>("#quick-barcode-form input")
-        ?.focus();
-    }, 100);
-
-    return () => window.clearTimeout(timer);
-  }, []);
-
   function validateImage(file: File | null) {
     if (!file) return null;
     if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
@@ -125,90 +110,6 @@ export default function ProductsManager({
 
     const { data } = supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(path);
     return { path, publicUrl: data.publicUrl };
-  }
-
-  async function handleQuickBarcodeSearch(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-
-    const normalizedBarcode = quickBarcode.trim();
-    if (!normalizedBarcode) {
-      setQuickBarcodeMessage("امسح الباركود أو اكتب الرقم أولاً.");
-      return;
-    }
-
-    setQuickBarcodeBusy(true);
-    setQuickBarcodeMessage(null);
-    setError(null);
-
-    try {
-      const barcodeStatus = await validateAdminBarcode(supabase, {
-        storeId,
-        barcode: normalizedBarcode,
-      });
-
-      const status = barcodeStatus as typeof barcodeStatus & {
-        product_id?: string;
-        product_name?: string;
-      };
-
-      if (!status.valid) {
-        setQuickBarcodeMessage(barcodeErrorMessage(status.reason, status.product_name));
-        return;
-      }
-
-      if (!status.available && status.product_id) {
-        const product = initialProducts.find((item) => item.id === status.product_id);
-
-        if (!product) {
-          setQuickBarcodeMessage(
-            `تم العثور على المنتج${status.product_name ? `: ${status.product_name}` : ""}. حدّث الصفحة إذا لم يظهر في القائمة.`,
-          );
-          router.refresh();
-          return;
-        }
-
-        setHighlightProductId(product.id);
-        setQuickBarcodeMessage(
-          `تم العثور على ${product.name} — السعر ${Number(product.price).toFixed(2)} د.أ — المخزون ${product.stock_qty}.`,
-        );
-        setQuickBarcode("");
-
-        window.setTimeout(() => {
-          document.getElementById(`product-${product.id}`)?.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-          });
-          document
-            .querySelector<HTMLInputElement>("#quick-barcode-form input")
-            ?.focus();
-        }, 50);
-        return;
-      }
-
-      if (status.available) {
-        setBarcode(normalizedBarcode);
-        setQuickBarcode("");
-        setHighlightProductId(null);
-        setQuickBarcodeMessage(
-          "هذا الباركود غير مربوط بأي منتج. تم نقله إلى نموذج إضافة منتج جديد.",
-        );
-
-        window.setTimeout(() => {
-          document.getElementById("add-product-form")?.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-          });
-          document.getElementById("product-name")?.focus();
-        }, 50);
-        return;
-      }
-
-      setQuickBarcodeMessage("تعذر تحديد حالة الباركود.");
-    } catch {
-      setQuickBarcodeMessage("تعذر البحث عن الباركود. حاول مرة ثانية.");
-    } finally {
-      setQuickBarcodeBusy(false);
-    }
   }
 
   async function handleAdd(e: React.FormEvent<HTMLFormElement>) {
@@ -424,81 +325,10 @@ export default function ProductsManager({
   return (
     <div className="space-y-6">
       <form
-        id="quick-barcode-form"
-        onSubmit={handleQuickBarcodeSearch}
-        className="rounded-xl border border-gray-200 bg-white p-4"
-      >
-        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900">مسح سريع بالباركود</h2>
-            <p className="mt-1 text-xs leading-6 text-gray-500">
-              قارئ USB: ضع المؤشر في حقل الباركود ثم امسح المنتج؛ أغلب الأجهزة ترسل Enter تلقائيًا.
-              ويمكنك استخدام زر الكاميرا داخل نفس الحقل.
-            </p>
-          </div>
-          <span className="w-fit rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
-            USB + كاميرا
-          </span>
-        </div>
-
-        <BarcodeField
-          supabase={supabase}
-          storeId={storeId}
-          value={quickBarcode}
-          onChange={(value) => {
-            setQuickBarcode(value);
-            setQuickBarcodeMessage(null);
-            setHighlightProductId(null);
-          }}
-          disabled={quickBarcodeBusy}
-        />
-
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button
-            type="submit"
-            disabled={quickBarcodeBusy || !quickBarcode.trim()}
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {quickBarcodeBusy ? "جاري البحث..." : "بحث عن المنتج"}
-          </button>
-
-          <button
-            type="button"
-            disabled={quickBarcodeBusy}
-            onClick={() => {
-              setQuickBarcode("");
-              setQuickBarcodeMessage(null);
-              setHighlightProductId(null);
-              document
-                .querySelector<HTMLInputElement>("#quick-barcode-form input")
-                ?.focus();
-            }}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            مسح جديد
-          </button>
-        </div>
-
-        {quickBarcodeMessage && (
-          <p
-            className={`mt-3 rounded-lg px-3 py-2 text-sm ${
-              highlightProductId
-                ? "bg-green-50 text-green-800"
-                : "bg-amber-50 text-amber-800"
-            }`}
-          >
-            {quickBarcodeMessage}
-          </p>
-        )}
-      </form>
-
-      <form
-        id="add-product-form"
         onSubmit={handleAdd}
         className="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-white p-4 sm:grid-cols-6"
       >
         <input
-          id="product-name"
           placeholder="اسم المنتج"
           value={name}
           maxLength={120}
@@ -618,12 +448,7 @@ export default function ProductsManager({
 
                 return (
                   <Fragment key={product.id}>
-                    <tr
-                      id={`product-${product.id}`}
-                      className={`border-t border-gray-100 transition-colors ${
-                        highlightProductId === product.id ? "bg-amber-50 ring-1 ring-inset ring-amber-300" : ""
-                      }`}
-                    >
+                    <tr className="border-t border-gray-100">
                       <td className="px-4 py-3">
                         {product.image_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
