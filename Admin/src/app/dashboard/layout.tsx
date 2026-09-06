@@ -3,10 +3,11 @@ import { requireAdminStore } from "@/lib/store-context";
 import LogoutButton from "./LogoutButton";
 
 const navItems = [
-  { href: "/dashboard", label: "الطلبات" },
-  { href: "/dashboard/products", label: "المنتجات" },
-  { href: "/dashboard/categories", label: "التصنيفات" },
-  { href: "/dashboard/support", label: "طلبات التواصل" },
+  { href: "/dashboard", label: "\u0627\u0644\u0637\u0644\u0628\u0627\u062a" },
+  { href: "/dashboard/products", label: "\u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a" },
+  { href: "/dashboard/categories", label: "\u0627\u0644\u062a\u0635\u0646\u064a\u0641\u0627\u062a" },
+  { href: "/dashboard/support", label: "\u0637\u0644\u0628\u0627\u062a \u0627\u0644\u062a\u0648\u0627\u0635\u0644" },
+  { href: "/dashboard/settings", label: "\u0625\u0639\u062f\u0627\u062f\u0627\u062a \u0627\u0644\u062f\u0641\u0639" },
 ];
 
 export default async function DashboardLayout({
