@@ -87,6 +87,19 @@ export default function ProductsManager({
   const [quickBarcodeMessage, setQuickBarcodeMessage] = useState<string | null>(null);
   const [highlightProductId, setHighlightProductId] = useState<string | null>(null);
 
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPrice, setEditPrice] = useState("");
+  const [editStock, setEditStock] = useState("");
+  const [editCategoryId, setEditCategoryId] = useState("");
+  const [editAvailable, setEditAvailable] = useState(true);
+  const [editBarcode, setEditBarcode] = useState("");
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [editRemoveImage, setEditRemoveImage] = useState(false);
+  const [savingProductEdit, setSavingProductEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSuccess, setEditSuccess] = useState<string | null>(null);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       document
@@ -395,6 +408,169 @@ export default function ProductsManager({
     }
   }
 
+  function resetProductEdit() {
+    setEditingProductId(null);
+    setEditName("");
+    setEditPrice("");
+    setEditStock("");
+    setEditCategoryId("");
+    setEditAvailable(true);
+    setEditBarcode("");
+    setEditImageFile(null);
+    setEditRemoveImage(false);
+    setEditError(null);
+
+    const editImageInput = document.getElementById(
+      "edit-product-image",
+    ) as HTMLInputElement | null;
+    if (editImageInput) editImageInput.value = "";
+  }
+
+  async function beginProductEdit(product: Product) {
+    setEditSuccess(null);
+    setEditError(null);
+    setError(null);
+    setEditingBarcodeProductId(null);
+    setEditingBarcodeValue("");
+    setEditingProductId(product.id);
+    setEditName(product.name);
+    setEditPrice(String(product.price));
+    setEditStock(String(product.stock_qty));
+    setEditCategoryId(product.category_id ?? "");
+    setEditAvailable(product.is_available);
+    setEditBarcode("");
+    setEditImageFile(null);
+    setEditRemoveImage(false);
+
+    try {
+      const { data, error: fetchError } = await supabase
+        .from("products")
+        .select("barcode")
+        .eq("id", product.id)
+        .eq("store_id", storeId)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+      setEditBarcode(typeof data?.barcode === "string" ? data.barcode : "");
+    } catch {
+      setEditError("تعذر تحميل باركود المنتج، لكن يمكنك تعديل باقي المعلومات.");
+    }
+
+    window.setTimeout(() => {
+      document.getElementById(`edit-product-${product.id}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      document.getElementById("edit-product-name")?.focus();
+    }, 50);
+  }
+
+  async function saveProductEdit(product: Product) {
+    const normalizedName = editName.trim();
+    const normalizedBarcode = editBarcode.trim();
+    const parsedPrice = Number(editPrice);
+    const parsedStock = Number(editStock);
+    const imageValidationError = validateImage(editImageFile);
+
+    setEditError(null);
+    setEditSuccess(null);
+
+    if (!normalizedName) {
+      setEditError("اسم المنتج مطلوب.");
+      return;
+    }
+    if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+      setEditError("السعر لازم يكون رقم أكبر من صفر.");
+      return;
+    }
+    if (!Number.isInteger(parsedStock) || parsedStock < 0) {
+      setEditError("الكمية لازم تكون رقم صحيح صفر أو أكبر.");
+      return;
+    }
+    if (imageValidationError) {
+      setEditError(imageValidationError);
+      return;
+    }
+
+    setSavingProductEdit(true);
+    let uploadedPath: string | null = null;
+
+    try {
+      if (normalizedBarcode) {
+        const barcodeStatus = await validateAdminBarcode(supabase, {
+          storeId,
+          barcode: normalizedBarcode,
+          excludeProductId: product.id,
+        });
+
+        if (!barcodeStatus.valid || !barcodeStatus.available) {
+          setEditError(
+            barcodeErrorMessage(barcodeStatus.reason, barcodeStatus.product_name),
+          );
+          return;
+        }
+      }
+
+      let nextImageUrl = product.image_url;
+      if (editImageFile) {
+        const uploaded = await uploadImage(editImageFile);
+        uploadedPath = uploaded.path;
+        nextImageUrl = uploaded.publicUrl;
+      } else if (editRemoveImage) {
+        nextImageUrl = null;
+      }
+
+      const { error: updateError } = await supabase
+        .from("products")
+        .update({
+          name: normalizedName,
+          price: parsedPrice,
+          stock_qty: parsedStock,
+          category_id: editCategoryId || null,
+          is_available: parsedStock > 0 ? editAvailable : false,
+          barcode: normalizedBarcode || null,
+          image_url: nextImageUrl,
+        })
+        .eq("id", product.id)
+        .eq("store_id", storeId);
+
+      if (updateError) {
+        if (uploadedPath) {
+          await supabase.storage.from(PRODUCT_IMAGES_BUCKET).remove([uploadedPath]);
+        }
+        throw updateError;
+      }
+
+      if ((editImageFile || editRemoveImage) && product.image_url) {
+        const oldImagePath = storagePathFromPublicUrl(product.image_url);
+        if (oldImagePath) {
+          await supabase.storage.from(PRODUCT_IMAGES_BUCKET).remove([oldImagePath]);
+        }
+      }
+
+      setEditSuccess(`تم حفظ تعديلات ${normalizedName} بنجاح.`);
+      resetProductEdit();
+      router.refresh();
+
+      window.setTimeout(() => {
+        setEditSuccess(null);
+      }, 3500);
+    } catch (caught) {
+      const code =
+        typeof caught === "object" && caught !== null && "code" in caught
+          ? String((caught as { code?: unknown }).code ?? "")
+          : "";
+
+      setEditError(
+        code === "23505"
+          ? "هذا الباركود مستخدم لمنتج آخر."
+          : "تعذر حفظ تعديلات المنتج. تأكد من البيانات وحاول مرة ثانية.",
+      );
+    } finally {
+      setSavingProductEdit(false);
+    }
+  }
+
   async function deleteProduct(product: Product) {
     if (!window.confirm("متأكد إنك بدك تحذف المنتج؟")) return;
 
@@ -590,6 +766,12 @@ export default function ProductsManager({
         )}
       </form>
 
+      {editSuccess && (
+        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800">
+          {editSuccess}
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
         <table className="min-w-[760px] w-full text-right text-sm">
           <thead className="bg-gray-50 text-gray-500">
@@ -615,6 +797,7 @@ export default function ProductsManager({
                 const busy = busyProductId === product.id;
                 const barcodeLoading = loadingBarcodeId === product.id;
                 const editingBarcode = editingBarcodeProductId === product.id;
+                const editingProduct = editingProductId === product.id;
 
                 return (
                   <Fragment key={product.id}>
@@ -663,7 +846,16 @@ export default function ProductsManager({
                         <div className="flex items-center justify-end gap-3">
                           <button
                             type="button"
-                            disabled={busy || barcodeLoading || savingBarcode}
+                            disabled={busy || savingProductEdit}
+                            onClick={() => void beginProductEdit(product)}
+                            className="text-xs font-semibold text-brand hover:underline disabled:opacity-50"
+                          >
+                            تعديل
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={busy || barcodeLoading || savingBarcode || savingProductEdit}
                             onClick={() => void beginBarcodeEdit(product)}
                             className="text-xs font-medium text-gray-700 hover:underline disabled:opacity-50"
                           >
@@ -681,6 +873,239 @@ export default function ProductsManager({
                         </div>
                       </td>
                     </tr>
+
+                    {editingProduct && (
+                      <tr
+                        id={`edit-product-${product.id}`}
+                        className="border-t border-gray-100 bg-blue-50/40"
+                      >
+                        <td colSpan={6} className="px-4 py-5">
+                          <div className="mx-auto max-w-5xl rounded-xl border border-blue-200 bg-white p-4 shadow-sm">
+                            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                              <div>
+                                <h3 className="text-base font-semibold text-gray-900">
+                                  تعديل معلومات المنتج
+                                </h3>
+                                <p className="mt-1 text-xs text-gray-500">
+                                  عدّل الاسم والسعر والمخزون والتصنيف والصورة والباركود وحالة التوفر.
+                                </p>
+                              </div>
+                              <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+                                {product.name}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                              <label className="space-y-1 lg:col-span-2">
+                                <span className="text-xs font-medium text-gray-700">
+                                  اسم المنتج
+                                </span>
+                                <input
+                                  id="edit-product-name"
+                                  value={editName}
+                                  maxLength={120}
+                                  disabled={savingProductEdit}
+                                  onChange={(e) => setEditName(e.target.value)}
+                                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand disabled:bg-gray-50"
+                                />
+                              </label>
+
+                              <label className="space-y-1">
+                                <span className="text-xs font-medium text-gray-700">
+                                  السعر (د.أ)
+                                </span>
+                                <input
+                                  type="number"
+                                  min="0.01"
+                                  step="0.01"
+                                  value={editPrice}
+                                  disabled={savingProductEdit}
+                                  onChange={(e) => setEditPrice(e.target.value)}
+                                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand disabled:bg-gray-50"
+                                />
+                              </label>
+
+                              <label className="space-y-1">
+                                <span className="text-xs font-medium text-gray-700">
+                                  الكمية
+                                </span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  value={editStock}
+                                  disabled={savingProductEdit}
+                                  onChange={(e) => setEditStock(e.target.value)}
+                                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand disabled:bg-gray-50"
+                                />
+                              </label>
+
+                              <label className="space-y-1 lg:col-span-2">
+                                <span className="text-xs font-medium text-gray-700">
+                                  التصنيف
+                                </span>
+                                <select
+                                  value={editCategoryId}
+                                  disabled={savingProductEdit}
+                                  onChange={(e) => setEditCategoryId(e.target.value)}
+                                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand disabled:bg-gray-50"
+                                >
+                                  <option value="">بدون تصنيف</option>
+                                  {categories.map((category) => (
+                                    <option key={category.id} value={category.id}>
+                                      {category.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+
+                              <label className="space-y-1 lg:col-span-2">
+                                <span className="text-xs font-medium text-gray-700">
+                                  حالة التوفر
+                                </span>
+                                <select
+                                  value={editAvailable ? "available" : "unavailable"}
+                                  disabled={savingProductEdit || Number(editStock) <= 0}
+                                  onChange={(e) =>
+                                    setEditAvailable(e.target.value === "available")
+                                  }
+                                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand disabled:bg-gray-50"
+                                >
+                                  <option value="available">متوفر</option>
+                                  <option value="unavailable">غير متوفر</option>
+                                </select>
+                                {Number(editStock) <= 0 && (
+                                  <p className="text-[11px] text-amber-700">
+                                    عند وصول الكمية إلى صفر سيتم حفظ المنتج كغير متوفر تلقائيًا.
+                                  </p>
+                                )}
+                              </label>
+
+                              <div className="space-y-2 lg:col-span-4">
+                                <span className="text-xs font-medium text-gray-700">
+                                  الباركود
+                                </span>
+                                <BarcodeField
+                                  supabase={supabase}
+                                  storeId={storeId}
+                                  productId={product.id}
+                                  value={editBarcode}
+                                  onChange={setEditBarcode}
+                                  disabled={savingProductEdit}
+                                />
+                              </div>
+
+                              <div className="rounded-lg border border-gray-200 p-3 lg:col-span-4">
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[auto_1fr] sm:items-center">
+                                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                                    {!editRemoveImage && product.image_url ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img
+                                        src={
+                                          editImageFile
+                                            ? URL.createObjectURL(editImageFile)
+                                            : product.image_url
+                                        }
+                                        alt={editName || product.name}
+                                        className="h-full w-full object-cover"
+                                      />
+                                    ) : editImageFile ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img
+                                        src={URL.createObjectURL(editImageFile)}
+                                        alt={editName || product.name}
+                                        className="h-full w-full object-cover"
+                                      />
+                                    ) : (
+                                      <span className="text-[10px] text-gray-400">
+                                        بدون صورة
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <label className="flex cursor-pointer items-center justify-center rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm text-gray-600 hover:border-brand hover:text-brand">
+                                      <span className="truncate">
+                                        {editImageFile
+                                          ? editImageFile.name
+                                          : "اختيار صورة جديدة"}
+                                      </span>
+                                      <input
+                                        id="edit-product-image"
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        className="sr-only"
+                                        disabled={savingProductEdit}
+                                        onChange={(e) => {
+                                          const file = e.target.files?.[0] ?? null;
+                                          const validationError = validateImage(file);
+                                          if (validationError) {
+                                            setEditError(validationError);
+                                            e.target.value = "";
+                                            setEditImageFile(null);
+                                            return;
+                                          }
+                                          setEditError(null);
+                                          setEditImageFile(file);
+                                          if (file) setEditRemoveImage(false);
+                                        }}
+                                      />
+                                    </label>
+
+                                    {(product.image_url || editImageFile) && (
+                                      <label className="flex items-center gap-2 text-xs text-gray-600">
+                                        <input
+                                          type="checkbox"
+                                          checked={editRemoveImage}
+                                          disabled={savingProductEdit}
+                                          onChange={(e) => {
+                                            setEditRemoveImage(e.target.checked);
+                                            if (e.target.checked) {
+                                              setEditImageFile(null);
+                                              const input = document.getElementById(
+                                                "edit-product-image",
+                                              ) as HTMLInputElement | null;
+                                              if (input) input.value = "";
+                                            }
+                                          }}
+                                        />
+                                        حذف صورة المنتج الحالية
+                                      </label>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {editError && (
+                              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                                {editError}
+                              </p>
+                            )}
+
+                            <div className="mt-4 flex flex-wrap justify-end gap-2">
+                              <button
+                                type="button"
+                                disabled={savingProductEdit}
+                                onClick={resetProductEdit}
+                                className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                              >
+                                إلغاء
+                              </button>
+
+                              <button
+                                type="button"
+                                disabled={savingProductEdit}
+                                onClick={() => void saveProductEdit(product)}
+                                className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-50"
+                              >
+                                {savingProductEdit ? "جاري الحفظ..." : "حفظ التعديلات"}
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
 
                     {editingBarcode && (
                       <tr className="border-t border-gray-100 bg-gray-50/60">
