@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdminStore } from "@/lib/store-context";
 import LogoutButton from "./LogoutButton";
+import OrderDeviceNotifier from "./OrderDeviceNotifier";
 
 const navItems = [
   { href: "/dashboard", label: "\u0627\u0644\u0637\u0644\u0628\u0627\u062a" },
@@ -19,6 +20,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-gray-50 lg:flex">
+      <OrderDeviceNotifier />
       <aside className="border-b border-gray-200 bg-white p-4 lg:min-h-screen lg:w-56 lg:shrink-0 lg:border-b-0 lg:border-l">
         <div className="flex items-center justify-between gap-4 lg:block">
           <p className="truncate text-sm font-medium text-brand lg:mb-6">
