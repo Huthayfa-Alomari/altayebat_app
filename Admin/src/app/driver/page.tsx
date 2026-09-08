@@ -54,6 +54,18 @@ function distanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: 
   return Math.sqrt(x * x + y * y) * 6371000;
 }
 
+function parseCoordinate(value: number | string | null | undefined, axis: "lat" | "lng") {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  if (axis === "lat" && (numeric < -90 || numeric > 90)) return null;
+  if (axis === "lng" && (numeric < -180 || numeric > 180)) return null;
+
+  return numeric;
+}
+
 export default function DriverTrackingPage() {
   const supabase = useMemo(() => createClient(), []);
   const [token, setToken] = useState<string | null>(null);
@@ -312,9 +324,12 @@ export default function DriverTrackingPage() {
   }
 
   const address = session.address || {};
-  const destinationLat = Number(address.lat);
-  const destinationLng = Number(address.lng);
-  const hasGps = Number.isFinite(destinationLat) && Number.isFinite(destinationLng);
+  const destinationLat = parseCoordinate(address.lat, "lat");
+  const destinationLng = parseCoordinate(address.lng, "lng");
+  const hasGps =
+    destinationLat !== null &&
+    destinationLng !== null &&
+    !(destinationLat === 0 && destinationLng === 0);
   const addressText = address.address_text || [address.city, address.area, address.street].filter(Boolean).join("، ") || "العنوان غير مكتمل";
   const mapsHref = hasGps
     ? `https://www.google.com/maps/dir/?api=1&destination=${destinationLat},${destinationLng}`
@@ -362,6 +377,11 @@ export default function DriverTrackingPage() {
               <div className="mt-2 text-sm leading-6 text-gray-600">{addressText}</div>
               {address.building && <div className="mt-1 text-xs text-gray-500">بناية {address.building}{address.floor ? ` • طابق ${address.floor}` : ""}</div>}
               {address.notes && <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">ملاحظة: {address.notes}</div>}
+              {!hasGps && (
+                <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium leading-5 text-amber-800">
+                  هذا العنوان محفوظ بدون نقطة GPS. سيتم فتح Google Maps بالعنوان النصي بدل الإحداثيات.
+                </div>
+              )}
             </div>
             <div className={`mt-1 h-3 w-3 shrink-0 rounded-full ${hasGps ? "bg-green-500" : "bg-amber-500"}`} />
           </div>
