@@ -121,6 +121,18 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_location == null) {
+      await _pickLocation();
+      if (!mounted) return;
+      if (_location == null) {
+        setState(() {
+          _error =
+              'حدد موقع البيت على الخريطة حتى يصل المندوب بدقة ويعمل التتبع المباشر.';
+        });
+        return;
+      }
+    }
+
     setState(() {
       _saving = true;
       _error = null;

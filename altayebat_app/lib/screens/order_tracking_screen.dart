@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -17,9 +19,12 @@ class OrderTrackingScreen extends StatefulWidget {
 
 class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   StreamSubscription<Map<String, dynamic>>? _orderSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _driverLocationSubscription;
   Timer? _pollTimer;
+  Timer? _driverFreshnessTimer;
 
   Map<String, dynamic> _order = const {};
+  Map<String, dynamic>? _driverLocation;
   Map<String, dynamic> _paymentConfig = const {};
 
   bool _loading = true;
@@ -31,6 +36,12 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     super.initState();
     _loadInitial();
     _subscribe();
+    _subscribeDriverLocation();
+    _driverFreshnessTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (mounted && _driverLocation != null) {
+        setState(() {});
+      }
+    });
     _pollTimer = Timer.periodic(
       const Duration(seconds: 15),
       (_) => _refreshOrder(silent: true),
@@ -40,7 +51,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   @override
   void dispose() {
     _orderSubscription?.cancel();
+    _driverLocationSubscription?.cancel();
     _pollTimer?.cancel();
+    _driverFreshnessTimer?.cancel();
     super.dispose();
   }
 
@@ -80,6 +93,24 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     );
   }
 
+  void _subscribeDriverLocation() {
+    _driverLocationSubscription =
+        SupabaseService.watchDriverLocation(widget.orderId).listen(
+          (rows) {
+            if (!mounted) return;
+            setState(() {
+              _driverLocation = rows.isEmpty
+                  ? null
+                  : Map<String, dynamic>.from(rows.first);
+            });
+          },
+          onError: (_) {
+            // Order polling remains active; the live map will recover when
+            // Supabase Realtime reconnects.
+          },
+        );
+  }
+
   Future<void> _refreshOrder({bool silent = false}) async {
     if (!silent && mounted) {
       setState(() => _actionBusy = true);
@@ -114,7 +145,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       await SupabaseService.reconcileCardPayment(widget.orderId);
       await _refreshOrder(silent: true);
       if (!mounted) return;
-      _show('ØªÙ… ØªØ­Ø¯ÙŠØ« Ø­Ø§Ù„Ø© Ø§Ù„Ø¯ÙØ¹');
+      _show('تم تحديث حالة الدفع');
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = _message(error));
@@ -133,9 +164,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     try {
       final configured = await SupabaseService.isCardPaymentConfigured();
       if (!configured) {
-        throw StateError(
-          'Ø§Ù„Ø¯ÙØ¹ Ø¨Ø§Ù„Ø¨Ø·Ø§Ù‚Ø© ØºÙŠØ± Ù…ÙØ¹Ù‘Ù„ Ø­Ø§Ù„ÙŠÙ‹Ø§',
-        );
+        throw StateError('الدفع بالبطاقة غير مفعّل حاليًا');
       }
 
       final paymentUrl = await SupabaseService.startCardPayment(widget.orderId);
@@ -147,7 +176,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       );
 
       if (!opened) {
-        throw StateError('ØªØ¹Ø°Ø± ÙØªØ­ ØµÙØ­Ø© PayTabs');
+        throw StateError('تعذر فتح صفحة PayTabs');
       }
     } catch (error) {
       final reference = _order['payment_reference']?.toString().trim() ?? '';
@@ -161,7 +190,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
           if (!mounted) return;
           setState(() {
             _error =
-                'ØªØ¹Ø°Ø± Ø¨Ø¯Ø¡ Ø§Ù„Ø¯ÙØ¹ØŒ Ù„Ø°Ù„Ùƒ Ø£ÙÙ„ØºÙŠ Ø§Ù„Ø·Ù„Ø¨ ÙˆØ£ÙØ¹ÙŠØ¯ Ø§Ù„Ù…Ø®Ø²ÙˆÙ† ØªÙ„Ù‚Ø§Ø¦ÙŠÙ‹Ø§.';
+                'تعذر بدء الدفع، لذلك أُلغي الطلب وأُعيد المخزون تلقائيًا.';
           });
           return;
         }
@@ -178,20 +207,20 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     final alias = _cliqAlias;
     if (alias.isEmpty) return;
     await Clipboard.setData(ClipboardData(text: alias));
-    if (mounted) _show('ØªÙ… Ù†Ø³Ø® CliQ Alias');
+    if (mounted) _show('تم نسخ CliQ Alias');
   }
 
   Future<void> _sendCliqProof() async {
     final phone = _storePhoneDigits;
     if (phone.isEmpty) {
-      _show('Ø±Ù‚Ù… ÙˆØ§ØªØ³Ø§Ø¨ Ø§Ù„Ù…ÙˆÙ„ ØºÙŠØ± Ù…Ø¶Ø§Ù Ø¨Ø¹Ø¯');
+      _show('رقم واتساب المول غير مضاف بعد');
       return;
     }
 
     final shortId = _shortOrderId;
     final amount = _money(_order['total']);
     final message =
-        'Ù…Ø±Ø­Ø¨Ø§Ù‹ØŒ Ø£Ø±ÙÙ‚ Ø¥Ø«Ø¨Ø§Øª ØªØ­ÙˆÙŠÙ„ CliQ Ù„Ù„Ø·Ù„Ø¨ #$shortId Ø¨Ù‚ÙŠÙ…Ø© $amount.';
+        'مرحباً، أرفق إثبات تحويل CliQ للطلب #$shortId بقيمة $amount.';
 
     final uri = Uri.parse(
       'https://wa.me/$phone?text=${Uri.encodeComponent(message)}',
@@ -200,14 +229,14 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
 
     if (!opened && mounted) {
-      _show('ØªØ¹Ø°Ø± ÙØªØ­ ÙˆØ§ØªØ³Ø§Ø¨');
+      _show('تعذر فتح واتساب');
     }
   }
 
   Future<void> _callStore() async {
     final phone = _storePhoneDigits;
     if (phone.isEmpty) {
-      _show('Ø±Ù‚Ù… Ø§Ù„Ù…ÙˆÙ„ ØºÙŠØ± Ù…Ø¶Ø§Ù Ø¨Ø¹Ø¯');
+      _show('رقم المول غير مضاف بعد');
       return;
     }
 
@@ -215,7 +244,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
 
     if (!opened && mounted) {
-      _show('ØªØ¹Ø°Ø± ÙØªØ­ Ø§Ù„Ø§ØªØµØ§Ù„');
+      _show('تعذر فتح الاتصال');
     }
   }
 
@@ -263,7 +292,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
-  String _money(dynamic value) => '${_number(value).toStringAsFixed(2)} Ø¯.Ø£';
+  String _money(dynamic value) => '${_number(value).toStringAsFixed(2)} د.أ';
 
   String _paymentMethodLabel() {
     switch (_paymentMethod) {
@@ -272,47 +301,47 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       case 'cliq':
         return 'CliQ';
       case 'cash':
-        return 'ÙƒØ§Ø´ Ø¹Ù†Ø¯ Ø§Ù„Ø§Ø³ØªÙ„Ø§Ù…';
+        return 'كاش عند الاستلام';
       default:
-        return 'â€”';
+        return '—';
     }
   }
 
   String _paymentStatusLabel() {
     if (_paymentMethod == 'cash' && _paymentStatus == 'unpaid') {
-      return 'Ø§Ù„Ø¯ÙØ¹ Ø¹Ù†Ø¯ Ø§Ù„Ø§Ø³ØªÙ„Ø§Ù…';
+      return 'الدفع عند الاستلام';
     }
 
     switch (_paymentStatus) {
       case 'paid':
-        return 'ØªÙ… Ø§Ù„Ø¯ÙØ¹';
+        return 'تم الدفع';
       case 'failed':
-        return 'ÙØ´Ù„ Ø§Ù„Ø¯ÙØ¹';
+        return 'فشل الدفع';
       case 'refunded':
-        return 'ØªÙ… Ø±Ø¯ Ø§Ù„Ù…Ø¨Ù„Øº';
+        return 'تم رد المبلغ';
       case 'pending':
-        return 'Ø¨Ø§Ù†ØªØ¸Ø§Ø± ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ø¯ÙØ¹';
+        return 'بانتظار تأكيد الدفع';
       case 'unpaid':
-        return 'ØºÙŠØ± Ù…Ø¯ÙÙˆØ¹';
+        return 'غير مدفوع';
       default:
-        return 'â€”';
+        return '—';
     }
   }
 
   String _orderStatusLabel() {
     switch (_orderStatus) {
       case 'pending':
-        return 'Ø¨Ø§Ù†ØªØ¸Ø§Ø± ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ù…ÙˆÙ„';
+        return 'بانتظار تأكيد المول';
       case 'preparing':
-        return 'Ù‚ÙŠØ¯ Ø§Ù„ØªØ­Ø¶ÙŠØ±';
+        return 'قيد التحضير';
       case 'out_for_delivery':
-        return 'Ø¨Ø§Ù„ØªÙˆØµÙŠÙ„ Ø¥Ù„ÙŠÙƒ';
+        return 'بالتوصيل إليك';
       case 'delivered':
-        return 'ØªÙ… Ø§Ù„ØªØ³Ù„ÙŠÙ…';
+        return 'تم التسليم';
       case 'cancelled':
-        return 'ØªÙ… Ø¥Ù„ØºØ§Ø¡ Ø§Ù„Ø·Ù„Ø¨';
+        return 'تم إلغاء الطلب';
       default:
-        return 'Ø¨Ø§Ù†ØªØ¸Ø§Ø± Ø§Ù„ØªØ­Ø¯ÙŠØ«';
+        return 'بانتظار التحديث';
     }
   }
 
@@ -339,15 +368,12 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     final cardReference = _order['payment_reference']?.toString().trim() ?? '';
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('ØªØªØ¨Ø¹ Ø§Ù„Ø·Ù„Ø¨'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('تتبع الطلب'), centerTitle: true),
       floatingActionButton: _storePhoneDigits.isEmpty
           ? null
           : FloatingActionButton.small(
               onPressed: _callStore,
-              tooltip: 'Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ù…ÙˆÙ„',
+              tooltip: 'اتصال بالمول',
               child: const Icon(Icons.headset_mic_outlined),
             ),
       body: _loading
@@ -370,8 +396,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                     busy: _actionBusy,
                     showCardAction: cardPending,
                     cardActionLabel: cardReference.isEmpty
-                        ? 'Ø¥ÙƒÙ…Ø§Ù„ Ø§Ù„Ø¯ÙØ¹ Ø¨Ø§Ù„Ø¨Ø·Ø§Ù‚Ø©'
-                        : 'ØªØ­Ù‚Ù‚ Ù…Ù† Ø­Ø§Ù„Ø© Ø§Ù„Ø¯ÙØ¹',
+                        ? 'إكمال الدفع بالبطاقة'
+                        : 'تحقق من حالة الدفع',
                     onCardAction: cardReference.isEmpty
                         ? _retryCardPayment
                         : _reconcileCardPayment,
@@ -388,6 +414,13 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                       onSendProof: _sendCliqProof,
                     ),
                   ],
+                  if (_orderStatus == 'out_for_delivery') ...[
+                    const SizedBox(height: 14),
+                    _LiveDeliveryCard(
+                      location: _driverLocation,
+                      addressSnapshot: _order['address_snapshot'],
+                    ),
+                  ],
                   if (_error != null) ...[
                     const SizedBox(height: 14),
                     _MessageBox(text: _error!, error: true),
@@ -396,7 +429,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                   if (cancelled)
                     const _MessageBox(
                       text:
-                          'Ù‡Ø°Ø§ Ø§Ù„Ø·Ù„Ø¨ Ù…Ù„ØºÙŠ. Ø¥Ø°Ø§ ÙƒÙ†Øª Ù…Ø§ Ø²Ù„Øª ØªØ±ÙŠØ¯ Ø§Ù„Ù…Ù†ØªØ¬Ø§ØªØŒ Ø§Ø±Ø¬Ø¹ Ù„Ù„Ø³Ù„Ø© ÙˆØ£Ù†Ø´Ø¦ Ø·Ù„Ø¨Ù‹Ø§ Ø¬Ø¯ÙŠØ¯Ù‹Ø§.',
+                          'هذا الطلب ملغي. إذا كنت ما زلت تريد المنتجات، ارجع للسلة وأنشئ طلبًا جديدًا.',
                       error: true,
                     )
                   else
@@ -442,7 +475,7 @@ class _OrderHeaderCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Ø±Ù‚Ù… Ø§Ù„Ø·Ù„Ø¨',
+                  'رقم الطلب',
                   style: TextStyle(color: Color(0xFF6B7280), fontSize: 12),
                 ),
                 Text(
@@ -496,13 +529,13 @@ class _PaymentCard extends StatelessWidget {
           children: [
             _InfoRow(
               icon: Icons.account_balance_wallet_outlined,
-              label: 'Ø·Ø±ÙŠÙ‚Ø© Ø§Ù„Ø¯ÙØ¹',
+              label: 'طريقة الدفع',
               value: method,
             ),
             const SizedBox(height: 12),
             _InfoRow(
               icon: Icons.schedule_outlined,
-              label: 'Ø­Ø§Ù„Ø© Ø§Ù„Ø¯ÙØ¹',
+              label: 'حالة الدفع',
               value: paymentStatus,
             ),
             if (showCardAction) ...[
@@ -558,19 +591,18 @@ class _CliqCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'Ø¥ÙƒÙ…Ø§Ù„ Ø¯ÙØ¹ CliQ',
+              'إكمال دفع CliQ',
               style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
             ),
             const SizedBox(height: 8),
             Text(
-              'Ø­ÙˆÙ‘Ù„ $amount Ø«Ù… Ø£Ø±Ø³Ù„ Ø¥Ø«Ø¨Ø§Øª Ø§Ù„ØªØ­ÙˆÙŠÙ„ Ù„Ù„Ù…ÙˆÙ„.',
+              'حوّل $amount ثم أرسل إثبات التحويل للمول.',
               style: const TextStyle(color: Color(0xFF6B7280)),
             ),
             const SizedBox(height: 14),
             if (!configured)
               const _MessageBox(
-                text:
-                    'CliQ Alias ØºÙŠØ± Ù…Ø¶Ø§Ù Ø¨Ø¹Ø¯. ØªÙˆØ§ØµÙ„ Ù…Ø¹ Ø§Ù„Ù…ÙˆÙ„ Ù‚Ø¨Ù„ Ø§Ù„ØªØ­ÙˆÙŠÙ„.',
+                text: 'CliQ Alias غير مضاف بعد. تواصل مع المول قبل التحويل.',
                 error: true,
               )
             else ...[
@@ -610,7 +642,7 @@ class _CliqCard extends StatelessWidget {
                     ),
                     IconButton(
                       onPressed: onCopy,
-                      tooltip: 'Ù†Ø³Ø® Alias',
+                      tooltip: 'نسخ Alias',
                       icon: const Icon(Icons.copy_outlined),
                     ),
                   ],
@@ -620,14 +652,12 @@ class _CliqCard extends StatelessWidget {
               FilledButton.icon(
                 onPressed: canSendProof ? onSendProof : null,
                 icon: const Icon(Icons.chat_outlined),
-                label: const Text(
-                  'Ø¥Ø±Ø³Ø§Ù„ Ø¥Ø«Ø¨Ø§Øª Ø§Ù„Ø¯ÙØ¹ Ø¹Ø¨Ø± ÙˆØ§ØªØ³Ø§Ø¨',
-                ),
+                label: const Text('إرسال إثبات الدفع عبر واتساب'),
               ),
               if (!canSendProof) ...[
                 const SizedBox(height: 8),
                 const Text(
-                  'Ø±Ù‚Ù… ÙˆØ§ØªØ³Ø§Ø¨ Ø§Ù„Ù…ÙˆÙ„ ØºÙŠØ± Ù…Ø¶Ø§Ù Ø¨Ø¹Ø¯.',
+                  'رقم واتساب المول غير مضاف بعد.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
                 ),
@@ -635,6 +665,246 @@ class _CliqCard extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _LiveDeliveryCard extends StatelessWidget {
+  final Map<String, dynamic>? location;
+  final dynamic addressSnapshot;
+
+  const _LiveDeliveryCard({
+    required this.location,
+    required this.addressSnapshot,
+  });
+
+  double? _number(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '');
+  }
+
+  DateTime? _time(dynamic value) {
+    if (value == null) return null;
+    return DateTime.tryParse(value.toString())?.toLocal();
+  }
+
+  String _freshnessText(DateTime? updatedAt) {
+    if (updatedAt == null) return 'بانتظار أول تحديث من المندوب';
+    final seconds = DateTime.now().difference(updatedAt).inSeconds;
+    if (seconds < 0 || seconds < 25) return 'الموقع مباشر الآن';
+    if (seconds < 60) return 'آخر تحديث قبل $seconds ثانية';
+    final minutes = seconds ~/ 60;
+    if (minutes == 1) return 'آخر تحديث قبل دقيقة';
+    if (minutes < 10) return 'آخر تحديث قبل $minutes دقائق';
+    return 'الاتصال بالمندوب ضعيف — آخر تحديث قبل $minutes دقيقة';
+  }
+
+  Color _freshnessColor(DateTime? updatedAt) {
+    if (updatedAt == null) return const Color(0xFF6B7280);
+    final seconds = DateTime.now().difference(updatedAt).inSeconds;
+    if (seconds < 45) return const Color(0xFF15803D);
+    if (seconds < 180) return const Color(0xFFB45309);
+    return const Color(0xFFB91C1C);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lat = _number(location?['lat']);
+    final lng = _number(location?['lng']);
+    final updatedAt = _time(
+      location?['recorded_at'] ?? location?['updated_at'],
+    );
+
+    final snapshot = addressSnapshot is Map
+        ? Map<String, dynamic>.from(addressSnapshot as Map)
+        : const <String, dynamic>{};
+    final destinationLat = _number(snapshot['lat']);
+    final destinationLng = _number(snapshot['lng']);
+
+    if (lat == null || lng == null) {
+      return Card(
+        elevation: 0,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                Icons.delivery_dining_outlined,
+                color: Color(0xFFE31E24),
+                size: 28,
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'المندوب بالطريق إليك',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                      ),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      'سيظهر موقع المندوب هنا تلقائيًا عند أول تحديث GPS.',
+                      style: TextStyle(color: Color(0xFF6B7280), height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final driverPoint = LatLng(lat, lng);
+    final destinationPoint = destinationLat != null && destinationLng != null
+        ? LatLng(destinationLat, destinationLng)
+        : null;
+
+    double? distanceKm;
+    if (destinationPoint != null) {
+      distanceKm = Distance().as(
+        LengthUnit.Kilometer,
+        driverPoint,
+        destinationPoint,
+      );
+    }
+
+    final statusColor = _freshnessColor(updatedAt);
+    final freshness = _freshnessText(updatedAt);
+
+    return Card(
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            height: 245,
+            child: FlutterMap(
+              key: ValueKey(
+                '${lat.toStringAsFixed(5)}:${lng.toStringAsFixed(5)}',
+              ),
+              options: MapOptions(
+                initialCenter: driverPoint,
+                initialZoom: destinationPoint == null ? 16 : 14.5,
+                minZoom: 7,
+                maxZoom: 19,
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.altayebat.app',
+                ),
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: driverPoint,
+                      width: 62,
+                      height: 62,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.delivery_dining,
+                          color: Color(0xFFE31E24),
+                          size: 38,
+                        ),
+                      ),
+                    ),
+                    if (destinationPoint != null)
+                      Marker(
+                        point: destinationPoint,
+                        width: 50,
+                        height: 50,
+                        child: const Icon(
+                          Icons.home_rounded,
+                          color: Color(0xFF1D4ED8),
+                          size: 42,
+                        ),
+                      ),
+                  ],
+                ),
+                const RichAttributionWidget(
+                  attributions: [
+                    TextSourceAttribution('OpenStreetMap contributors'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'المندوب بالطريق إليك',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      width: 9,
+                      height: 9,
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                    Flexible(
+                      child: Text(
+                        freshness,
+                        textAlign: TextAlign.end,
+                        style: TextStyle(
+                          color: statusColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (distanceKm != null) ...[
+                  const SizedBox(height: 9),
+                  Text(
+                    distanceKm < 1
+                        ? 'يبعد عن موقع التوصيل تقريبًا ${(distanceKm * 1000).round()} متر'
+                        : 'يبعد عن موقع التوصيل تقريبًا ${distanceKm.toStringAsFixed(1)} كم',
+                    style: const TextStyle(
+                      color: Color(0xFF6B7280),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 7),
+                const Text(
+                  'المسافة تقريبية بخط مستقيم، والخريطة تتحدث تلقائيًا.',
+                  style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -673,10 +943,10 @@ class _Timeline extends StatelessWidget {
   const _Timeline({required this.currentIndex, required this.color});
 
   static const labels = [
-    'Ø¨Ø§Ù†ØªØ¸Ø§Ø± ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ù…ÙˆÙ„',
-    'Ù‚ÙŠØ¯ Ø§Ù„ØªØ­Ø¶ÙŠØ±',
-    'Ø¨Ø§Ù„ØªÙˆØµÙŠÙ„ Ø¥Ù„ÙŠÙƒ',
-    'ØªÙ… Ø§Ù„ØªØ³Ù„ÙŠÙ…',
+    'بانتظار تأكيد المول',
+    'قيد التحضير',
+    'بالتوصيل إليك',
+    'تم التسليم',
   ];
 
   @override
