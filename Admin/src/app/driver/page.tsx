@@ -54,6 +54,72 @@ function distanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: 
   return Math.sqrt(x * x + y * y) * 6371000;
 }
 
+
+function geolocationErrorText(error: GeolocationPositionError) {
+  if (error.code === error.PERMISSION_DENIED) {
+    return "تم رفض صلاحية الموقع. اسمح للموقع باستخدام GPS من إعدادات المتصفح ثم حاول مرة ثانية.";
+  }
+  if (error.code === error.POSITION_UNAVAILABLE) {
+    return "الهاتف لم يتمكن من تحديد الموقع. شغّل الموقع الدقيق (Precise location) ثم حاول مرة ثانية.";
+  }
+  if (error.code === error.TIMEOUT) {
+    return "تحديد الموقع أخذ وقتًا طويلًا. اقترب من نافذة أو مكان مفتوح ثم حاول مرة ثانية.";
+  }
+  return "تعذر تحديد موقع الهاتف.";
+}
+
+async function getCurrentPositionWithFallback() {
+  if (!window.isSecureContext) {
+    throw new Error("GPS_REQUIRES_HTTPS");
+  }
+  if (!navigator.geolocation) {
+    throw new Error("GEOLOCATION_UNSUPPORTED");
+  }
+
+  try {
+    if (navigator.permissions?.query) {
+      const permission = await navigator.permissions.query({ name: "geolocation" });
+      if (permission.state === "denied") {
+        throw new Error("GEOLOCATION_PERMISSION_DENIED");
+      }
+    }
+  } catch (permissionError) {
+    if (permissionError instanceof Error && permissionError.message === "GEOLOCATION_PERMISSION_DENIED") {
+      throw permissionError;
+    }
+    // Some mobile browsers do not fully implement the Permissions API.
+  }
+
+  const read = (options: PositionOptions) =>
+    new Promise<GeolocationPosition>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, options);
+    });
+
+  // Fast first fix: network/cached position usually succeeds indoors.
+  try {
+    return await read({
+      enableHighAccuracy: false,
+      timeout: 12000,
+      maximumAge: 60000,
+    });
+  } catch (firstError) {
+    if (
+      typeof firstError === "object" &&
+      firstError !== null &&
+      "code" in firstError &&
+      Number((firstError as GeolocationPositionError).code) === 1
+    ) {
+      throw firstError;
+    }
+  }
+
+  // Second attempt asks for a fresh, precise GPS fix.
+  return read({
+    enableHighAccuracy: true,
+    timeout: 35000,
+    maximumAge: 0,
+  });
+}
 function parseCoordinate(value: number | string | null | undefined, axis: "lat" | "lng") {
   if (value === null || value === undefined) return null;
   if (typeof value === "string" && value.trim() === "") return null;
@@ -151,6 +217,14 @@ export default function DriverTrackingPage() {
   }, []);
 
   useEffect(() => {
+    if (!token) return;
+    const timer = window.setInterval(() => {
+      void bootstrap(token).catch(() => undefined);
+    }, 30000);
+    return () => window.clearInterval(timer);
+  }, [bootstrap, token]);
+
+  useEffect(() => {
     const onVisibility = () => {
       if (tracking && document.visibilityState === "visible") {
         void requestWakeLock();
@@ -221,13 +295,7 @@ export default function DriverTrackingPage() {
     setError(null);
     setGpsText("جاري تحديد موقعك...");
     try {
-      const initial = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 20000,
-          maximumAge: 3000,
-        });
-      });
+      const initial = await getCurrentPositionWithFallback();
 
       const { error: startError } = await supabase.rpc("driver_tracking_start_delivery", {
         p_token: token,
@@ -249,16 +317,15 @@ export default function DriverTrackingPage() {
           });
         },
         (geoError) => {
-          setGpsText(
-            geoError.code === geoError.PERMISSION_DENIED
-              ? "تم رفض صلاحية الموقع"
-              : "GPS غير متاح مؤقتًا",
-          );
+          setGpsText(geolocationErrorText(geoError));
+          if (geoError.code === geoError.PERMISSION_DENIED) {
+            setError(geolocationErrorText(geoError));
+          }
         },
         {
           enableHighAccuracy: true,
-          timeout: 20000,
-          maximumAge: 3000,
+          timeout: 30000,
+          maximumAge: 10000,
         },
       );
 
@@ -276,10 +343,52 @@ export default function DriverTrackingPage() {
         setError("الطلب لم يصبح جاهزًا بعد. اطلب من المول تحويله إلى قيد التحضير.");
       } else if (raw.includes("PAYMENT_NOT_CONFIRMED")) {
         setError("الدفع الإلكتروني لم يتم تأكيده بعد. تواصل مع المول قبل الخروج.");
+      } else if (raw.includes("GEOLOCATION_PERMISSION_DENIED")) {
+        setError("صلاحية الموقع مرفوضة. من إعدادات المتصفح اسمح للموقع باستخدام الموقع الدقيق ثم أعد المحاولة.");
+        setGpsText("صلاحية GPS مرفوضة");
+      } else if (raw.includes("GPS_REQUIRES_HTTPS")) {
+        setError("GPS في المتصفح يحتاج رابط HTTPS آمن.");
+        setGpsText("GPS يحتاج HTTPS");
+      } else if (raw.includes("GEOLOCATION_UNSUPPORTED")) {
+        setError("هذا المتصفح لا يدعم تحديد الموقع. افتح الرابط في Chrome أو Safari.");
+        setGpsText("المتصفح لا يدعم GPS");
+      } else if (typeof caught === "object" && caught !== null && "code" in caught) {
+        const message = geolocationErrorText(caught as GeolocationPositionError);
+        setError(message);
+        setGpsText(message);
       } else if (raw.includes("permission") || raw.includes("Permission")) {
         setError("اسمح للموقع باستخدام GPS ثم حاول مرة ثانية");
       } else {
-        setError("تعذر بدء التوصيل. تأكد من GPS والإنترنت وحاول مرة ثانية.");
+        setError(`تعذر بدء التوصيل: ${raw || "خطأ غير معروف"}`);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function testGps() {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    setGpsText("جاري اختبار GPS...");
+    try {
+      const position = await getCurrentPositionWithFallback();
+      setLastPoint({ lat: position.coords.latitude, lng: position.coords.longitude });
+      setGpsText(`GPS جاهز • دقة ±${Math.round(position.coords.accuracy)}م`);
+    } catch (caught) {
+      if (typeof caught === "object" && caught !== null && "code" in caught) {
+        const message = geolocationErrorText(caught as GeolocationPositionError);
+        setError(message);
+        setGpsText(message);
+      } else {
+        const raw = caught instanceof Error ? caught.message : String(caught);
+        if (raw.includes("GEOLOCATION_PERMISSION_DENIED")) {
+          setError("صلاحية الموقع مرفوضة. اسمح للموقع باستخدام الموقع الدقيق من إعدادات المتصفح.");
+          setGpsText("صلاحية GPS مرفوضة");
+        } else {
+          setError("تعذر اختبار GPS على هذا الجهاز.");
+          setGpsText("GPS غير جاهز");
+        }
       }
     } finally {
       setBusy(false);
@@ -395,9 +504,14 @@ export default function DriverTrackingPage() {
               aria-disabled={!customerPhone}
               className={`rounded-xl px-3 py-3 text-center text-sm font-bold ${customerPhone ? "bg-gray-950 text-white" : "pointer-events-none bg-gray-100 text-gray-400"}`}
             >
-              اتصال بالزبون
+              {customerPhone ? "اتصال بالزبون" : "رقم الزبون غير مسجل"}
             </a>
           </div>
+          {!customerPhone && (
+            <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium leading-5 text-amber-800">
+              لا يوجد رقم هاتف محفوظ لهذا الزبون. اطلب من الزبون حفظ اسمه ورقمه في التطبيق ثم حدّث هذه الصفحة.
+            </div>
+          )}
         </section>
 
         <section className="rounded-3xl border bg-white p-5 shadow-sm">
@@ -406,6 +520,16 @@ export default function DriverTrackingPage() {
           {lastSentAt && <div className="mt-1 text-xs text-gray-400">آخر إرسال {lastSentAt.toLocaleTimeString("ar-JO")}</div>}
           {lastPoint && (
             <div className="mt-2 text-xs text-gray-400">{lastPoint.lat.toFixed(5)}, {lastPoint.lng.toFixed(5)}</div>
+          )}
+          {!tracking && !delivered && !cancelled && (
+            <button
+              type="button"
+              onClick={() => void testGps()}
+              disabled={busy}
+              className="mt-3 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-bold text-gray-700 disabled:opacity-50"
+            >
+              {busy ? "جاري الفحص..." : "اختبار GPS على هذا الهاتف"}
+            </button>
           )}
           {!delivered && !cancelled && (
             <div className="mt-4 rounded-2xl bg-red-50 p-3 text-xs leading-6 text-red-800">

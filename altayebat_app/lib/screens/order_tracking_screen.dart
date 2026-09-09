@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/supabase_service.dart';
+import 'order_receipt_screen.dart';
 
 class OrderTrackingScreen extends StatefulWidget {
   final String orderId;
@@ -419,6 +420,24 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                     _LiveDeliveryCard(
                       location: _driverLocation,
                       addressSnapshot: _order['address_snapshot'],
+                    ),
+                  ],
+                  if (_order.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  OrderReceiptScreen(orderId: widget.orderId),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.receipt_long_outlined),
+                        label: const Text('عرض الإيصال'),
+                      ),
                     ),
                   ],
                   if (_error != null) ...[

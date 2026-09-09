@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/supabase_service.dart';
 
@@ -18,9 +19,51 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
   final _phoneController = TextEditingController();
 
   bool _saving = false;
+  bool _loadingProfile = true;
+  bool _profileComplete = false;
   String? _error;
 
-  bool get _alreadySignedIn => SupabaseService.isSignedIn;
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final client = Supabase.instance.client;
+      final user = client.auth.currentUser;
+      if (user == null) {
+        if (mounted) setState(() => _loadingProfile = false);
+        return;
+      }
+
+      final row = await client
+          .from('customers')
+          .select('name, phone')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      final name = (row?['name'] as String?)?.trim() ?? '';
+      final phone = (row?['phone'] as String?)?.trim() ?? '';
+      final complete =
+          name.length >= 2 && RegExp(r'^\+9627\d{8}$').hasMatch(phone);
+
+      if (!mounted) return;
+      _nameController.text = name;
+      _phoneController.text = phone;
+      setState(() {
+        _profileComplete = complete;
+        _loadingProfile = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _profileComplete = false;
+        _loadingProfile = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -38,19 +81,24 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
     });
 
     try {
+      final normalizedPhone = _normalizeJordanPhone(_phoneController.text);
       await SupabaseService.signInAndSaveProfile(
         name: _nameController.text.trim(),
-        phone: _normalizeJordanPhone(_phoneController.text),
+        phone: normalizedPhone,
       );
 
       if (!mounted) return;
+      _phoneController.text = normalizedPhone;
 
       if (widget.returnAfterSuccess) {
         Navigator.of(context).pop(true);
         return;
       }
 
-      setState(() => _saving = false);
+      setState(() {
+        _saving = false;
+        _profileComplete = true;
+      });
 
       ScaffoldMessenger.of(
         context,
@@ -95,7 +143,14 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_alreadySignedIn) {
+    if (_loadingProfile) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('بيانات الحساب')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_profileComplete) {
       return Scaffold(
         appBar: AppBar(title: const Text('بيانات الحساب')),
         body: Center(
@@ -109,15 +164,18 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
                   child: Icon(Icons.person, size: 34),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'بياناتك محفوظة',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                Text(
+                  _nameController.text,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'تقدر تكمل التسوق والطلب مباشرة.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFF6B7280)),
+                const SizedBox(height: 6),
+                Text(
+                  _phoneController.text,
+                  textDirection: TextDirection.ltr,
+                  style: const TextStyle(color: Color(0xFF6B7280)),
                 ),
                 const SizedBox(height: 20),
                 if (widget.returnAfterSuccess)
@@ -126,6 +184,15 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
                     child: FilledButton(
                       onPressed: () => Navigator.of(context).pop(true),
                       child: const Text('متابعة لإتمام الطلب'),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => setState(() => _profileComplete = false),
+                      icon: const Icon(Icons.edit_outlined),
+                      label: const Text('تعديل الاسم أو رقم الموبايل'),
                     ),
                   ),
               ],
@@ -136,7 +203,7 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('تسجيل بياناتك')),
+      appBar: AppBar(title: const Text('بيانات الحساب')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),

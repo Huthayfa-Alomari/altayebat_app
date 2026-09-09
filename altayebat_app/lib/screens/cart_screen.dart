@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../providers/cart_provider.dart';
 import '../services/cart_bridge.dart';
@@ -140,8 +141,32 @@ class CartScreen extends StatelessWidget {
     );
   }
 
+  Future<bool> _hasCompleteCustomerProfile() async {
+    if (!SupabaseService.isSignedIn) return false;
+
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return false;
+
+    try {
+      final row = await Supabase.instance.client
+          .from('customers')
+          .select('name, phone')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      final name = (row?['name'] as String?)?.trim() ?? '';
+      final phone = (row?['phone'] as String?)?.trim() ?? '';
+      return name.length >= 2 && RegExp(r'^\+9627\d{8}$').hasMatch(phone);
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _checkout(BuildContext context, dynamic cart) async {
-    if (!SupabaseService.isSignedIn) {
+    final hasProfile = await _hasCompleteCustomerProfile();
+    if (!context.mounted) return;
+
+    if (!hasProfile) {
       final authenticated = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
           builder: (_) => const CustomerAuthScreen(returnAfterSuccess: true),
@@ -149,6 +174,17 @@ class CartScreen extends StatelessWidget {
       );
 
       if (authenticated != true || !context.mounted) return;
+
+      final profileNowComplete = await _hasCompleteCustomerProfile();
+      if (!context.mounted) return;
+      if (!profileNowComplete) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('احفظ اسمك ورقم الموبايل قبل إتمام الطلب.'),
+          ),
+        );
+        return;
+      }
     }
 
     try {
