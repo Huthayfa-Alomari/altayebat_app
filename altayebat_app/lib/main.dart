@@ -39,7 +39,7 @@ class AltayebatApp extends StatelessWidget {
       create: (_) => CartProvider(),
       child: MaterialApp(
         navigatorObservers: [DriverDeepLinkNavigatorObserver.instance],
-        title: 'Ø£Ø³ÙˆØ§Ù‚ Ø§Ù„Ø·ÙŠØ¨Ø§Øª',
+        title: '????? ???????',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         locale: const Locale('ar'),
@@ -79,13 +79,13 @@ class _BootstrapErrorScreen extends StatelessWidget {
                 ),
                 SizedBox(height: 16),
                 Text(
-                  'ØªØ¹Ø°Ø± ØªØ´ØºÙŠÙ„ Ø§Ù„ØªØ·Ø¨ÙŠÙ‚',
+                  'تعذر تشغيل التطبيق',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'ØªØ£ÙƒØ¯ Ù…Ù† Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª Ø§Ù„Ø§ØªØµØ§Ù„ ÙˆSupabase Ø«Ù… Ø£ØºÙ„Ù‚ Ø§Ù„ØªØ·Ø¨ÙŠÙ‚ ÙˆØ§ÙØªØ­Ù‡ Ù…Ø±Ø© Ø«Ø§Ù†ÙŠØ©.',
+                  'تأكد من إعدادات الاتصال وSupabase ثم أغلق التطبيق وافتحه مرة ثانية.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13,
