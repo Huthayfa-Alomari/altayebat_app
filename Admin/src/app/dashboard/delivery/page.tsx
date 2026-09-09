@@ -281,7 +281,7 @@ export default function DeliveryManagementPage() {
       const token = (data as Record<string, unknown> | null)?.token?.toString();
       if (!token) throw new Error("تعذر إنشاء رابط المندوب");
 
-      const link = `altayebat://driver?token=${encodeURIComponent(token)}`;
+      const link = `https://wfvuojrhxewogdnynytf.supabase.co/functions/v1/driver-open?token=${encodeURIComponent(token)}`;
       setGeneratedLinks((current) => ({ ...current, [order.id]: link }));
       setSuccess(`تم تجهيز رابط المندوب للطلب #${shortId(order.id)}`);
       await load();
