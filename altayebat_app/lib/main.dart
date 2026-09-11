@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'providers/cart_provider.dart';
 import 'screens/home_screen.dart';
@@ -13,6 +14,17 @@ Future<void> main() async {
   Object? bootstrapError;
   try {
     await SupabaseService.initialize();
+
+    // Catalogue RLS is available to authenticated users. Create an anonymous
+    // session silently so first-time customers can browse immediately without
+    // seeing a registration/profile gate. Name and phone are collected only
+    // when they continue to checkout.
+    if (!SupabaseService.isSignedIn) {
+      final response = await Supabase.instance.client.auth.signInAnonymously();
+      if (response.user == null) {
+        throw StateError('تعذر بدء جلسة التسوق');
+      }
+    }
   } catch (error, stackTrace) {
     bootstrapError = error;
     FlutterError.reportError(
@@ -48,9 +60,6 @@ class AltayebatApp extends StatelessWidget {
             child: child ?? const SizedBox.shrink(),
           );
         },
-        // Browsing the catalogue does not require an account. We only create
-        // the anonymous Supabase session and collect name/phone when the
-        // customer actually continues to checkout.
         home: bootstrapError != null
             ? const _BootstrapErrorScreen()
             : const HomeScreen(),
