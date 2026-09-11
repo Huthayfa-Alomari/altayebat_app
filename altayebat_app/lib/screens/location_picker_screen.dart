@@ -106,8 +106,11 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final usingGps = _source == 'gps';
+
     return Scaffold(
-      appBar: AppBar(title: const Text('حدد موقع التوصيل')),
+      appBar: AppBar(title: const Text('موقع التوصيل')),
       body: Stack(
         children: [
           FlutterMap(
@@ -135,12 +138,12 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                 markers: [
                   Marker(
                     point: _selected,
-                    width: 56,
-                    height: 56,
-                    child: const Icon(
+                    width: 60,
+                    height: 60,
+                    child: Icon(
                       Icons.location_pin,
-                      size: 52,
-                      color: Color(0xFFE31E24),
+                      size: 56,
+                      color: theme.colorScheme.primary,
                     ),
                   ),
                 ],
@@ -153,38 +156,64 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
             ],
           ),
           PositionedDirectional(
-            top: 14,
-            start: 14,
-            end: 14,
+            top: 12,
+            start: 12,
+            end: 12,
             child: Material(
-              elevation: 2,
-              borderRadius: BorderRadius.circular(14),
+              elevation: 3,
+              borderRadius: BorderRadius.circular(16),
               child: Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(Icons.touch_app_outlined, size: 20),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'حرّك الخريطة واضغط على موقع البيت، أو استخدم موقعك الحالي.',
-                        style: TextStyle(fontSize: 13),
+                    const Text(
+                      'حدد مكان البيت بدقة',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
-                    IconButton(
-                      tooltip: 'موقعي الحالي',
-                      onPressed: _locating ? null : _useMyLocation,
-                      icon: _locating
-                          ? const SizedBox(
-                              width: 21,
-                              height: 21,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.my_location),
+                    const SizedBox(height: 4),
+                    Text(
+                      usingGps
+                          ? 'حددنا موقعك الحالي. حرّك العلامة بالضغط على الخريطة إذا احتجت.'
+                          : 'اضغط على مكان البيت في الخريطة، أو استخدم موقعك الحالي.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.4,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 46,
+                      child: OutlinedButton.icon(
+                        onPressed: _locating ? null : _useMyLocation,
+                        icon: _locating
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Icon(
+                                usingGps
+                                    ? Icons.gps_fixed_rounded
+                                    : Icons.my_location_rounded,
+                              ),
+                        label: Text(
+                          _locating
+                              ? 'جاري تحديد موقعك...'
+                              : usingGps
+                              ? 'تحديث موقعي الحالي'
+                              : 'استخدم موقعي الحالي',
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -193,9 +222,9 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
           ),
           if (_error != null)
             PositionedDirectional(
-              start: 14,
-              end: 14,
-              bottom: 92,
+              start: 12,
+              end: 12,
+              bottom: 14,
               child: Material(
                 color: Colors.transparent,
                 child: Container(
@@ -204,12 +233,25 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                     color: const Color(0xFFFFF1F2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(
-                    _error!,
-                    style: const TextStyle(
-                      color: Color(0xFF9F1239),
-                      fontSize: 12,
-                    ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        color: Color(0xFF9F1239),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _error!,
+                          style: const TextStyle(
+                            color: Color(0xFF9F1239),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -218,12 +260,22 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
       ),
       bottomNavigationBar: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-          child: FilledButton.icon(
-            onPressed: _confirm,
-            icon: const Icon(Icons.check_circle_outline),
-            label: const Text('اعتماد هذا الموقع'),
+        child: Material(
+          elevation: 12,
+          color: theme.colorScheme.surface,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+            child: SizedBox(
+              height: 56,
+              child: FilledButton.icon(
+                onPressed: _confirm,
+                icon: const Icon(Icons.check_rounded),
+                label: const Text(
+                  'اعتماد هذا الموقع',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                ),
+              ),
+            ),
           ),
         ),
       ),
