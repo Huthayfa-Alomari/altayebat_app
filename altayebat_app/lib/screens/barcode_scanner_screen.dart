@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
-import '../services/cart_bridge.dart';
 import '../services/supabase_service.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
@@ -89,17 +88,16 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     if (data == null) return;
 
     final product = Product.fromMap(data);
-    final dynamic cart = context.read<CartProvider>();
-    final added = CartBridge.addProduct(cart, product);
+    final cart = context.read<CartProvider>();
+    final added = cart.add(product);
 
     if (!added) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'تعذر إضافة المنتج للسلة. جرّب إضافته من صفحة المنتجات.',
-          ),
-        ),
-      );
+      final message = cart.canAdd(product)
+          ? 'تعذر إضافة المنتج للسلة. حاول مرة ثانية.'
+          : 'وصلت للكمية المتوفرة من هذا المنتج.';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
       return;
     }
 
@@ -277,10 +275,16 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           ],
         ),
         const SizedBox(height: 14),
-        FilledButton.icon(
-          onPressed: _addToCart,
-          icon: const Icon(Icons.add_shopping_cart),
-          label: const Text('أضف للسلة'),
+        SizedBox(
+          height: 52,
+          child: FilledButton.icon(
+            onPressed: _addToCart,
+            icon: const Icon(Icons.add_shopping_cart_rounded),
+            label: const Text(
+              'أضف للسلة',
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
+          ),
         ),
         const SizedBox(height: 8),
         TextButton.icon(
