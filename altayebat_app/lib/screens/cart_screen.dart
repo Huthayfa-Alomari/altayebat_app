@@ -255,6 +255,7 @@ class _CartLineCard extends StatelessWidget {
   final VoidCallback onRemove;
 
   const _CartLineCard({
+    super.key,
     required this.line,
     required this.onIncrement,
     required this.onDecrement,
@@ -263,77 +264,231 @@ class _CartLineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final canIncrease = line.stockQty == null || line.quantity < line.stockQty!;
+    final theme = Theme.of(context);
+    final stockQty = line.stockQty;
+    final outOfStock = stockQty != null && stockQty <= 0;
+    final canIncrement =
+        !outOfStock && (stockQty == null || line.quantity < stockQty);
+    final lineTotal = line.subtotal;
 
-    return Card(
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(10),
+    return Semantics(
+      container: true,
+      label:
+          '${line.name}، الكمية ${line.quantity}، المجموع ${lineTotal.toStringAsFixed(2)} دينار',
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: theme.colorScheme.outlineVariant),
+        ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _CartImage(url: line.imageUrl),
+            _CartProductImage(imageUrl: line.imageUrl),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          line.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            height: 1.25,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      IconButton(
+                        tooltip: 'حذف المنتج من السلة',
+                        onPressed: onRemove,
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(
+                          Icons.delete_outline_rounded,
+                          color: theme.colorScheme.error,
+                          size: 21,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
                   Text(
-                    line.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 14,
+                    '${line.price.toStringAsFixed(2)} د.أ للقطعة',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 5),
-                  if (line.price > 0)
+                  if (outOfStock) ...[
+                    const SizedBox(height: 3),
                     Text(
-                      '${line.price.toStringAsFixed(2)} د.أ',
-                      style: const TextStyle(
-                        color: Color(0xFF6B7280),
-                        fontSize: 12,
+                      'المنتج غير متوفر حاليًا',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.error,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
+                  ] else if (stockQty != null &&
+                      stockQty > 0 &&
+                      stockQty <= 3) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      'متبقي $stockQty فقط',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      _QtyButton(icon: Icons.remove, onTap: onDecrement),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                      Expanded(
                         child: Text(
-                          '${line.quantity}',
-                          style: const TextStyle(fontWeight: FontWeight.w900),
+                          '${lineTotal.toStringAsFixed(2)} د.أ',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: theme.colorScheme.primary,
+                          ),
                         ),
                       ),
-                      _QtyButton(
-                        icon: Icons.add,
-                        onTap: canIncrease ? onIncrement : null,
+                      _QuantityControl(
+                        quantity: line.quantity,
+                        canIncrement: canIncrement,
+                        onIncrement: onIncrement,
+                        onDecrement: onDecrement,
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                IconButton(
-                  tooltip: 'حذف',
-                  onPressed: onRemove,
-                  icon: const Icon(Icons.close, size: 20),
-                ),
-                const SizedBox(height: 12),
-                if (line.price > 0)
-                  Text(
-                    '${line.subtotal.toStringAsFixed(2)} د.أ',
-                    style: const TextStyle(fontWeight: FontWeight.w900),
-                  ),
-              ],
-            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CartProductImage extends StatelessWidget {
+  final String? imageUrl;
+
+  const _CartProductImage({this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasImage = imageUrl != null && imageUrl!.trim().isNotEmpty;
+
+    return Container(
+      width: 82,
+      height: 82,
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: hasImage
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(9),
+              child: Image.network(
+                imageUrl!,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.medium,
+                errorBuilder: (_, _, _) => Icon(
+                  Icons.image_not_supported_outlined,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            )
+          : Icon(
+              Icons.shopping_basket_outlined,
+              color: theme.colorScheme.primary,
+              size: 30,
+            ),
+    );
+  }
+}
+
+class _QuantityControl extends StatelessWidget {
+  final int quantity;
+  final bool canIncrement;
+  final VoidCallback onIncrement;
+  final VoidCallback onDecrement;
+
+  const _QuantityControl({
+    required this.quantity,
+    required this.canIncrement,
+    required this.onIncrement,
+    required this.onDecrement,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      height: 44,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 44,
+            height: 44,
+            child: IconButton(
+              tooltip: quantity <= 1 ? 'إزالة من السلة' : 'تقليل الكمية',
+              padding: EdgeInsets.zero,
+              onPressed: onDecrement,
+              icon: Icon(
+                quantity <= 1
+                    ? Icons.delete_outline_rounded
+                    : Icons.remove_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ),
+          Container(
+            constraints: const BoxConstraints(minWidth: 34),
+            alignment: Alignment.center,
+            child: Text(
+              '$quantity',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 44,
+            height: 44,
+            child: IconButton(
+              tooltip: canIncrement ? 'زيادة الكمية' : 'وصلت للكمية المتوفرة',
+              padding: EdgeInsets.zero,
+              onPressed: canIncrement ? onIncrement : null,
+              icon: Icon(
+                Icons.add_rounded,
+                color: canIncrement ? Colors.white : Colors.white54,
+                size: 21,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
