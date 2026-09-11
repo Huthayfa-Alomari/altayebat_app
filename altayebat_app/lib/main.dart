@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import 'providers/cart_provider.dart';
 import 'screens/home_screen.dart';
-import 'screens/welcome_screen.dart';
+import 'services/driver_deep_link_navigator_observer.dart';
 import 'services/supabase_service.dart';
 import 'theme/app_theme.dart';
-
-import 'services/driver_deep_link_navigator_observer.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,7 +38,7 @@ class AltayebatApp extends StatelessWidget {
       create: (_) => CartProvider(),
       child: MaterialApp(
         navigatorObservers: [DriverDeepLinkNavigatorObserver.instance],
-        title: '????? ???????',
+        title: 'أسواق الطيبات',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         locale: const Locale('ar'),
@@ -49,11 +48,12 @@ class AltayebatApp extends StatelessWidget {
             child: child ?? const SizedBox.shrink(),
           );
         },
+        // Browsing the catalogue does not require an account. We only create
+        // the anonymous Supabase session and collect name/phone when the
+        // customer actually continues to checkout.
         home: bootstrapError != null
             ? const _BootstrapErrorScreen()
-            : SupabaseService.isSignedIn
-            ? const HomeScreen()
-            : const WelcomeScreen(),
+            : const HomeScreen(),
       ),
     );
   }
@@ -85,7 +85,7 @@ class _BootstrapErrorScreen extends StatelessWidget {
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'تأكد من إعدادات الاتصال وSupabase ثم أغلق التطبيق وافتحه مرة ثانية.',
+                  'تأكد من اتصال الإنترنت ثم أغلق التطبيق وافتحه مرة ثانية.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13,
