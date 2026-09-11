@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/cart_item.dart';
 import '../providers/cart_provider.dart';
-import '../services/cart_bridge.dart';
 import '../services/supabase_service.dart';
 import '../widgets/store_open_banner.dart';
 import 'barcode_scanner_screen.dart';
-import 'delivery_checkout_screen.dart';
 import 'customer_auth_screen.dart';
+import 'delivery_checkout_screen.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
@@ -16,16 +16,13 @@ class CartScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final CartProvider typedCart = context.watch<CartProvider>();
-    final dynamic cart = typedCart;
-    final lines = CartBridge.snapshot(cart);
-    final totalItems = CartBridge.totalItems(cart);
-    final subtotal = CartBridge.subtotal(cart);
+    final cart = context.watch<CartProvider>();
+    final lines = cart.items;
+    final totalItems = cart.itemCount;
+    final subtotal = cart.total;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('السلة'),
-      ),
+      appBar: AppBar(title: const Text('السلة')),
       body: Column(
         children: [
           const StoreOpenBanner(),
@@ -41,17 +38,14 @@ class CartScreen extends StatelessWidget {
                 : ListView.separated(
                     padding: const EdgeInsets.fromLTRB(16, 10, 16, 176),
                     itemCount: lines.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: 10),
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
-                      final line = lines[index];
+                      final item = lines[index];
                       return _CartLineCard(
-                        line: line,
-                        onIncrement: () =>
-                            _changeQuantity(context, cart, line, true),
-                        onDecrement: () =>
-                            _changeQuantity(context, cart, line, false),
-                        onRemove: () => _remove(context, cart, line),
+                        item: item,
+                        onIncrement: () => _increment(context, cart, item),
+                        onDecrement: () => cart.decrement(item.product),
+                        onRemove: () => cart.remove(item.product.id),
                       );
                     },
                   ),
@@ -161,7 +155,7 @@ class CartScreen extends StatelessWidget {
     }
   }
 
-  Future<void> _checkout(BuildContext context, dynamic cart) async {
+  Future<void> _checkout(BuildContext context, CartProvider cart) async {
     final hasProfile = await _hasCompleteCustomerProfile();
     if (!context.mounted) return;
 
@@ -187,12 +181,24 @@ class CartScreen extends StatelessWidget {
     }
 
     try {
-      final items = CartBridge.toRpcItems(cart);
+      final items = cart.items
+          .map(
+            (item) => <String, dynamic>{
+              'product_id': item.product.id,
+              'quantity': item.quantity,
+            },
+          )
+          .toList(growable: false);
+
+      if (items.isEmpty) {
+        throw StateError('السلة فارغة');
+      }
+
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => DeliveryCheckoutScreen(
             items: items,
-            onOrderCreated: () => CartBridge.clear(cart),
+            onOrderCreated: cart.clear,
           ),
         ),
       );
@@ -211,41 +217,28 @@ class CartScreen extends StatelessWidget {
     }
   }
 
-  void _changeQuantity(
+  void _increment(
     BuildContext context,
-    dynamic cart,
-    CartBridgeLine line,
-    bool increase,
+    CartProvider cart,
+    CartItem item,
   ) {
-    final changed = increase
-        ? CartBridge.increment(cart, line)
-        : CartBridge.decrement(cart, line);
+    final added = cart.add(item.product);
+    if (added) return;
 
-    if (!changed) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تعذر تعديل الكمية')));
-    }
-  }
-
-  void _remove(BuildContext context, dynamic cart, CartBridgeLine line) {
-    final removed = CartBridge.remove(cart, line);
-    if (!removed) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تعذر حذف المنتج من السلة')));
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('وصلت للكمية المتوفرة من هذا المنتج')),
+    );
   }
 }
 
 class _CartLineCard extends StatelessWidget {
-  final CartBridgeLine line;
+  final CartItem item;
   final VoidCallback onIncrement;
   final VoidCallback onDecrement;
   final VoidCallback onRemove;
 
   const _CartLineCard({
-    required this.line,
+    required this.item,
     required this.onIncrement,
     required this.onDecrement,
     required this.onRemove,
@@ -254,16 +247,16 @@ class _CartLineCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final stockQty = line.stockQty;
-    final outOfStock = stockQty != null && stockQty <= 0;
-    final canIncrement =
-        !outOfStock && (stockQty == null || line.quantity < stockQty);
-    final lineTotal = line.subtotal;
+    final product = item.product;
+    final stockQty = product.stockQty;
+    final outOfStock = !product.isAvailable || stockQty <= 0;
+    final canIncrement = !outOfStock && item.quantity < stockQty;
+    final lineTotal = item.subtotal;
 
     return Semantics(
       container: true,
       label:
-          '${line.name}، الكمية ${line.quantity}، المجموع ${lineTotal.toStringAsFixed(2)} دينار',
+          '${product.name}، الكمية ${item.quantity}، المجموع ${lineTotal.toStringAsFixed(2)} دينار',
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -274,7 +267,7 @@ class _CartLineCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _CartProductImage(imageUrl: line.imageUrl),
+            _CartProductImage(imageUrl: product.imageUrl),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -285,7 +278,7 @@ class _CartLineCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          line.name,
+                          product.name,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodyLarge?.copyWith(
@@ -309,7 +302,7 @@ class _CartLineCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${line.price.toStringAsFixed(2)} د.أ للقطعة',
+                    '${product.price.toStringAsFixed(2)} د.أ للقطعة',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -323,9 +316,7 @@ class _CartLineCard extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ] else if (stockQty != null &&
-                      stockQty > 0 &&
-                      stockQty <= 3) ...[
+                  ] else if (stockQty <= 3) ...[
                     const SizedBox(height: 4),
                     Text(
                       'متبقي $stockQty فقط',
@@ -350,7 +341,7 @@ class _CartLineCard extends StatelessWidget {
                         ),
                       ),
                       _QuantityControl(
-                        quantity: line.quantity,
+                        quantity: item.quantity,
                         canIncrement: canIncrement,
                         onIncrement: onIncrement,
                         onDecrement: onDecrement,
