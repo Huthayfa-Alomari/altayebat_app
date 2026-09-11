@@ -166,6 +166,65 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
     await _loadQuote(updated);
   }
 
+  Future<void> _showAddressPicker() async {
+    if (_addresses.isEmpty) {
+      await _addAddress();
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'اختر عنوان التوصيل',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: _addresses.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    itemBuilder: (_, index) {
+                      final address = _addresses[index];
+                      final selected = _selectedAddress?.id == address.id;
+                      return _AddressSheetOption(
+                        address: address,
+                        selected: selected,
+                        onTap: () async {
+                          Navigator.of(sheetContext).pop();
+                          await _selectAddress(address);
+                        },
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    Navigator.of(sheetContext).pop();
+                    await _addAddress();
+                  },
+                  icon: const Icon(Icons.add_location_alt_outlined),
+                  label: const Text('إضافة عنوان جديد'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _placeOrder() async {
     final address = _selectedAddress;
     final quote = _quote;
@@ -299,8 +358,28 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
 
   String _money(dynamic value) => '${_number(value).toStringAsFixed(2)} د.أ';
 
+  bool get _hasCliqConfig {
+    final alias = _paymentConfig['cliq_alias']?.toString().trim() ?? '';
+    return alias.isNotEmpty;
+  }
+
+  String _cliqSubtitle() {
+    final alias = _paymentConfig['cliq_alias']?.toString().trim();
+    final name = _paymentConfig['cliq_recipient_name']?.toString().trim();
+
+    if (alias == null || alias.isEmpty) {
+      return 'غير مفعّل حاليًا';
+    }
+
+    return [
+      'Alias: $alias',
+      if (name != null && name.isNotEmpty) name,
+    ].join(' — ');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final open = _openState?['open'] == true;
     final quote = _quote;
     final serviceable = quote?['serviceable'] == true;
@@ -308,6 +387,14 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
     final service = quote?['service'] is Map
         ? Map<String, dynamic>.from(quote!['service'] as Map)
         : const <String, dynamic>{};
+
+    final canPlaceOrder =
+        !_placing &&
+        !_loading &&
+        !_quoting &&
+        open &&
+        serviceable &&
+        meetsMin;
 
     return Scaffold(
       appBar: AppBar(title: const Text('إتمام الطلب')),
@@ -317,101 +404,29 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
               onRefresh: _load,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 140),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 170),
                 children: [
-                  _StoreStateCard(openState: _openState),
-                  const SizedBox(height: 12),
-                  _Section(
-                    title: 'عنوان التوصيل',
-                    trailing: TextButton.icon(
-                      onPressed: _addAddress,
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('عنوان جديد'),
+                  if (!open) ...[
+                    const _StatusBox(
+                      success: false,
+                      text: 'المتجر لا يستقبل طلبات الآن.',
                     ),
-                    child: _addresses.isEmpty
+                    const SizedBox(height: 10),
+                  ],
+                  _Section(
+                    step: '1',
+                    title: 'عنوان التوصيل',
+                    child: _selectedAddress == null
                         ? _EmptyAddress(onAdd: _addAddress)
-                        : Column(
-                            children: [
-                              for (final address in _addresses)
-                                _AddressOption(
-                                  address: address,
-                                  selected: _selectedAddress?.id == address.id,
-                                  onTap: () => _selectAddress(address),
-                                ),
-                              if (_selectedAddress != null)
-                                Align(
-                                  alignment: AlignmentDirectional.centerStart,
-                                  child: TextButton.icon(
-                                    onPressed: _editSelectedAddress,
-                                    icon: const Icon(
-                                      Icons.edit_outlined,
-                                      size: 18,
-                                    ),
-                                    label: const Text('تعديل العنوان المحدد'),
-                                  ),
-                                ),
-                            ],
+                        : _SelectedAddressCard(
+                            address: _selectedAddress!,
+                            onChange: _showAddressPicker,
+                            onEdit: _editSelectedAddress,
                           ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _Section(
-                    title: 'ملخص الطلب',
-                    child: _quoting
-                        ? const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            child: LinearProgressIndicator(),
-                          )
-                        : quote == null
-                        ? const Text(
-                            'اختر عنوانًا حتى نحسب رسوم التوصيل والسعر النهائي.',
-                            style: TextStyle(color: Color(0xFF6B7280)),
-                          )
-                        : Column(
-                            children: [
-                              if (!serviceable)
-                                const _StatusBox(
-                                  success: false,
-                                  text:
-                                      'هذا العنوان خارج مناطق التوصيل الحالية.',
-                                )
-                              else ...[
-                                _SummaryRow(
-                                  label: 'مجموع المنتجات',
-                                  value: _money(quote['subtotal']),
-                                ),
-                                _SummaryRow(
-                                  label: 'رسوم التوصيل',
-                                  value: _money(quote['delivery_fee']),
-                                ),
-                                const Divider(height: 22),
-                                _SummaryRow(
-                                  label: 'الإجمالي',
-                                  value: _money(quote['total']),
-                                  strong: true,
-                                ),
-                                if (!meetsMin) ...[
-                                  const SizedBox(height: 10),
-                                  _StatusBox(
-                                    success: false,
-                                    text:
-                                        'أضف ${_money(quote['amount_to_min_order'])} للوصول للحد الأدنى.',
-                                  ),
-                                ],
-                                if (service['eta_min_minutes'] != null ||
-                                    service['eta_max_minutes'] != null) ...[
-                                  const SizedBox(height: 10),
-                                  _StatusBox(
-                                    success: true,
-                                    text:
-                                        'وقت التوصيل المتوقع: ${service['eta_min_minutes'] ?? '—'}–${service['eta_max_minutes'] ?? '—'} دقيقة',
-                                  ),
-                                ],
-                              ],
-                            ],
-                          ),
-                  ),
-                  const SizedBox(height: 12),
-                  _Section(
+                    step: '2',
                     title: 'طريقة الدفع',
                     child: Column(
                       children: [
@@ -437,7 +452,7 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
                         _PaymentOption(
                           value: 'card',
                           groupValue: _paymentMethod,
-                          icon: Icons.credit_card,
+                          icon: Icons.credit_card_rounded,
                           title: 'بطاقة بنكية',
                           subtitle: _cardPaymentReady
                               ? 'Visa / Mastercard عبر PayTabs'
@@ -449,53 +464,100 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
+                  _OptionalPreferences(
+                    substitutePolicy: _substitutePolicy,
+                    noteController: _note,
+                    onSubstitutePolicyChanged: (value) {
+                      setState(() => _substitutePolicy = value);
+                    },
+                  ),
+                  const SizedBox(height: 10),
                   _Section(
-                    title: 'خيارات إضافية',
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Text(
-                          'إذا منتج خلص من المخزون',
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 7),
-                        SegmentedButton<String>(
-                          segments: const [
-                            ButtonSegment(
-                              value: 'call_me',
-                              label: Text('اتصل بي'),
-                            ),
-                            ButtonSegment(
-                              value: 'remove_item',
-                              label: Text('احذف المنتج'),
-                            ),
-                          ],
-                          selected: {_substitutePolicy},
-                          onSelectionChanged: (selection) {
-                            if (selection.isNotEmpty) {
-                              setState(
-                                () => _substitutePolicy = selection.first,
-                              );
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _note,
-                          minLines: 2,
-                          maxLines: 3,
-                          maxLength: 300,
-                          decoration: const InputDecoration(
-                            labelText: 'ملاحظة على الطلب (اختياري)',
-                            hintText: 'مثال: الاتصال قبل الوصول',
+                    step: '3',
+                    title: 'ملخص الطلب',
+                    child: _quoting
+                        ? const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 14),
+                            child: LinearProgressIndicator(),
+                          )
+                        : quote == null
+                        ? const Text(
+                            'حدد عنوان التوصيل حتى نحسب السعر النهائي.',
+                            style: TextStyle(color: Color(0xFF6B7280)),
+                          )
+                        : Column(
+                            children: [
+                              if (!serviceable)
+                                const _StatusBox(
+                                  success: false,
+                                  text:
+                                      'هذا العنوان خارج مناطق التوصيل الحالية.',
+                                )
+                              else ...[
+                                _SummaryRow(
+                                  label: 'المنتجات',
+                                  value: _money(quote['subtotal']),
+                                ),
+                                _SummaryRow(
+                                  label: 'التوصيل',
+                                  value: _money(quote['delivery_fee']),
+                                ),
+                                const Divider(height: 22),
+                                _SummaryRow(
+                                  label: 'الإجمالي',
+                                  value: _money(quote['total']),
+                                  strong: true,
+                                ),
+                                if (!meetsMin) ...[
+                                  const SizedBox(height: 10),
+                                  _StatusBox(
+                                    success: false,
+                                    text:
+                                        'أضف ${_money(quote['amount_to_min_order'])} للوصول للحد الأدنى.',
+                                  ),
+                                ],
+                                if (service['eta_min_minutes'] != null ||
+                                    service['eta_max_minutes'] != null) ...[
+                                  const SizedBox(height: 10),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.primaryContainer
+                                          .withValues(alpha: 0.35),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.schedule_rounded,
+                                          size: 20,
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'التوصيل المتوقع: ${service['eta_min_minutes'] ?? '—'}–${service['eta_max_minutes'] ?? '—'} دقيقة',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              color: theme.colorScheme.primary,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
                   ),
                   if (_error != null) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     _StatusBox(success: false, text: _error!),
                   ],
                 ],
@@ -503,118 +565,108 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
             ),
       bottomNavigationBar: SafeArea(
         top: false,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                blurRadius: 18,
-                color: Color(0x18000000),
-                offset: Offset(0, -4),
-              ),
-            ],
-          ),
-          child: FilledButton(
-            onPressed:
-                _placing ||
-                    _loading ||
-                    _quoting ||
-                    !open ||
-                    !serviceable ||
-                    !meetsMin
-                ? null
-                : _placeOrder,
-            child: _placing
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : Text(
-                    quote == null
-                        ? 'اختر عنوان التوصيل'
-                        : 'تأكيد الطلب — ${_money(quote['total'])}',
+        child: Material(
+          color: theme.colorScheme.surface,
+          elevation: 14,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: canPlaceOrder ? _placeOrder : null,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(56),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
+                  textStyle: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                child: _placing
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        quote == null
+                            ? 'حدد عنوان التوصيل'
+                            : serviceable && meetsMin
+                            ? 'تأكيد الطلب • ${_money(quote['total'])}'
+                            : 'راجع بيانات الطلب',
+                      ),
+              ),
+            ),
           ),
         ),
       ),
     );
-  }
-
-  bool get _hasCliqConfig {
-    final alias = _paymentConfig['cliq_alias']?.toString().trim() ?? '';
-    return alias.isNotEmpty;
-  }
-
-  String _cliqSubtitle() {
-    final alias = _paymentConfig['cliq_alias']?.toString().trim();
-    final name = _paymentConfig['cliq_recipient_name']?.toString().trim();
-
-    if (alias == null || alias.isEmpty) {
-      return 'غير مفعّل — أضف Alias من لوحة الإدارة';
-    }
-
-    return [
-      'Alias: $alias',
-      if (name != null && name.isNotEmpty) name,
-    ].join(' — ');
   }
 }
 
 class _Section extends StatelessWidget {
+  final String step;
   final String title;
   final Widget child;
-  final Widget? trailing;
 
-  const _Section({required this.title, required this.child, this.trailing});
+  const _Section({
+    required this.step,
+    required this.title,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 16,
-                    ),
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  step,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
-                trailing ?? const SizedBox.shrink(),
-              ],
-            ),
-            const SizedBox(height: 10),
-            child,
-          ],
-        ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
       ),
-    );
-  }
-}
-
-class _StoreStateCard extends StatelessWidget {
-  final Map<String, dynamic>? openState;
-
-  const _StoreStateCard({required this.openState});
-
-  @override
-  Widget build(BuildContext context) {
-    final open = openState?['open'] == true;
-    return _StatusBox(
-      success: open,
-      text: open ? 'المتجر يستقبل الطلبات الآن' : 'المتجر لا يستقبل طلبات الآن',
     );
   }
 }
@@ -626,35 +678,42 @@ class _EmptyAddress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.24),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
         children: [
-          const Icon(
+          Icon(
             Icons.location_on_outlined,
-            size: 40,
-            color: Color(0xFF6B7280),
+            size: 36,
+            color: theme.colorScheme.primary,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 7),
           const Text(
-            'حدد مكان التوصيل مرة واحدة',
-            style: TextStyle(fontWeight: FontWeight.w900),
+            'وين نوصّل طلبك؟',
+            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'بعدها رح نحسب الرسوم ووقت التوصيل تلقائيًا.',
+          const SizedBox(height: 3),
+          Text(
+            'أضف موقعك مرة واحدة، وبعدها نحسب التوصيل تلقائيًا.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Color(0xFF6B7280), fontSize: 12),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: onAdd,
-            icon: const Icon(Icons.add_location_alt_outlined),
-            label: const Text('إضافة عنوان'),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add_location_alt_outlined),
+              label: const Text('إضافة عنوان التوصيل'),
+            ),
           ),
         ],
       ),
@@ -662,51 +721,38 @@ class _EmptyAddress extends StatelessWidget {
   }
 }
 
-class _AddressOption extends StatelessWidget {
+class _SelectedAddressCard extends StatelessWidget {
   final CustomerAddress address;
-  final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback onChange;
+  final VoidCallback onEdit;
 
-  const _AddressOption({
+  const _SelectedAddressCard({
     required this.address,
-    required this.selected,
-    required this.onTap,
+    required this.onChange,
+    required this.onEdit,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: onTap,
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.22),
         borderRadius: BorderRadius.circular(14),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: selected
-                  ? Theme.of(context).colorScheme.primary
-                  : const Color(0xFFE5E7EB),
-              width: selected ? 2 : 1,
-            ),
-            color: selected
-                ? Theme.of(
-                    context,
-                  ).colorScheme.primaryContainer.withValues(alpha: 0.28)
-                : Colors.white,
-          ),
-          child: Row(
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(
-                selected
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_unchecked,
-                color: selected
-                    ? Theme.of(context).colorScheme.primary
-                    : const Color(0xFF9CA3AF),
+                Icons.location_on_rounded,
+                color: theme.colorScheme.primary,
               ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -718,22 +764,103 @@ class _AddressOption extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       address.compactAddress,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF6B7280),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
               ),
               if (address.hasCoordinates)
-                const Icon(
-                  Icons.location_on,
+                Icon(
+                  Icons.check_circle_rounded,
                   size: 20,
-                  color: Color(0xFF16A34A),
+                  color: theme.colorScheme.primary,
                 ),
             ],
           ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: onChange,
+                  child: const Text('تغيير العنوان'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.outlined(
+                tooltip: 'تعديل العنوان',
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AddressSheetOption extends StatelessWidget {
+  final CustomerAddress address;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _AddressSheetOption({
+    required this.address,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected
+                ? theme.colorScheme.primary
+                : theme.colorScheme.outlineVariant,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              selected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
+              color: selected
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    address.title,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    address.compactAddress,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -761,26 +888,48 @@ class _PaymentOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final selected = value == groupValue;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: InkWell(
         onTap: enabled ? () => onChanged(value) : null,
         borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.all(11),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
+            color: selected
+                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.28)
+                : theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: selected
-                  ? Theme.of(context).colorScheme.primary
-                  : const Color(0xFFE5E7EB),
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outlineVariant,
               width: selected ? 2 : 1,
             ),
           ),
           child: Row(
             children: [
-              Icon(icon, color: enabled ? null : const Color(0xFFB6B8BC)),
+              Container(
+                width: 42,
+                height: 42,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: enabled
+                      ? theme.colorScheme.primaryContainer
+                      : theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  color: enabled
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -789,18 +938,17 @@ class _PaymentOption extends StatelessWidget {
                     Text(
                       title,
                       style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: enabled ? null : const Color(0xFF9CA3AF),
+                        fontWeight: FontWeight.w900,
+                        color: enabled
+                            ? null
+                            : theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: enabled
-                            ? const Color(0xFF6B7280)
-                            : const Color(0xFF9CA3AF),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -811,13 +959,95 @@ class _PaymentOption extends StatelessWidget {
                     ? Icons.radio_button_checked
                     : Icons.radio_button_unchecked,
                 color: !enabled
-                    ? const Color(0xFFD1D5DB)
+                    ? theme.colorScheme.outline
                     : selected
-                    ? Theme.of(context).colorScheme.primary
-                    : const Color(0xFF9CA3AF),
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurfaceVariant,
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OptionalPreferences extends StatelessWidget {
+  final String substitutePolicy;
+  final TextEditingController noteController;
+  final ValueChanged<String> onSubstitutePolicyChanged;
+
+  const _OptionalPreferences({
+    required this.substitutePolicy,
+    required this.noteController,
+    required this.onSubstitutePolicyChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Theme(
+        data: theme.copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+          childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          leading: const Icon(Icons.tune_rounded),
+          title: const Text(
+            'ملاحظات وخيارات إضافية',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
+          subtitle: const Text('اختياري'),
+          children: [
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                'إذا منتج خلص من المخزون',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(
+                    value: 'call_me',
+                    label: Text('اتصل بي'),
+                  ),
+                  ButtonSegment(
+                    value: 'remove_item',
+                    label: Text('احذف المنتج'),
+                  ),
+                ],
+                selected: {substitutePolicy},
+                onSelectionChanged: (selection) {
+                  if (selection.isNotEmpty) {
+                    onSubstitutePolicyChanged(selection.first);
+                  }
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: noteController,
+              minLines: 2,
+              maxLines: 3,
+              maxLength: 300,
+              decoration: const InputDecoration(
+                labelText: 'ملاحظة على الطلب',
+                hintText: 'مثال: الاتصال قبل الوصول',
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -837,10 +1067,13 @@ class _SummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final style = TextStyle(
       fontWeight: strong ? FontWeight.w900 : FontWeight.w500,
-      fontSize: strong ? 18 : 14,
+      fontSize: strong ? 20 : 14,
+      color: strong ? theme.colorScheme.primary : null,
     );
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
