@@ -5,4 +5,10 @@
 /_phase3_backup_*/
 /_phase3_hotfix_backup_*/
 
+# Local UX iteration backups/scripts. Keep these on the developer machine only.
+/_*_backup_*/
+/altayebat_*_ux_v*.py
+/altayebat_usability_v*.py
+/catalog_*.jpg
+
 altayebat_app/android/build/
