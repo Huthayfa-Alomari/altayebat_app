@@ -63,7 +63,8 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _errorMessage = 'تعذر تحميل المنتجات. تأكد من اتصال الإنترنت وحاول مرة ثانية.';
+        _errorMessage =
+            'تعذر تحميل المنتجات. تأكد من اتصال الإنترنت وحاول مرة ثانية.';
       });
     }
   }
@@ -251,53 +252,290 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _categoryChips() {
-    return SizedBox(
-      height: 44,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        children: [
-          _chip(
-            'الكل',
-            _selectedCategoryId == null,
-            () => _loadProducts(categoryId: null),
-          ),
-          ..._categories.map(
-            (c) => _chip(
-              c.name,
-              _selectedCategoryId == c.id,
-              () => _loadProducts(categoryId: c.id),
+  List<ProductCategory> _orderedCategories() {
+    const order = <String>[
+      'الأرز',
+      'الزيوت',
+      'معكرونة وشعيرية',
+      'الألبان والأجبان',
+      'المجمدات',
+      'المشروبات',
+      'مرقة وشوربات',
+      'سكر ومستلزمات الخَبز',
+      'معلبات وصلصات',
+      'طحينية وحلاوة ومربى',
+      'اللحوم والدواجن',
+      'غسيل الملابس',
+      'تنظيف المنزل والجلي',
+      'مناديل وورقيات',
+      'العناية الشخصية',
+    ];
+
+    final priority = <String, int>{
+      for (var i = 0; i < order.length; i++) order[i]: i,
+    };
+
+    final result = List<ProductCategory>.from(_categories);
+    result.sort((a, b) {
+      final aRank = priority[a.name] ?? 999;
+      final bRank = priority[b.name] ?? 999;
+      if (aRank != bRank) return aRank.compareTo(bRank);
+      return a.name.compareTo(b.name);
+    });
+    return result;
+  }
+
+  IconData _categoryIcon(String name) {
+    if (name.contains('أرز') ||
+        name.contains('معكرونة') ||
+        name.contains('مرقة')) {
+      return Icons.restaurant_outlined;
+    }
+    if (name.contains('زيوت')) return Icons.water_drop_outlined;
+    if (name.contains('ألبان') || name.contains('أجبان')) {
+      return Icons.kitchen_outlined;
+    }
+    if (name.contains('مجمدات')) return Icons.ac_unit;
+    if (name.contains('مشروبات')) return Icons.local_cafe_outlined;
+    if (name.contains('غسيل') || name.contains('تنظيف')) {
+      return Icons.cleaning_services_outlined;
+    }
+    if (name.contains('مناديل')) return Icons.inventory_2_outlined;
+    if (name.contains('العناية')) return Icons.spa_outlined;
+    if (name.contains('معلبات') ||
+        name.contains('طحينية') ||
+        name.contains('سكر')) {
+      return Icons.shopping_basket_outlined;
+    }
+    if (name.contains('لحوم')) return Icons.restaurant_menu_outlined;
+    return Icons.category_outlined;
+  }
+
+  Widget _categoryCard(
+    ProductCategory category, {
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    final selected = _selectedCategoryId == category.id;
+
+    return Material(
+      color: selected
+          ? theme.colorScheme.primaryContainer
+          : theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outlineVariant,
+              width: selected ? 1.5 : 1,
             ),
           ),
-        ],
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? theme.colorScheme.primary.withValues(alpha: 0.10)
+                      : theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _categoryIcon(category.name),
+                  size: 21,
+                  color: selected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  category.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _chip(String label, bool selected, VoidCallback onTap) {
+  Future<void> _showAllCategories() async {
+    final categories = _orderedCategories();
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+
+        return FractionallySizedBox(
+          heightFactor: 0.82,
+          child: Material(
+            color: theme.colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'كل الأقسام',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'إغلاق',
+                        onPressed: () => Navigator.pop(sheetContext),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        _loadProducts(categoryId: null);
+                      },
+                      icon: const Icon(Icons.apps_outlined),
+                      label: const Text('عرض كل المنتجات'),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final columns = constraints.maxWidth >= 650 ? 3 : 2;
+                      return GridView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                        itemCount: categories.length,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: columns,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                          childAspectRatio: columns == 3 ? 2.6 : 2.15,
+                        ),
+                        itemBuilder: (context, index) {
+                          final category = categories[index];
+                          return _categoryCard(
+                            category,
+                            onTap: () {
+                              Navigator.pop(sheetContext);
+                              _loadProducts(categoryId: category.id);
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _categoryChips() {
+    final categories = _orderedCategories();
+    final featured = categories.take(6).toList();
+    final theme = Theme.of(context);
+
+    if (featured.isEmpty) return const SizedBox.shrink();
+
     return Padding(
-      padding: const EdgeInsets.only(left: 8),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.primary : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: selected ? AppColors.primary : AppColors.border,
-            ),
+      padding: const EdgeInsets.only(top: 6, bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'الأقسام الرئيسية',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: _showAllCategories,
+                child: const Text('كل الأقسام'),
+              ),
+            ],
           ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: selected ? Colors.white : AppColors.textSecondary,
-            ),
+          const SizedBox(height: 4),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth >= 650 ? 3 : 2;
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: featured.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columns,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: columns == 3 ? 2.7 : 2.15,
+                ),
+                itemBuilder: (context, index) {
+                  final category = featured[index];
+                  return _categoryCard(
+                    category,
+                    onTap: () => _loadProducts(categoryId: category.id),
+                  );
+                },
+              );
+            },
           ),
-        ),
+          if (_selectedCategoryId != null) ...[
+            const SizedBox(height: 6),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                onPressed: () => _loadProducts(categoryId: null),
+                icon: const Icon(Icons.close, size: 18),
+                label: const Text('إلغاء التصنيف وعرض الكل'),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
