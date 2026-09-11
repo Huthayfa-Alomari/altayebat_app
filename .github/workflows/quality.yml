@@ -33,6 +33,13 @@ jobs:
       - run: flutter test
       - name: Build Android debug APK
         run: flutter build apk --debug
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: altayebat-debug-apk
+          path: altayebat_app/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
 
   admin:
     name: Admin typecheck and build
