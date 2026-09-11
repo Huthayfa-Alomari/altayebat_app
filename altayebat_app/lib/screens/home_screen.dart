@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/category.dart';
 import '../models/product.dart';
@@ -16,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounce;
 
   List<ProductCategory> _categories = [];
   List<Product> _products = [];
@@ -32,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -95,12 +98,57 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _search() => _loadProducts(categoryId: _selectedCategoryId);
+  Future<void> _search() async {
+    _searchDebounce?.cancel();
+    final query = _searchController.text.trim();
 
-  void _clearSearch() {
+    if (query.isNotEmpty && _selectedCategoryId != null && mounted) {
+      setState(() => _selectedCategoryId = null);
+    }
+
+    await _loadProducts(categoryId: query.isEmpty ? _selectedCategoryId : null);
+  }
+
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    final query = value.trim();
+
+    if (mounted) {
+      setState(() {
+        if (query.isNotEmpty) _selectedCategoryId = null;
+      });
+    }
+
+    if (query.isEmpty) {
+      _loadProducts(categoryId: null);
+      return;
+    }
+
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted) return;
+      _loadProducts(categoryId: null);
+    });
+  }
+
+  Future<void> _clearSearch() async {
     if (_searchController.text.isEmpty) return;
+    _searchDebounce?.cancel();
     _searchController.clear();
-    _search();
+    FocusScope.of(context).unfocus();
+    if (mounted) setState(() {});
+    await _loadProducts(categoryId: null);
+  }
+
+  Future<void> _selectCategory(String? categoryId) async {
+    _searchDebounce?.cancel();
+
+    if (_searchController.text.isNotEmpty) {
+      _searchController.clear();
+    }
+
+    FocusScope.of(context).unfocus();
+    if (mounted) setState(() {});
+    await _loadProducts(categoryId: categoryId);
   }
 
   @override
@@ -125,7 +173,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.only(top: 8),
                         children: [
                           if (_errorMessage != null) _errorState(),
-                          _categoryChips(),
+                          if (_searchController.text.trim().isEmpty)
+                            _categoryChips(),
+                          _resultsHeader(),
                           if (_loadingProducts)
                             const Padding(
                               padding: EdgeInsets.all(28),
@@ -198,8 +248,9 @@ class _HomeScreenState extends State<HomeScreen> {
             controller: _searchController,
             textInputAction: TextInputAction.search,
             onSubmitted: (_) => _search(),
+            onTapOutside: (_) => FocusScope.of(context).unfocus(),
             decoration: InputDecoration(
-              hintText: 'دور عالمنتج يلي بدك ياه',
+              hintText: 'شو بدك؟ ابحث باسم المنتج',
               prefixIcon: const Icon(
                 Icons.search,
                 size: 20,
@@ -219,7 +270,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderSide: BorderSide.none,
               ),
             ),
-            onChanged: (_) => setState(() {}),
+            onChanged: _onSearchChanged,
           ),
         ],
       ),
@@ -429,7 +480,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () {
                         Navigator.pop(sheetContext);
-                        _loadProducts(categoryId: null);
+                        _selectCategory(null);
                       },
                       icon: const Icon(Icons.apps_outlined),
                       label: const Text('عرض كل المنتجات'),
@@ -518,7 +569,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   final category = featured[index];
                   return _categoryCard(
                     category,
-                    onTap: () => _loadProducts(categoryId: category.id),
+                    onTap: () => _selectCategory(category.id),
                   );
                 },
               );
@@ -529,7 +580,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Align(
               alignment: AlignmentDirectional.centerStart,
               child: TextButton.icon(
-                onPressed: () => _loadProducts(categoryId: null),
+                onPressed: () => _selectCategory(null),
                 icon: const Icon(Icons.close, size: 18),
                 label: const Text('إلغاء التصنيف وعرض الكل'),
               ),
@@ -540,32 +591,129 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _resultsHeader() {
+    final query = _searchController.text.trim();
+
+    ProductCategory? selected;
+    if (_selectedCategoryId != null) {
+      for (final category in _categories) {
+        if (category.id == _selectedCategoryId) {
+          selected = category;
+          break;
+        }
+      }
+    }
+
+    final title = query.isNotEmpty
+        ? 'نتائج البحث'
+        : selected?.name ?? 'كل المنتجات';
+    final countText = _loadingProducts
+        ? 'جاري التحميل...'
+        : '${_products.length} منتج';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  query.isNotEmpty ? '“$query” • $countText' : countText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (query.isNotEmpty)
+            TextButton(onPressed: _clearSearch, child: const Text('مسح'))
+          else if (_selectedCategoryId != null)
+            TextButton(
+              onPressed: () => _selectCategory(null),
+              child: const Text('عرض الكل'),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _productGrid() {
     if (_products.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.all(32),
-        child: Center(
-          child: Text(
-            _searchController.text.trim().isNotEmpty
-                ? 'ما لقينا منتج مطابق لبحثك'
-                : 'ما في منتجات بهاد التصنيف لسه',
-          ),
+        padding: const EdgeInsets.fromLTRB(24, 44, 24, 56),
+        child: Column(
+          children: [
+            Icon(
+              _searchController.text.trim().isNotEmpty
+                  ? Icons.search_off_rounded
+                  : Icons.inventory_2_outlined,
+              size: 42,
+              color: AppColors.textSecondary,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _searchController.text.trim().isNotEmpty
+                  ? 'ما لقينا المنتج'
+                  : 'ما في منتجات بهاد القسم حاليًا',
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            if (_searchController.text.trim().isNotEmpty) ...[
+              const SizedBox(height: 6),
+              const Text(
+                'جرّب كلمة أقصر أو اسم الماركة',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: _clearSearch,
+                child: const Text('عرض كل المنتجات'),
+              ),
+            ],
+          ],
         ),
       );
     }
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      itemCount: _products.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 0.64,
-      ),
-      itemBuilder: (context, index) => ProductCard(product: _products[index]),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 760
+            ? 4
+            : constraints.maxWidth >= 540
+            ? 3
+            : 2;
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+          itemCount: _products.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: columns == 2 ? 0.60 : 0.68,
+          ),
+          itemBuilder: (context, index) =>
+              ProductCard(product: _products[index]),
+        );
+      },
     );
   }
 }

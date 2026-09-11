@@ -20,6 +20,7 @@ class SupabaseService {
         .from('categories')
         .select()
         .eq('store_id', AppConfig.storeId)
+        .eq('is_active', true)
         .order('sort_order');
 
     return (data as List)
