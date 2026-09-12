@@ -15,6 +15,16 @@
 
 begin;
 
+-- Measured products need sub-fils precision at the atomic-unit level. Widening
+-- these numeric columns is lossless for every existing piece product/order.
+alter table public.products
+  alter column price type numeric(14,6)
+  using price::numeric(14,6);
+
+alter table public.order_items
+  alter column unit_price type numeric(14,6)
+  using unit_price::numeric(14,6);
+
 alter table public.products
   add column if not exists sale_type text not null default 'piece',
   add column if not exists base_unit text not null default 'piece',
