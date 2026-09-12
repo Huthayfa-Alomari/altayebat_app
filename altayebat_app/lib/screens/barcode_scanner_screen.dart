@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
 import '../services/supabase_service.dart';
+import '../widgets/measured_product_sheet.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
   const BarcodeScannerScreen({super.key});
@@ -83,28 +84,44 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     await _controller.start();
   }
 
-  void _addToCart() {
+  Future<void> _addToCart() async {
     final data = _productData;
     if (data == null) return;
 
     final product = Product.fromMap(data);
     final cart = context.read<CartProvider>();
-    final added = cart.add(product);
+    bool added;
 
-    if (!added) {
-      final message = cart.canAdd(product)
-          ? 'تعذر إضافة المنتج للسلة. حاول مرة ثانية.'
-          : 'وصلت للكمية المتوفرة من هذا المنتج.';
-      ScaffoldMessenger.of(
+    if (product.isMeasured) {
+      final current = cart.itemFor(product.id);
+      final selection = await showMeasuredProductSheet(
         context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+        product,
+        currentQuantity: current?.quantity,
+        currentRequestedAmount: current?.requestedAmount,
+      );
+      if (selection == null || !mounted) return;
+      added = cart.setQuantity(
+        product,
+        selection.quantity,
+        requestedAmount: selection.requestedAmount,
+      );
+    } else {
+      added = cart.add(product);
+    }
+
+    if (!mounted) return;
+    if (!added) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('وصلت للكمية المتوفرة من هذا المنتج.')),
+      );
       return;
     }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('تمت إضافة ${product.name} للسلة')));
-    _scanAgain();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('تمت إضافة ${product.name} للسلة')),
+    );
+    await _scanAgain();
   }
 
   @override
@@ -185,8 +202,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     );
   }
 
-  Widget _buildResult(Map<String, dynamic>? product) {
-    if (_busy && product == null && _error == null) {
+  Widget _buildResult(Map<String, dynamic>? productData) {
+    if (_busy && productData == null && _error == null) {
       return const Column(
         children: [
           SizedBox(height: 18),
@@ -226,12 +243,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       );
     }
 
-    if (product == null) return const SizedBox.shrink();
+    if (productData == null) return const SizedBox.shrink();
 
-    final name = product['name']?.toString() ?? 'منتج';
-    final price = _asDouble(product['price']);
-    final stock = _asInt(product['stock_qty']);
-    final imageUrl = product['image_url']?.toString();
+    final product = Product.fromMap(productData);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -239,14 +253,14 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _ProductImage(url: imageUrl),
+            _ProductImage(url: product.imageUrl),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    name,
+                    product.name,
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
@@ -254,7 +268,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '${price.toStringAsFixed(2)} د.أ',
+                    product.priceLabel,
                     style: const TextStyle(
                       fontSize: 19,
                       fontWeight: FontWeight.w900,
@@ -263,7 +277,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'متوفر: $stock',
+                    'متوفر: ${product.stockLabel}',
                     style: const TextStyle(
                       color: Color(0xFF6B7280),
                       fontSize: 12,
@@ -279,10 +293,14 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           height: 52,
           child: FilledButton.icon(
             onPressed: _addToCart,
-            icon: const Icon(Icons.add_shopping_cart_rounded),
-            label: const Text(
-              'أضف للسلة',
-              style: TextStyle(fontWeight: FontWeight.w900),
+            icon: Icon(
+              product.isMeasured
+                  ? Icons.scale_outlined
+                  : Icons.add_shopping_cart_rounded,
+            ),
+            label: Text(
+              product.isMeasured ? 'اختر الكمية' : 'أضف للسلة',
+              style: const TextStyle(fontWeight: FontWeight.w900),
             ),
           ),
         ),
@@ -294,16 +312,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
         ),
       ],
     );
-  }
-
-  double _asDouble(dynamic value) {
-    if (value is num) return value.toDouble();
-    return double.tryParse(value?.toString() ?? '') ?? 0;
-  }
-
-  int _asInt(dynamic value) {
-    if (value is num) return value.toInt();
-    return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 }
 
