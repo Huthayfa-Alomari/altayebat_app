@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
 import '../theme/app_theme.dart';
+import 'measured_product_sheet.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
@@ -19,7 +20,7 @@ class ProductCard extends StatelessWidget {
 
     return Semantics(
       container: true,
-      label: '${product.name}، ${product.price.toStringAsFixed(2)} دينار',
+      label: '${product.name}، ${product.priceLabel}',
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
@@ -81,7 +82,9 @@ class ProductCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              '${product.price.toStringAsFixed(2)} د.أ',
+              product.priceLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 16,
                 height: 1.15,
@@ -98,7 +101,9 @@ class ProductCard extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            if (qty == 0)
+            if (product.isMeasured)
+              _measuredButton(context, qty, outOfStock: outOfStock)
+            else if (qty == 0)
               _addButton(context, enabled: canAdd, outOfStock: outOfStock)
             else
               _stepper(context, qty, canAdd: canAdd),
@@ -122,6 +127,19 @@ class ProductCard extends StatelessWidget {
       );
     }
 
+    if (product.isMeasured) {
+      return Text(
+        'متوفر: ${product.stockLabel}',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textSecondary,
+        ),
+      );
+    }
+
     if (product.stockQty <= 3) {
       return Text(
         'متبقي ${product.stockQty} فقط',
@@ -136,6 +154,67 @@ class ProductCard extends StatelessWidget {
     }
 
     return const SizedBox.shrink();
+  }
+
+  Widget _measuredButton(
+    BuildContext context,
+    int qty, {
+    required bool outOfStock,
+  }) {
+    final hasSelection = qty > 0;
+    return SizedBox(
+      width: double.infinity,
+      height: 44,
+      child: FilledButton.icon(
+        onPressed: outOfStock ? null : () => _chooseMeasured(context),
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          disabledBackgroundColor: AppColors.border,
+          disabledForegroundColor: AppColors.textSecondary,
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        icon: Icon(
+          outOfStock
+              ? Icons.block_outlined
+              : hasSelection
+                  ? Icons.edit_outlined
+                  : Icons.scale_outlined,
+          size: 18,
+        ),
+        label: Text(
+          outOfStock
+              ? 'غير متوفر'
+              : hasSelection
+                  ? product.formatQuantity(qty)
+                  : 'اختر الكمية',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _chooseMeasured(BuildContext context) async {
+    final cart = context.read<CartProvider>();
+    final current = cart.itemFor(product.id);
+    final selection = await showMeasuredProductSheet(
+      context,
+      product,
+      currentQuantity: current?.quantity,
+      currentRequestedAmount: current?.requestedAmount,
+    );
+    if (selection == null || !context.mounted) return;
+
+    final added = cart.setQuantity(
+      product,
+      selection.quantity,
+      requestedAmount: selection.requestedAmount,
+    );
+    if (!added) _showStockMessage(context);
   }
 
   Widget _addButton(
