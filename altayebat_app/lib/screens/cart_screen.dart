@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/cart_item.dart';
 import '../providers/cart_provider.dart';
 import '../services/supabase_service.dart';
+import '../widgets/measured_product_sheet.dart';
 import '../widgets/store_open_banner.dart';
 import 'barcode_scanner_screen.dart';
 import 'customer_auth_screen.dart';
@@ -18,7 +19,7 @@ class CartScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final cart = context.watch<CartProvider>();
     final lines = cart.items;
-    final totalItems = cart.itemCount;
+    final totalLines = cart.lineCount;
     final subtotal = cart.total;
 
     return Scaffold(
@@ -46,6 +47,9 @@ class CartScreen extends StatelessWidget {
                         onIncrement: () => _increment(context, cart, item),
                         onDecrement: () => cart.decrement(item.product),
                         onRemove: () => cart.remove(item.product.id),
+                        onEditMeasured: item.product.isMeasured
+                            ? () => _editMeasured(context, cart, item)
+                            : null,
                       );
                     },
                   ),
@@ -79,7 +83,7 @@ class CartScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '$totalItems ${totalItems == 1 ? 'قطعة' : 'قطع'}',
+                                  '$totalLines ${totalLines == 1 ? 'صنف' : 'أصناف'}',
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: theme.colorScheme.onSurfaceVariant,
                                   ),
@@ -185,6 +189,8 @@ class CartScreen extends StatelessWidget {
           .map(
             (item) => <String, dynamic>{
               'product_id': item.product.id,
+              // Measured products use atomic integer units (g/ml), so the
+              // existing checkout RPC remains authoritative and unchanged.
               'quantity': item.quantity,
             },
           )
@@ -217,6 +223,31 @@ class CartScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _editMeasured(
+    BuildContext context,
+    CartProvider cart,
+    CartItem item,
+  ) async {
+    final selection = await showMeasuredProductSheet(
+      context,
+      item.product,
+      currentQuantity: item.quantity,
+      currentRequestedAmount: item.requestedAmount,
+    );
+    if (selection == null || !context.mounted) return;
+
+    final updated = cart.setQuantity(
+      item.product,
+      selection.quantity,
+      requestedAmount: selection.requestedAmount,
+    );
+    if (!updated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('الكمية المطلوبة غير متوفرة حاليًا.')),
+      );
+    }
+  }
+
   void _increment(
     BuildContext context,
     CartProvider cart,
@@ -236,12 +267,14 @@ class _CartLineCard extends StatelessWidget {
   final VoidCallback onIncrement;
   final VoidCallback onDecrement;
   final VoidCallback onRemove;
+  final VoidCallback? onEditMeasured;
 
   const _CartLineCard({
     required this.item,
     required this.onIncrement,
     required this.onDecrement,
     required this.onRemove,
+    this.onEditMeasured,
   });
 
   @override
@@ -256,7 +289,7 @@ class _CartLineCard extends StatelessWidget {
     return Semantics(
       container: true,
       label:
-          '${product.name}، الكمية ${item.quantity}، المجموع ${lineTotal.toStringAsFixed(2)} دينار',
+          '${product.name}، الكمية ${item.quantityLabel}، المجموع ${lineTotal.toStringAsFixed(2)} دينار',
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -302,11 +335,22 @@ class _CartLineCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${product.price.toStringAsFixed(2)} د.أ للقطعة',
+                    product.priceLabel,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
+                  if (product.isMeasured) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      item.requestedAmount != null
+                          ? 'طلب بقيمة ${item.requestedAmount!.toStringAsFixed(2)} د.أ • حوالي ${item.quantityLabel}'
+                          : 'الكمية: ${item.quantityLabel}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                   if (outOfStock) ...[
                     const SizedBox(height: 4),
                     Text(
@@ -316,7 +360,7 @@ class _CartLineCard extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ] else if (stockQty <= 3) ...[
+                  ] else if (!product.isMeasured && stockQty <= 3) ...[
                     const SizedBox(height: 4),
                     Text(
                       'متبقي $stockQty فقط',
@@ -340,12 +384,19 @@ class _CartLineCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      _QuantityControl(
-                        quantity: item.quantity,
-                        canIncrement: canIncrement,
-                        onIncrement: onIncrement,
-                        onDecrement: onDecrement,
-                      ),
+                      if (product.isMeasured)
+                        OutlinedButton.icon(
+                          onPressed: onEditMeasured,
+                          icon: const Icon(Icons.edit_outlined, size: 17),
+                          label: Text(item.quantityLabel),
+                        )
+                      else
+                        _QuantityControl(
+                          quantity: item.quantity,
+                          canIncrement: canIncrement,
+                          onIncrement: onIncrement,
+                          onDecrement: onDecrement,
+                        ),
                     ],
                   ),
                 ],
