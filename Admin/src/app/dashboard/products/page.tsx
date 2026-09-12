@@ -9,7 +9,9 @@ export default async function ProductsPage() {
   const [{ data: products }, { data: categories }] = await Promise.all([
     supabase
       .from("products")
-      .select("id, name, price, stock_qty, is_available, category_id, image_url")
+      .select(
+        "id, name, price, price_per_unit, stock_qty, is_available, category_id, image_url, sale_type, base_unit, inventory_scale, min_qty, qty_step, allow_amount_purchase",
+      )
       .eq("store_id", storeId)
       .order("created_at", { ascending: false }),
     supabase
