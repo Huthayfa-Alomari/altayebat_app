@@ -17,6 +17,29 @@ Product product({
   );
 }
 
+Product measuredProduct({
+  String id = 'lentils',
+  int stock = 12500,
+  double pricePerKg = 1.75,
+  int minQty = 100,
+  int qtyStep = 50,
+}) {
+  return Product(
+    id: id,
+    name: 'عدس أحمر',
+    price: pricePerKg / 1000,
+    pricePerUnit: pricePerKg,
+    stockQty: stock,
+    isAvailable: true,
+    saleType: ProductSaleType.weight,
+    baseUnit: 'kg',
+    inventoryScale: 1000,
+    minQty: minQty,
+    qtyStep: qtyStep,
+    allowAmountPurchase: true,
+  );
+}
+
 void main() {
   group('CartProvider', () {
     test('adds items and calculates total', () {
@@ -60,6 +83,75 @@ void main() {
 
       expect(cart.isEmpty, isTrue);
       expect(cart.itemCount, 0);
+    });
+
+    test('measured product uses grams and still counts as one cart line', () {
+      final cart = CartProvider();
+      final lentils = measuredProduct();
+
+      expect(cart.setQuantity(lentils, 500), isTrue);
+
+      expect(cart.quantityOf(lentils.id), 500);
+      expect(cart.itemCount, 1);
+      expect(cart.lineCount, 1);
+      expect(cart.total, closeTo(0.875, 0.000001));
+      expect(cart.itemFor(lentils.id)?.quantityLabel, '500 غ');
+    });
+
+    test('measured product preserves by-value request as a UX hint', () {
+      final cart = CartProvider();
+      final lentils = measuredProduct();
+
+      expect(
+        cart.setQuantity(lentils, 571, requestedAmount: 1.0),
+        isTrue,
+      );
+
+      expect(cart.itemFor(lentils.id)?.requestedAmount, 1.0);
+      expect(cart.total, closeTo(0.99925, 0.000001));
+    });
+
+    test('measured quantity rejects values below minimum or above stock', () {
+      final cart = CartProvider();
+      final lentils = measuredProduct(stock: 1000, minQty: 100);
+
+      expect(cart.setQuantity(lentils, 50), isFalse);
+      expect(cart.setQuantity(lentils, 1001), isFalse);
+      expect(cart.isEmpty, isTrue);
+    });
+
+    test('regular add button does not treat grams as piece increments', () {
+      final cart = CartProvider();
+      final lentils = measuredProduct();
+
+      expect(cart.add(lentils), isFalse);
+      expect(cart.isEmpty, isTrue);
+    });
+  });
+
+  group('Product measured formatting', () {
+    test('parses measured metadata returned by Supabase', () {
+      final parsed = Product.fromMap({
+        'id': 'lentils',
+        'name': 'عدس أحمر',
+        'price': 0.00175,
+        'price_per_unit': 1.75,
+        'stock_qty': 12500,
+        'is_available': true,
+        'sale_type': 'weight',
+        'base_unit': 'kg',
+        'inventory_scale': 1000,
+        'min_qty': 100,
+        'qty_step': 50,
+        'allow_amount_purchase': true,
+      });
+
+      expect(parsed.isMeasured, isTrue);
+      expect(parsed.displayStock, 12.5);
+      expect(parsed.formatQuantity(250), '250 غ');
+      expect(parsed.formatQuantity(1500), '1.5 كغ');
+      expect(parsed.pricePerUnit, 1.75);
+      expect(parsed.allowAmountPurchase, isTrue);
     });
   });
 }
