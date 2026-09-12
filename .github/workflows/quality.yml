@@ -2,7 +2,7 @@ name: Quality Checks
 
 on:
   push:
-    branches: [main, chatgpt-production-upgrade]
+    branches: [main, chatgpt-production-upgrade, chatgpt-weighted-sunmi]
   pull_request:
     branches: [main]
 
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   flutter:
-    name: Flutter analyze, test and Android build
+    name: Flutter analyze, test and Android builds
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -31,12 +31,21 @@ jobs:
           fi
       - run: flutter analyze
       - run: flutter test
-      - name: Build Android debug APK
+      - name: Build customer Android debug APK
         run: flutter build apk --debug
-      - name: Upload debug APK
+      - name: Upload customer debug APK
         uses: actions/upload-artifact@v4
         with:
           name: altayebat-debug-apk
+          path: altayebat_app/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
+      - name: Build SUNMI terminal debug APK
+        run: flutter build apk --debug -t lib/main_terminal.dart
+      - name: Upload SUNMI terminal debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: altayebat-sunmi-terminal-debug-apk
           path: altayebat_app/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 7
