@@ -32,8 +32,34 @@ type OrderItemRow = {
   id: string;
   quantity: number;
   unit_price: number;
+  sale_type_snapshot: string | null;
+  base_unit_snapshot: string | null;
+  inventory_scale_snapshot: number | null;
+  display_unit_price_snapshot: number | null;
   products: { name: string | null } | null;
 };
+
+function quantityLabel(item: OrderItemRow) {
+  const saleType = item.sale_type_snapshot || "piece";
+  if (saleType === "piece") return `${item.quantity}`;
+
+  const scale = Number(item.inventory_scale_snapshot || 1000);
+  if (item.quantity < scale) {
+    return `${item.quantity} ${saleType === "weight" ? "غ" : "مل"}`;
+  }
+
+  const value = item.quantity / scale;
+  return `${value.toLocaleString("ar-JO", { maximumFractionDigits: 3 })} ${
+    saleType === "weight" ? "كغ" : "لتر"
+  }`;
+}
+
+function unitPriceLabel(item: OrderItemRow) {
+  const saleType = item.sale_type_snapshot || "piece";
+  const price = Number(item.display_unit_price_snapshot ?? item.unit_price);
+  const unit = saleType === "weight" ? "كغ" : saleType === "volume" ? "لتر" : "قطعة";
+  return `${price.toFixed(3)} د.أ / ${unit}`;
+}
 
 export default async function OrderDetailsPage({
   params,
@@ -49,14 +75,16 @@ export default async function OrderDetailsPage({
       supabase
         .from("orders")
         .select(
-          "id, status, total, created_at, payment_method, payment_status, payment_reference, customers(name, phone)"
+          "id, status, total, created_at, payment_method, payment_status, payment_reference, customers(name, phone)",
         )
         .eq("id", id)
         .eq("store_id", storeId)
         .maybeSingle(),
       supabase
         .from("order_items")
-        .select("id, quantity, unit_price, products(name)")
+        .select(
+          "id, quantity, unit_price, sale_type_snapshot, base_unit_snapshot, inventory_scale_snapshot, display_unit_price_snapshot, products(name)",
+        )
         .eq("order_id", id),
     ]);
 
@@ -115,7 +143,7 @@ export default async function OrderDetailsPage({
               {whatsapp && (
                 <a
                   href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(
-                    `مرحبًا، معك أسواق الطيبات بخصوص طلبك #${order.id.slice(0, 8).toUpperCase()}`
+                    `مرحبًا، معك أسواق الطيبات بخصوص طلبك #${order.id.slice(0, 8).toUpperCase()}`,
                   )}`}
                   target="_blank"
                   rel="noreferrer"
@@ -176,7 +204,7 @@ export default async function OrderDetailsPage({
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-            <table className="min-w-[560px] w-full text-right text-sm">
+            <table className="min-w-[620px] w-full text-right text-sm">
               <thead className="bg-gray-50 text-gray-500">
                 <tr>
                   <th className="px-4 py-3 font-normal">المنتج</th>
@@ -191,8 +219,8 @@ export default async function OrderDetailsPage({
                     <td className="px-4 py-3 font-medium text-gray-900">
                       {item.products?.name || "منتج"}
                     </td>
-                    <td className="px-4 py-3">{item.quantity}</td>
-                    <td className="px-4 py-3">{Number(item.unit_price).toFixed(2)} د.أ</td>
+                    <td className="px-4 py-3">{quantityLabel(item)}</td>
+                    <td className="px-4 py-3">{unitPriceLabel(item)}</td>
                     <td className="px-4 py-3 font-medium">
                       {(Number(item.unit_price) * item.quantity).toFixed(2)} د.أ
                     </td>
