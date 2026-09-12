@@ -380,10 +380,45 @@ class _ItemRow extends StatelessWidget {
 
   const _ItemRow({required this.item, required this.money});
 
+  double _number(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  String _quantityLabel() {
+    final saleType = item['sale_type']?.toString() ?? 'piece';
+    final quantity = _number(item['quantity']).round();
+    if (saleType == 'piece') return '$quantity';
+
+    final scale = _number(item['inventory_scale']).round();
+    final safeScale = scale > 0 ? scale : 1000;
+    if (quantity < safeScale) {
+      return '$quantity ${saleType == 'weight' ? 'غ' : 'مل'}';
+    }
+
+    final units = quantity / safeScale;
+    final text = units == units.roundToDouble()
+        ? units.toStringAsFixed(0)
+        : units
+              .toStringAsFixed(3)
+              .replaceFirst(RegExp(r'0+$'), '')
+              .replaceFirst(RegExp(r'\.$'), '');
+    return '$text ${saleType == 'weight' ? 'كغ' : 'لتر'}';
+  }
+
+  String _priceDescription() {
+    final saleType = item['sale_type']?.toString() ?? 'piece';
+    if (saleType == 'piece') {
+      return '${_quantityLabel()} × ${money(item['unit_price'])}';
+    }
+
+    final unit = saleType == 'weight' ? 'كغ' : 'لتر';
+    final displayUnitPrice = _number(item['display_unit_price']);
+    return '${_quantityLabel()} • ${displayUnitPrice.toStringAsFixed(3)} د.أ / $unit';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final quantity = item['quantity']?.toString() ?? '0';
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -397,7 +432,7 @@ class _ItemRow extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '$quantity × ${money(item['unit_price'])}',
+                _priceDescription(),
                 style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12),
               ),
             ],
