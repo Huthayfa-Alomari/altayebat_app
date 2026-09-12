@@ -74,6 +74,12 @@ kotlin {
     }
 }
 
+dependencies {
+    // Official SUNMI Printer Interface Library. Works with the built-in printer
+    // service on SUNMI V2/V2s/V2s Plus and keeps Flutter code vendor-neutral.
+    implementation("com.sunmi:printerlibrary:1.0.18")
+}
+
 flutter {
     source = "../.."
 }
