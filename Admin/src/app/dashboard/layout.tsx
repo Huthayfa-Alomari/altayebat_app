@@ -4,14 +4,15 @@ import LogoutButton from "./LogoutButton";
 import OrderDeviceNotifier from "./OrderDeviceNotifier";
 
 const navItems = [
-  { href: "/dashboard/invoices", label: "\u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631 \u0648\u0627\u0644\u0625\u064a\u0635\u0627\u0644\u0627\u062a" },
-  { href: "/dashboard/operations", label: "\u0627\u0644\u0639\u0645\u0644\u064a\u0627\u062a \u0648\u0627\u0644\u062a\u0642\u0627\u0631\u064a\u0631" },
-  { href: "/dashboard", label: "\u0627\u0644\u0637\u0644\u0628\u0627\u062a" },
-  { href: "/dashboard/products", label: "\u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a" },
-  { href: "/dashboard/categories", label: "\u0627\u0644\u062a\u0635\u0646\u064a\u0641\u0627\u062a" },
-  { href: "/dashboard/support", label: "\u0637\u0644\u0628\u0627\u062a \u0627\u0644\u062a\u0648\u0627\u0635\u0644" },
-  { href: "/dashboard/delivery", label: "\u0627\u0644\u062a\u0648\u0635\u064a\u0644" },
-  { href: "/dashboard/settings", label: "\u0625\u0639\u062f\u0627\u062f\u0627\u062a \u0627\u0644\u062f\u0641\u0639" },
+  { href: "/dashboard/invoices", label: "الفواتير والإيصالات" },
+  { href: "/dashboard/operations", label: "العمليات والتقارير" },
+  { href: "/dashboard", label: "الطلبات" },
+  { href: "/dashboard/products", label: "المنتجات" },
+  { href: "/dashboard/offers", label: "العروض" },
+  { href: "/dashboard/categories", label: "التصنيفات" },
+  { href: "/dashboard/support", label: "طلبات التواصل" },
+  { href: "/dashboard/delivery", label: "التوصيل" },
+  { href: "/dashboard/settings", label: "إعدادات الدفع" },
 ];
 
 export default async function DashboardLayout({
