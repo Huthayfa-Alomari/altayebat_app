@@ -17,24 +17,21 @@ jobs:
       run:
         working-directory: altayebat_app
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: "3.47.4"
           channel: stable
           cache: true
       - run: flutter pub get
       - name: Check Dart formatting
-        run: |
-          dart format --output=none lib test
-          if ! git diff --exit-code -- lib test; then
-            echo "::warning::Dart source files need formatting. Run 'dart format lib test' locally and commit the result."
-          fi
+        run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
       - run: flutter test
       - name: Build customer Android debug APK
         run: flutter build apk --debug
       - name: Upload customer debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: altayebat-debug-apk
           path: altayebat_app/build/app/outputs/flutter-apk/app-debug.apk
@@ -43,7 +40,7 @@ jobs:
       - name: Build SUNMI terminal debug APK
         run: flutter build apk --debug -t lib/main_terminal.dart
       - name: Upload SUNMI terminal debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: altayebat-sunmi-terminal-debug-apk
           path: altayebat_app/build/app/outputs/flutter-apk/app-debug.apk
@@ -60,13 +57,13 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: test-publishable-key
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: Admin/package.json
-      - run: npm install --no-audit --no-fund
+          cache-dependency-path: Admin/package-lock.json
+      - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       - run: npm run build
       - name: Audit production dependencies
