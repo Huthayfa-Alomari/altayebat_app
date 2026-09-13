@@ -16,21 +16,23 @@ class AppConfig {
     defaultValue: '61e6f35d-7004-4a33-948c-b297ba446678',
   );
 
-  // Firebase is intentionally configured through dart-defines rather than
-  // committing google-services.json / GoogleService-Info.plist to the repo.
-  // The app remains fully usable when these values are absent; only remote push
-  // delivery is disabled until production Firebase credentials are supplied.
+  // Firebase client configuration is safe to ship in the app. Server-side
+  // credentials (service account/private key) remain in Supabase secrets only.
   static const String firebaseApiKey = String.fromEnvironment(
     'FIREBASE_API_KEY',
+    defaultValue: 'AIzaSyAPOX8BX3FOPaZ4oaYzpRC54-QGkz2SrsA',
   );
   static const String firebaseProjectId = String.fromEnvironment(
     'FIREBASE_PROJECT_ID',
+    defaultValue: 'altayebat-4cb36',
   );
   static const String firebaseMessagingSenderId = String.fromEnvironment(
     'FIREBASE_MESSAGING_SENDER_ID',
+    defaultValue: '534447632380',
   );
   static const String firebaseAndroidAppId = String.fromEnvironment(
     'FIREBASE_ANDROID_APP_ID',
+    defaultValue: '1:534447632380:android:b35f75df0a17a267a84c79',
   );
   static const String firebaseIosAppId = String.fromEnvironment(
     'FIREBASE_IOS_APP_ID',
