@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:altayebat_app/models/cart_item.dart';
 import 'package:altayebat_app/models/product.dart';
 import 'package:altayebat_app/providers/cart_provider.dart';
 
@@ -123,6 +124,26 @@ void main() {
 
       expect(cart.add(lentils), isFalse);
       expect(cart.isEmpty, isTrue);
+    });
+
+    test('reorder replacement restores piece and measured quantities at once', () {
+      final cart = CartProvider();
+      final oldItem = product(id: 'old', stock: 3);
+      final milk = product(id: 'milk', stock: 6, price: 0.8);
+      final lentils = measuredProduct(stock: 5000);
+
+      cart.add(oldItem);
+      cart.replaceAll([
+        CartItem(product: milk, quantity: 2),
+        CartItem(product: lentils, quantity: 500),
+      ]);
+
+      expect(cart.quantityOf(oldItem.id), 0);
+      expect(cart.quantityOf(milk.id), 2);
+      expect(cart.quantityOf(lentils.id), 500);
+      expect(cart.lineCount, 2);
+      expect(cart.itemCount, 3);
+      expect(cart.total, closeTo(2.475, 0.000001));
     });
   });
 
