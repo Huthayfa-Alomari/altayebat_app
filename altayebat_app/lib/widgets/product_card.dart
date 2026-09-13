@@ -25,8 +25,15 @@ class ProductCard extends StatelessWidget {
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x08000000),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -34,16 +41,16 @@ class ProductCard extends StatelessWidget {
             Opacity(
               opacity: outOfStock ? 0.45 : 1,
               child: Container(
-                height: 104,
+                height: 108,
                 width: double.infinity,
-                padding: const EdgeInsets.all(6),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.softSurface,
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: product.imageUrl != null && product.imageUrl!.isNotEmpty
                     ? ClipRRect(
-                        borderRadius: BorderRadius.circular(9),
+                        borderRadius: BorderRadius.circular(10),
                         child: Image.network(
                           product.imageUrl!,
                           width: double.infinity,
@@ -55,7 +62,7 @@ class ProductCard extends StatelessWidget {
                             child: Icon(
                               Icons.image_not_supported_outlined,
                               color: AppColors.textSecondary,
-                              size: 32,
+                              size: 30,
                             ),
                           ),
                         ),
@@ -64,35 +71,62 @@ class ProductCard extends StatelessWidget {
                         child: Icon(
                           Icons.shopping_basket_outlined,
                           color: AppColors.primary,
-                          size: 32,
+                          size: 31,
                         ),
                       ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
               product.name,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
+                color: AppColors.textPrimary,
                 fontSize: 13.5,
                 height: 1.25,
                 fontWeight: FontWeight.w800,
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              product.priceLabel,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 16,
-                height: 1.15,
-                fontWeight: FontWeight.w900,
-                color: AppColors.primary,
-              ),
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Text(
+                    product.priceLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15.5,
+                      height: 1.1,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+                if (product.isMeasured)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.07),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Text(
+                      product.unitLabel,
+                      style: const TextStyle(
+                        color: AppColors.primaryDark,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 5),
             SizedBox(
               height: 18,
               child: Align(
@@ -164,7 +198,7 @@ class ProductCard extends StatelessWidget {
     final hasSelection = qty > 0;
     return SizedBox(
       width: double.infinity,
-      height: 44,
+      height: 42,
       child: FilledButton.icon(
         onPressed: outOfStock ? null : () => _chooseMeasured(context),
         style: FilledButton.styleFrom(
@@ -173,7 +207,7 @@ class ProductCard extends StatelessWidget {
           disabledForegroundColor: AppColors.textSecondary,
           padding: const EdgeInsets.symmetric(horizontal: 9),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(13),
           ),
         ),
         icon: Icon(
@@ -182,7 +216,7 @@ class ProductCard extends StatelessWidget {
               : hasSelection
               ? Icons.edit_outlined
               : Icons.scale_outlined,
-          size: 18,
+          size: 17,
         ),
         label: Text(
           outOfStock
@@ -192,7 +226,7 @@ class ProductCard extends StatelessWidget {
               : 'اختر الكمية',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
+          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900),
         ),
       ),
     );
@@ -230,7 +264,7 @@ class ProductCard extends StatelessWidget {
           : '${product.name} غير متوفر',
       child: SizedBox(
         width: double.infinity,
-        height: 44,
+        height: 42,
         child: FilledButton.icon(
           onPressed: enabled
               ? () {
@@ -244,16 +278,16 @@ class ProductCard extends StatelessWidget {
             disabledForegroundColor: AppColors.textSecondary,
             padding: const EdgeInsets.symmetric(horizontal: 10),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(13),
             ),
           ),
           icon: Icon(
-            outOfStock ? Icons.block_outlined : Icons.add_shopping_cart_rounded,
-            size: 19,
+            outOfStock ? Icons.block_outlined : Icons.add_rounded,
+            size: 18,
           ),
           label: Text(
-            outOfStock ? 'غير متوفر' : 'أضف',
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+            outOfStock ? 'غير متوفر' : 'أضف للسلة',
+            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900),
           ),
         ),
       ),
@@ -266,10 +300,10 @@ class ProductCard extends StatelessWidget {
       label: 'الكمية في السلة $qty',
       child: Container(
         width: double.infinity,
-        height: 44,
+        height: 42,
         decoration: BoxDecoration(
           color: AppColors.primary,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(13),
         ),
         child: Row(
           children: [
@@ -282,7 +316,7 @@ class ProductCard extends StatelessWidget {
                       ? Icons.delete_outline_rounded
                       : Icons.remove_rounded,
                   color: Colors.white,
-                  size: 20,
+                  size: 19,
                 ),
                 onPressed: () =>
                     context.read<CartProvider>().decrement(product),
@@ -295,7 +329,7 @@ class ProductCard extends StatelessWidget {
                 '$qty',
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -307,7 +341,7 @@ class ProductCard extends StatelessWidget {
                 icon: Icon(
                   Icons.add_rounded,
                   color: canAdd ? Colors.white : Colors.white54,
-                  size: 21,
+                  size: 20,
                 ),
                 onPressed: canAdd
                     ? () {
