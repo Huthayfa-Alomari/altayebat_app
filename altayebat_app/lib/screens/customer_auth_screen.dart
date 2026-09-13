@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../services/push_notification_service.dart';
 import '../services/supabase_service.dart';
 
 class CustomerAuthScreen extends StatefulWidget {
@@ -86,6 +87,7 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
         name: _nameController.text.trim(),
         phone: normalizedPhone,
       );
+      await PushNotificationService.syncCurrentToken();
 
       if (!mounted) return;
       _phoneController.text = normalizedPhone;
