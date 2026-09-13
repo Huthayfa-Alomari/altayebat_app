@@ -128,14 +128,14 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         notes.add('${result.adjustedCount} كمية عُدلت حسب المخزون الحالي');
       }
 
-      await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const CartScreen()),
-      );
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const CartScreen()));
 
       if (mounted && notes.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(notes.join(' • '))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(notes.join(' • '))));
       }
     } catch (error) {
       if (!mounted) return;
@@ -193,10 +193,12 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                         final order = _orders[index];
                         final id = order['id']?.toString() ?? '';
                         final shortId = id.replaceAll('-', '');
-                        final displayId = shortId.substring(
-                          0,
-                          shortId.length >= 8 ? 8 : shortId.length,
-                        ).toUpperCase();
+                        final displayId = shortId
+                            .substring(
+                              0,
+                              shortId.length >= 8 ? 8 : shortId.length,
+                            )
+                            .toUpperCase();
                         final busy = _busyOrderId == id;
 
                         return Card(
@@ -222,7 +224,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                         order['status']?.toString() ?? '',
                                       ),
                                       style: TextStyle(
-                                        color: Theme.of(context).colorScheme.primary,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
                                         fontWeight: FontWeight.w800,
                                       ),
                                     ),
@@ -272,9 +276,10 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                             ? const SizedBox(
                                                 width: 16,
                                                 height: 16,
-                                                child: CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                ),
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
                                               )
                                             : const Icon(Icons.replay_outlined),
                                         label: const Text('إعادة الطلب'),
