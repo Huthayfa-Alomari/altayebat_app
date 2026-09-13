@@ -83,14 +83,31 @@ class _MeasuredProductSheetState extends State<_MeasuredProductSheet> {
         .toList(growable: false);
   }
 
-  ProductSelection? _quantitySelection(int quantity) {
+  int _nearestValidQuantity(int quantity) {
+    final step = product.qtyStep > 0 ? product.qtyStep : 1;
     var normalized = quantity;
-    if (product.qtyStep > 1) {
-      normalized = ((normalized / product.qtyStep).round() * product.qtyStep);
-    }
-    if (normalized < product.minQty) normalized = product.minQty;
 
-    if (normalized <= 0 || normalized > product.stockQty) {
+    if (step > 1) {
+      normalized = ((normalized / step).round() * step);
+    }
+
+    if (normalized < product.minQty) {
+      normalized = ((product.minQty + step - 1) ~/ step) * step;
+    }
+
+    if (normalized > product.stockQty && step > 1) {
+      normalized = (product.stockQty ~/ step) * step;
+    }
+
+    return normalized;
+  }
+
+  ProductSelection? _quantitySelection(int quantity) {
+    final normalized = _nearestValidQuantity(quantity);
+
+    if (normalized <= 0 ||
+        normalized < product.minQty ||
+        normalized > product.stockQty) {
       setState(() => _error = 'الكمية المطلوبة أكبر من المتوفر حاليًا.');
       return null;
     }
@@ -103,13 +120,15 @@ class _MeasuredProductSheetState extends State<_MeasuredProductSheet> {
       return null;
     }
 
-    // Amount purchases are converted to the nearest gram/ml. We intentionally
-    // do not snap to the normal weight step so "بدينار" remains very close to
-    // the requested value.
-    var quantity = (amount / product.price).round();
-    if (quantity < product.minQty) quantity = product.minQty;
+    // The checkout contract validates the product quantity step. Convert the
+    // requested JOD amount to grams/ml, then snap to the nearest valid step so
+    // values such as 571 g do not reach the server as INVALID_ITEM.
+    final rawQuantity = (amount / product.price).round();
+    final quantity = _nearestValidQuantity(rawQuantity);
 
-    if (quantity > product.stockQty) {
+    if (quantity <= 0 ||
+        quantity < product.minQty ||
+        quantity > product.stockQty) {
       setState(() => _error = 'المبلغ المطلوب يحتاج كمية أكبر من المتوفر.');
       return null;
     }
