@@ -41,8 +41,7 @@ class StoreOffer {
       subtitle: map['subtitle']?.toString(),
       regularPricePerUnit:
           (map['regular_price_per_unit'] as num?)?.toDouble() ?? 0,
-      offerPricePerUnit:
-          (map['offer_price_per_unit'] as num?)?.toDouble() ?? 0,
+      offerPricePerUnit: (map['offer_price_per_unit'] as num?)?.toDouble() ?? 0,
       endsAt: DateTime.tryParse(map['ends_at']?.toString() ?? ''),
       productName: product['name']?.toString() ?? '',
       imageUrl: product['image_url']?.toString(),
