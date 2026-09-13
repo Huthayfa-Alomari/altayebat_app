@@ -125,10 +125,12 @@ class PushNotificationService {
     final context = navigatorKey.currentContext;
     if (context == null) return;
 
-    final title = message.notification?.title ??
+    final title =
+        message.notification?.title ??
         message.data['title']?.toString() ??
         'أسواق الطيبات';
-    final body = message.notification?.body ??
+    final body =
+        message.notification?.body ??
         message.data['body']?.toString() ??
         'لديك تحديث جديد';
     final orderId = message.data['order_id']?.toString() ?? '';
@@ -167,9 +169,7 @@ class PushNotificationService {
     }
 
     navigator.push(
-      MaterialPageRoute(
-        builder: (_) => OrderTrackingScreen(orderId: orderId),
-      ),
+      MaterialPageRoute(builder: (_) => OrderTrackingScreen(orderId: orderId)),
     );
   }
 }
