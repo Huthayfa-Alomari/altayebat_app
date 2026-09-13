@@ -22,18 +22,11 @@ class ProductCard extends StatelessWidget {
       container: true,
       label: '${product.name}، ${product.priceLabel}',
       child: Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(9),
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(18),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(17),
           border: Border.all(color: AppColors.border),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x08000000),
-              blurRadius: 12,
-              offset: Offset(0, 4),
-            ),
-          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -41,16 +34,16 @@ class ProductCard extends StatelessWidget {
             Opacity(
               opacity: outOfStock ? 0.45 : 1,
               child: Container(
-                height: 108,
+                height: 94,
                 width: double.infinity,
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
                   color: AppColors.softSurface,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(13),
                 ),
                 child: product.imageUrl != null && product.imageUrl!.isNotEmpty
                     ? ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(9),
                         child: Image.network(
                           product.imageUrl!,
                           width: double.infinity,
@@ -62,7 +55,7 @@ class ProductCard extends StatelessWidget {
                             child: Icon(
                               Icons.image_not_supported_outlined,
                               color: AppColors.textSecondary,
-                              size: 30,
+                              size: 28,
                             ),
                           ),
                         ),
@@ -71,24 +64,24 @@ class ProductCard extends StatelessWidget {
                         child: Icon(
                           Icons.shopping_basket_outlined,
                           color: AppColors.primary,
-                          size: 31,
+                          size: 29,
                         ),
                       ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
               product.name,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: AppColors.textPrimary,
-                fontSize: 13.5,
-                height: 1.25,
+                fontSize: 13,
+                height: 1.2,
                 fontWeight: FontWeight.w800,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 5),
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -98,10 +91,10 @@ class ProductCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 15.5,
+                      color: AppColors.primary,
+                      fontSize: 15,
                       height: 1.1,
                       fontWeight: FontWeight.w900,
-                      color: AppColors.primary,
                     ),
                   ),
                 ),
@@ -112,23 +105,23 @@ class ProductCard extends StatelessWidget {
                       vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.07),
+                      color: AppColors.primary.withValues(alpha: 0.065),
                       borderRadius: BorderRadius.circular(99),
                     ),
                     child: Text(
                       product.unitLabel,
                       style: const TextStyle(
                         color: AppColors.primaryDark,
-                        fontSize: 9,
+                        fontSize: 8.5,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 4),
             SizedBox(
-              height: 18,
+              height: 16,
               child: Align(
                 alignment: AlignmentDirectional.centerStart,
                 child: _stockLabel(outOfStock),
@@ -154,7 +147,7 @@ class ProductCard extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          fontSize: 10.5,
+          fontSize: 10,
           fontWeight: FontWeight.w700,
           color: Colors.redAccent,
         ),
@@ -167,7 +160,7 @@ class ProductCard extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
-          fontSize: 10.5,
+          fontSize: 10,
           fontWeight: FontWeight.w600,
           color: AppColors.textSecondary,
         ),
@@ -180,7 +173,7 @@ class ProductCard extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
-          fontSize: 10.5,
+          fontSize: 10,
           fontWeight: FontWeight.w600,
           color: AppColors.textSecondary,
         ),
@@ -198,16 +191,16 @@ class ProductCard extends StatelessWidget {
     final hasSelection = qty > 0;
     return SizedBox(
       width: double.infinity,
-      height: 42,
+      height: 40,
       child: FilledButton.icon(
         onPressed: outOfStock ? null : () => _chooseMeasured(context),
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.primary,
           disabledBackgroundColor: AppColors.border,
           disabledForegroundColor: AppColors.textSecondary,
-          padding: const EdgeInsets.symmetric(horizontal: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(13),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
         icon: Icon(
@@ -216,7 +209,7 @@ class ProductCard extends StatelessWidget {
               : hasSelection
               ? Icons.edit_outlined
               : Icons.scale_outlined,
-          size: 17,
+          size: 16,
         ),
         label: Text(
           outOfStock
@@ -226,7 +219,7 @@ class ProductCard extends StatelessWidget {
               : 'اختر الكمية',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
         ),
       ),
     );
@@ -264,7 +257,7 @@ class ProductCard extends StatelessWidget {
           : '${product.name} غير متوفر',
       child: SizedBox(
         width: double.infinity,
-        height: 42,
+        height: 40,
         child: FilledButton.icon(
           onPressed: enabled
               ? () {
@@ -276,18 +269,18 @@ class ProductCard extends StatelessWidget {
             backgroundColor: AppColors.primary,
             disabledBackgroundColor: AppColors.border,
             disabledForegroundColor: AppColors.textSecondary,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(13),
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
           icon: Icon(
             outOfStock ? Icons.block_outlined : Icons.add_rounded,
-            size: 18,
+            size: 17,
           ),
           label: Text(
             outOfStock ? 'غير متوفر' : 'أضف للسلة',
-            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
           ),
         ),
       ),
@@ -300,10 +293,10 @@ class ProductCard extends StatelessWidget {
       label: 'الكمية في السلة $qty',
       child: Container(
         width: double.infinity,
-        height: 42,
+        height: 40,
         decoration: BoxDecoration(
           color: AppColors.primary,
-          borderRadius: BorderRadius.circular(13),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
@@ -316,20 +309,20 @@ class ProductCard extends StatelessWidget {
                       ? Icons.delete_outline_rounded
                       : Icons.remove_rounded,
                   color: Colors.white,
-                  size: 19,
+                  size: 18,
                 ),
                 onPressed: () =>
                     context.read<CartProvider>().decrement(product),
               ),
             ),
             Container(
-              constraints: const BoxConstraints(minWidth: 36),
+              constraints: const BoxConstraints(minWidth: 34),
               alignment: Alignment.center,
               child: Text(
                 '$qty',
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 15,
+                  fontSize: 14,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -341,7 +334,7 @@ class ProductCard extends StatelessWidget {
                 icon: Icon(
                   Icons.add_rounded,
                   color: canAdd ? Colors.white : Colors.white54,
-                  size: 20,
+                  size: 19,
                 ),
                 onPressed: canAdd
                     ? () {
