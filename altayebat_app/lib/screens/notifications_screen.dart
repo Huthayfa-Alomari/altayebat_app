@@ -60,7 +60,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   String _date(dynamic raw) {
     final date = DateTime.tryParse(raw?.toString() ?? '')?.toLocal();
     if (date == null) return '';
-    return DateFormat('dd/MM • HH:mm', 'ar').format(date);
+    return DateFormat('dd/MM • HH:mm').format(date);
   }
 
   IconData _iconFor(String type) {
@@ -114,10 +114,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         final unread = item['read_at'] == null;
                         return Material(
                           color: unread
-                              ? Theme.of(context)
-                                    .colorScheme
-                                    .primary
-                                    .withValues(alpha: 0.07)
+                              ? Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.07)
                               : Colors.white,
                           borderRadius: BorderRadius.circular(16),
                           child: InkWell(
@@ -135,16 +134,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                         .withValues(alpha: 0.10),
                                     child: Icon(
                                       _iconFor(item['type']?.toString() ?? ''),
-                                      color: Theme.of(context).colorScheme.primary,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          item['title']?.toString() ?? 'تحديث جديد',
+                                          item['title']?.toString() ??
+                                              'تحديث جديد',
                                           style: TextStyle(
                                             fontWeight: unread
                                                 ? FontWeight.w900
@@ -175,7 +178,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                       width: 9,
                                       height: 9,
                                       decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.primary,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
                                         shape: BoxShape.circle,
                                       ),
                                     ),
