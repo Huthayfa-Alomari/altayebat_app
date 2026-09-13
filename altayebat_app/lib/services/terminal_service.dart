@@ -71,6 +71,18 @@ class TerminalService {
         'p_new_status': status,
       },
     );
+
+    // Status change is the source of truth; remote push is best-effort only.
+    // The database trigger has already written the durable inbox notification.
+    try {
+      await _client.functions.invoke(
+        'send-customer-push',
+        body: <String, dynamic>{'order_id': orderId},
+      );
+    } catch (_) {
+      // Never make the SUNMI operator repeat a status transition because FCM is
+      // temporarily unavailable or has not been configured yet.
+    }
   }
 
   static Future<Product?> lookupProductByBarcode(String barcode) async {
