@@ -43,12 +43,14 @@ class _TerminalOrdersScreenState extends State<TerminalOrdersScreen> {
             .toSet();
 
         if (_initialized) {
-          final newPending = normalized.where((order) {
-            final id = order['id']?.toString();
-            return id != null &&
-                !_seenOrderIds.contains(id) &&
-                order['status']?.toString() == 'pending';
-          }).toList(growable: false);
+          final newPending = normalized
+              .where((order) {
+                final id = order['id']?.toString();
+                return id != null &&
+                    !_seenOrderIds.contains(id) &&
+                    order['status']?.toString() == 'pending';
+              })
+              .toList(growable: false);
 
           if (newPending.isNotEmpty) {
             SystemSound.play(SystemSoundType.alert);
@@ -100,11 +102,13 @@ class _TerminalOrdersScreenState extends State<TerminalOrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final visible = _orders.where((order) {
-      if (_showCompleted) return true;
-      final status = order['status']?.toString();
-      return status != 'delivered' && status != 'cancelled';
-    }).toList(growable: false);
+    final visible = _orders
+        .where((order) {
+          if (_showCompleted) return true;
+          final status = order['status']?.toString();
+          return status != 'delivered' && status != 'cancelled';
+        })
+        .toList(growable: false);
 
     return Column(
       children: [
@@ -179,7 +183,8 @@ class _TerminalOrdersScreenState extends State<TerminalOrdersScreen> {
                         if (id == null) return;
                         await Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => TerminalOrderDetailScreen(orderId: id),
+                            builder: (_) =>
+                                TerminalOrderDetailScreen(orderId: id),
                           ),
                         );
                       },
@@ -204,7 +209,8 @@ class _OrderCard extends StatelessWidget {
     final shortId = id.length >= 8 ? id.substring(0, 8).toUpperCase() : id;
     final status = order['status']?.toString() ?? 'pending';
     final total = (order['total'] as num?)?.toDouble() ?? 0;
-    final createdAt = DateTime.tryParse(order['created_at']?.toString() ?? '')?.toLocal();
+    final createdAt = DateTime.tryParse(order['created_at']?.toString() ?? '')
+        ?.toLocal();
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -222,7 +228,10 @@ class _OrderCard extends StatelessWidget {
                   color: _statusColor(status).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(Icons.receipt_long_rounded, color: _statusColor(status)),
+                child: Icon(
+                  Icons.receipt_long_rounded,
+                  color: _statusColor(status),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -286,29 +295,29 @@ class _OrderCard extends StatelessWidget {
   }
 
   static Color _statusColor(String status) => switch (status) {
-        'pending' => const Color(0xFFD97706),
-        'preparing' => const Color(0xFF2563EB),
-        'out_for_delivery' => const Color(0xFF7C3AED),
-        'delivered' => const Color(0xFF15803D),
-        'cancelled' => const Color(0xFF6B7280),
-        _ => const Color(0xFF374151),
-      };
+    'pending' => const Color(0xFFD97706),
+    'preparing' => const Color(0xFF2563EB),
+    'out_for_delivery' => const Color(0xFF7C3AED),
+    'delivered' => const Color(0xFF15803D),
+    'cancelled' => const Color(0xFF6B7280),
+    _ => const Color(0xFF374151),
+  };
 
   static String _statusLabel(String status) => switch (status) {
-        'pending' => 'جديد',
-        'preparing' => 'قيد التجهيز',
-        'out_for_delivery' => 'بالتوصيل',
-        'delivered' => 'تم التسليم',
-        'cancelled' => 'ملغي',
-        _ => status,
-      };
+    'pending' => 'جديد',
+    'preparing' => 'قيد التجهيز',
+    'out_for_delivery' => 'بالتوصيل',
+    'delivered' => 'تم التسليم',
+    'cancelled' => 'ملغي',
+    _ => status,
+  };
 
   static String _paymentLabel(String? method) => switch (method) {
-        'cash' => 'كاش',
-        'cliq' => 'CliQ',
-        'card' => 'بطاقة',
-        final value => value ?? '—',
-      };
+    'cash' => 'كاش',
+    'cliq' => 'CliQ',
+    'card' => 'بطاقة',
+    final value => value ?? '—',
+  };
 }
 
 class _EmptyOrders extends StatelessWidget {

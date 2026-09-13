@@ -1,6 +1,7 @@
 import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
+
 import '../models/product.dart';
 import '../models/cart_item.dart';
 
@@ -12,10 +13,9 @@ class CartProvider extends ChangeNotifier {
   /// Badge count: pieces keep their natural count; a measured product counts as
   /// one cart line so 500 grams never appears as "500 items".
   int get itemCount => _items.values.fold(
-        0,
-        (sum, item) =>
-            sum + (item.product.isMeasured ? 1 : item.quantity),
-      );
+    0,
+    (sum, item) => sum + (item.product.isMeasured ? 1 : item.quantity),
+  );
 
   int get lineCount => _items.length;
 
@@ -44,11 +44,7 @@ class CartProvider extends ChangeNotifier {
 
   /// Sets an exact atomic quantity. For measured products the quantity is grams
   /// or millilitres; for pieces it is a piece count.
-  bool setQuantity(
-    Product product,
-    int quantity, {
-    double? requestedAmount,
-  }) {
+  bool setQuantity(Product product, int quantity, {double? requestedAmount}) {
     if (!product.isAvailable || product.stockQty <= 0) return false;
     if (quantity <= 0 || quantity > product.stockQty) return false;
     if (quantity < product.minQty) return false;

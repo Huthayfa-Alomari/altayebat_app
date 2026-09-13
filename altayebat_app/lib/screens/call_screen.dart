@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 
@@ -79,7 +80,8 @@ class _CallScreenState extends State<CallScreen> {
 
   void _showLaunchError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   String _shortOrderId(String id) {
@@ -191,10 +193,7 @@ class _CallScreenState extends State<CallScreen> {
         color: background,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(
-        text,
-        style: TextStyle(fontSize: 12, color: foreground),
-      ),
+      child: Text(text, style: TextStyle(fontSize: 12, color: foreground)),
     );
   }
 

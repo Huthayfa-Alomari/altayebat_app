@@ -8,7 +8,8 @@ class TerminalInventoryScreen extends StatefulWidget {
   const TerminalInventoryScreen({super.key});
 
   @override
-  State<TerminalInventoryScreen> createState() => _TerminalInventoryScreenState();
+  State<TerminalInventoryScreen> createState() =>
+      _TerminalInventoryScreenState();
 }
 
 class _TerminalInventoryScreenState extends State<TerminalInventoryScreen> {
@@ -69,9 +70,9 @@ class _TerminalInventoryScreenState extends State<TerminalInventoryScreen> {
     _stock.text = stock == stock.roundToDouble()
         ? stock.toStringAsFixed(0)
         : stock
-            .toStringAsFixed(3)
-            .replaceFirst(RegExp(r'0+$'), '')
-            .replaceFirst(RegExp(r'\.$'), '');
+              .toStringAsFixed(3)
+              .replaceFirst(RegExp(r'0+$'), '')
+              .replaceFirst(RegExp(r'\.$'), '');
     setState(() {
       _product = product;
       _barcode = barcode;
@@ -103,9 +104,8 @@ class _TerminalInventoryScreenState extends State<TerminalInventoryScreen> {
       final refreshed = await TerminalService.lookupProductByBarcode(barcode);
       if (!mounted) return;
       if (refreshed != null) _setProduct(refreshed, barcode: barcode);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تحديث المخزون.')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('تم تحديث المخزون.')));
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = _message(error));
@@ -180,11 +180,7 @@ class _TerminalInventoryScreenState extends State<TerminalInventoryScreen> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
             child: product == null
-                ? _ScannerHint(
-                    busy: _busy,
-                    error: _error,
-                    onAgain: _scanAgain,
-                  )
+                ? _ScannerHint(busy: _busy, error: _error, onAgain: _scanAgain)
                 : _StockEditor(
                     product: product,
                     stockController: _stock,
@@ -253,14 +249,18 @@ class _StockEditor extends StatelessWidget {
             Expanded(
               child: OutlinedButton(
                 onPressed: busy ? null : () => onAdjust(-quickDelta),
-                child: Text('- ${quickDelta.toStringAsFixed(product.isMeasured ? 1 : 0)}'),
+                child: Text(
+                  '- ${quickDelta.toStringAsFixed(product.isMeasured ? 1 : 0)}',
+                ),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: OutlinedButton(
                 onPressed: busy ? null : () => onAdjust(quickDelta),
-                child: Text('+ ${quickDelta.toStringAsFixed(product.isMeasured ? 1 : 0)}'),
+                child: Text(
+                  '+ ${quickDelta.toStringAsFixed(product.isMeasured ? 1 : 0)}',
+                ),
               ),
             ),
           ],
@@ -334,10 +334,7 @@ class _ScannerHint extends StatelessWidget {
         ),
         if (error != null) ...[
           const SizedBox(height: 12),
-          Text(
-            error!,
-            style: const TextStyle(color: Color(0xFFB91C1C)),
-          ),
+          Text(error!, style: const TextStyle(color: Color(0xFFB91C1C))),
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: onAgain,

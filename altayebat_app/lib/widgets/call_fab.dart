@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../screens/call_screen.dart';
 import '../theme/app_theme.dart';
 
@@ -10,9 +11,9 @@ class CallFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => CallScreen(orderId: orderId)),
-      ),
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => CallScreen(orderId: orderId))),
       child: Container(
         width: 48,
         height: 48,

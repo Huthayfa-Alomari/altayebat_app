@@ -102,10 +102,7 @@ void main() {
       final cart = CartProvider();
       final lentils = measuredProduct();
 
-      expect(
-        cart.setQuantity(lentils, 571, requestedAmount: 1.0),
-        isTrue,
-      );
+      expect(cart.setQuantity(lentils, 571, requestedAmount: 1.0), isTrue);
 
       expect(cart.itemFor(lentils.id)?.requestedAmount, 1.0);
       expect(cart.total, closeTo(0.99925, 0.000001));

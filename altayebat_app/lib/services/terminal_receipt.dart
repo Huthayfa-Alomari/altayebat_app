@@ -14,20 +14,24 @@ class TerminalReceipt {
     final units = quantity / scale;
     final text = units == units.roundToDouble()
         ? units.toStringAsFixed(0)
-        : units.toStringAsFixed(3).replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '');
+        : units
+              .toStringAsFixed(3)
+              .replaceFirst(RegExp(r'0+$'), '')
+              .replaceFirst(RegExp(r'\.$'), '');
     return '$text ${saleType == 'weight' ? 'كغ' : 'لتر'}';
   }
 
   static String unitPriceLabel(Map<String, dynamic> item) {
     final saleType = item['sale_type_snapshot']?.toString() ?? 'piece';
-    final displayPrice = (item['display_unit_price_snapshot'] as num?)?.toDouble() ??
+    final displayPrice =
+        (item['display_unit_price_snapshot'] as num?)?.toDouble() ??
         (item['unit_price'] as num?)?.toDouble() ??
         0;
     final unit = saleType == 'weight'
         ? 'كغ'
         : saleType == 'volume'
-            ? 'لتر'
-            : 'قطعة';
+        ? 'لتر'
+        : 'قطعة';
     return '${displayPrice.toStringAsFixed(3)} د.أ/$unit';
   }
 

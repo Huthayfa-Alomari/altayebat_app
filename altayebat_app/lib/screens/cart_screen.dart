@@ -202,10 +202,8 @@ class CartScreen extends StatelessWidget {
 
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => DeliveryCheckoutScreen(
-            items: items,
-            onOrderCreated: cart.clear,
-          ),
+          builder: (_) =>
+              DeliveryCheckoutScreen(items: items, onOrderCreated: cart.clear),
         ),
       );
     } catch (error) {
@@ -248,11 +246,7 @@ class CartScreen extends StatelessWidget {
     }
   }
 
-  void _increment(
-    BuildContext context,
-    CartProvider cart,
-    CartItem item,
-  ) {
+  void _increment(BuildContext context, CartProvider cart, CartItem item) {
     final added = cart.add(item.product);
     if (added) return;
 

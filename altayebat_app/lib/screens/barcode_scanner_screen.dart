@@ -118,9 +118,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('تمت إضافة ${product.name} للسلة')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('تمت إضافة ${product.name} للسلة')));
     await _scanAgain();
   }
 

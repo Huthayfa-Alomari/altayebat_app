@@ -296,8 +296,7 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
           widget.onOrderCreated?.call();
 
           if (!opened) {
-            paymentWarning =
-                'تم إنشاء عملية الدفع، لكن تعذر فتح صفحة PayTabs. افتح الطلب واضغط تحقق من حالة الدفع.';
+            paymentWarning = 'تم إنشاء عملية الدفع، لكن تعذر فتح صفحة PayTabs. افتح الطلب واضغط تحقق من حالة الدفع.';
           }
         } catch (error) {
           // If PayTabs never created a transaction, cancel the just-created
@@ -310,8 +309,7 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
 
           if (cancelled) {
             setState(() {
-              _error =
-                  'تعذر بدء الدفع بالبطاقة، لذلك أُلغي الطلب وأُعيد المخزون تلقائيًا. جرّب مرة ثانية.';
+              _error = 'تعذر بدء الدفع بالبطاقة، لذلك أُلغي الطلب وأُعيد المخزون تلقائيًا. جرّب مرة ثانية.';
             });
             return;
           }
@@ -329,9 +327,8 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
       if (!mounted) return;
 
       if (paymentWarning != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(paymentWarning)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(paymentWarning)));
       }
 
       Navigator.of(context).pushReplacement(
@@ -389,12 +386,7 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
         : const <String, dynamic>{};
 
     final canPlaceOrder =
-        !_placing &&
-        !_loading &&
-        !_quoting &&
-        open &&
-        serviceable &&
-        meetsMin;
+        !_placing && !_loading && !_quoting && open && serviceable && meetsMin;
 
     return Scaffold(
       appBar: AppBar(title: const Text('إتمام الطلب')),
@@ -748,10 +740,7 @@ class _SelectedAddressCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                Icons.location_on_rounded,
-                color: theme.colorScheme.primary,
-              ),
+              Icon(Icons.location_on_rounded, color: theme.colorScheme.primary),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -1019,10 +1008,7 @@ class _OptionalPreferences extends StatelessWidget {
               width: double.infinity,
               child: SegmentedButton<String>(
                 segments: const [
-                  ButtonSegment(
-                    value: 'call_me',
-                    label: Text('اتصل بي'),
-                  ),
+                  ButtonSegment(value: 'call_me', label: Text('اتصل بي')),
                   ButtonSegment(
                     value: 'remove_item',
                     label: Text('احذف المنتج'),

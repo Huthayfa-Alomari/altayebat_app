@@ -14,8 +14,7 @@ class TerminalOrderDetailScreen extends StatefulWidget {
       _TerminalOrderDetailScreenState();
 }
 
-class _TerminalOrderDetailScreenState
-    extends State<TerminalOrderDetailScreen> {
+class _TerminalOrderDetailScreenState extends State<TerminalOrderDetailScreen> {
   Map<String, dynamic>? _order;
   bool _loading = true;
   bool _busy = false;
@@ -105,8 +104,8 @@ class _TerminalOrderDetailScreenState
     final itemsRaw = order['items'];
     final items = itemsRaw is List
         ? itemsRaw
-            .map((item) => Map<String, dynamic>.from(item as Map))
-            .toList(growable: false)
+              .map((item) => Map<String, dynamic>.from(item as Map))
+              .toList(growable: false)
         : <Map<String, dynamic>>[];
 
     return Scaffold(
@@ -166,10 +165,7 @@ class _TerminalOrderDetailScreenState
             ),
             if (_error != null) ...[
               const SizedBox(height: 8),
-              Text(
-                _error!,
-                style: const TextStyle(color: Color(0xFFB91C1C)),
-              ),
+              Text(_error!, style: const TextStyle(color: Color(0xFFB91C1C))),
             ],
           ],
         ),
@@ -201,20 +197,20 @@ class _TerminalOrderDetailScreenState
   }
 
   String _statusLabel(String status) => switch (status) {
-        'pending' => 'بانتظار التأكيد',
-        'preparing' => 'قيد التحضير',
-        'out_for_delivery' => 'بالتوصيل',
-        'delivered' => 'تم التسليم',
-        'cancelled' => 'ملغي',
-        _ => status,
-      };
+    'pending' => 'بانتظار التأكيد',
+    'preparing' => 'قيد التحضير',
+    'out_for_delivery' => 'بالتوصيل',
+    'delivered' => 'تم التسليم',
+    'cancelled' => 'ملغي',
+    _ => status,
+  };
 
   String _paymentLabel(String? method) => switch (method) {
-        'cash' => 'كاش',
-        'cliq' => 'CliQ',
-        'card' => 'بطاقة',
-        final value => value ?? '—',
-      };
+    'cash' => 'كاش',
+    'cliq' => 'CliQ',
+    'card' => 'بطاقة',
+    final value => value ?? '—',
+  };
 }
 
 class _OrderItemCard extends StatelessWidget {
@@ -294,7 +290,10 @@ class _InfoCard extends StatelessWidget {
                         style: const TextStyle(color: Color(0xFF6B7280)),
                       ),
                     ),
-                    Text(row.$2, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    Text(
+                      row.$2,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                   ],
                 ),
               ),
@@ -346,7 +345,9 @@ class _StatusActions extends StatelessWidget {
           Expanded(
             child: FilledButton(
               onPressed: busy ? null : () => onChange(next!),
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(52),
+              ),
               child: Text(nextLabel!),
             ),
           )

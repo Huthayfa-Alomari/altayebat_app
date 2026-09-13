@@ -84,7 +84,10 @@ class Product {
     final units = quantity / inventoryScale;
     final text = units == units.roundToDouble()
         ? units.toStringAsFixed(0)
-        : units.toStringAsFixed(units < 10 ? 2 : 1).replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '');
+        : units
+              .toStringAsFixed(units < 10 ? 2 : 1)
+              .replaceFirst(RegExp(r'0+$'), '')
+              .replaceFirst(RegExp(r'\.$'), '');
     return '$text $unitLabel';
   }
 
@@ -114,21 +117,26 @@ class Product {
       isAvailable: map['is_available'] as bool? ?? true,
       categoryId: map['category_id'] as String?,
       saleType: saleType,
-      baseUnit: map['base_unit']?.toString() ??
+      baseUnit:
+          map['base_unit']?.toString() ??
           (saleType == ProductSaleType.weight
               ? 'kg'
               : saleType == ProductSaleType.volume
-                  ? 'liter'
-                  : 'piece'),
+              ? 'liter'
+              : 'piece'),
       inventoryScale: scale > 0 ? scale : defaultScale,
-      pricePerUnit: (map['price_per_unit'] as num?)?.toDouble() ??
+      pricePerUnit:
+          (map['price_per_unit'] as num?)?.toDouble() ??
           atomicPrice * (scale > 0 ? scale : defaultScale),
-      minQty: (map['min_qty'] as num?)?.toInt() ??
+      minQty:
+          (map['min_qty'] as num?)?.toInt() ??
           (saleType == ProductSaleType.piece ? 1 : 100),
-      qtyStep: (map['qty_step'] as num?)?.toInt() ??
+      qtyStep:
+          (map['qty_step'] as num?)?.toInt() ??
           (saleType == ProductSaleType.piece ? 1 : 50),
       allowAmountPurchase:
-          map['allow_amount_purchase'] as bool? ?? saleType != ProductSaleType.piece,
+          map['allow_amount_purchase'] as bool? ??
+          saleType != ProductSaleType.piece,
     );
   }
 }

@@ -29,7 +29,9 @@ class SunmiPrinterService {
 
   static Future<Map<String, dynamic>> printerInfo() async {
     try {
-      final result = await _channel.invokeMapMethod<String, dynamic>('printerInfo');
+      final result = await _channel.invokeMapMethod<String, dynamic>(
+        'printerInfo',
+      );
       return Map<String, dynamic>.from(result ?? const {});
     } on PlatformException {
       return const {};
@@ -44,10 +46,7 @@ class SunmiPrinterService {
   }) async {
     final printed = await _channel.invokeMethod<bool>(
       'printReceipt',
-      <String, dynamic>{
-        'receipt': receipt,
-        'qr': qr ?? '',
-      },
+      <String, dynamic>{'receipt': receipt, 'qr': qr ?? ''},
     );
     if (printed != true) {
       throw StateError('تعذر إرسال الفاتورة للطابعة');

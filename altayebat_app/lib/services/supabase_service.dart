@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../config/app_config.dart';
 import '../models/product.dart';
 import '../models/category.dart';

@@ -6,10 +6,7 @@ class ProductSelection {
   final int quantity;
   final double? requestedAmount;
 
-  const ProductSelection({
-    required this.quantity,
-    this.requestedAmount,
-  });
+  const ProductSelection({required this.quantity, this.requestedAmount});
 }
 
 Future<ProductSelection?> showMeasuredProductSheet(
@@ -239,7 +236,9 @@ class _MeasuredProductSheetState extends State<_MeasuredProductSheet> {
                 children: const [0.5, 1.0, 2.0, 5.0]
                     .map(
                       (amount) => ActionChip(
-                        label: Text('${amount.toStringAsFixed(amount < 1 ? 2 : 0)} د.أ'),
+                        label: Text(
+                          '${amount.toStringAsFixed(amount < 1 ? 2 : 0)} د.أ',
+                        ),
                         onPressed: () => _pickAmount(amount),
                       ),
                     )

@@ -180,16 +180,16 @@ class ProductCard extends StatelessWidget {
           outOfStock
               ? Icons.block_outlined
               : hasSelection
-                  ? Icons.edit_outlined
-                  : Icons.scale_outlined,
+              ? Icons.edit_outlined
+              : Icons.scale_outlined,
           size: 18,
         ),
         label: Text(
           outOfStock
               ? 'غير متوفر'
               : hasSelection
-                  ? product.formatQuantity(qty)
-                  : 'اختر الكمية',
+              ? product.formatQuantity(qty)
+              : 'اختر الكمية',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),

@@ -100,9 +100,8 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
         _profileComplete = true;
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تم حفظ بياناتك بنجاح')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('تم حفظ بياناتك بنجاح')));
     } catch (error) {
       if (!mounted) return;
       setState(() {

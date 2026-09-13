@@ -270,9 +270,8 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
                       hintText: 'مثال: الزرقاء',
                       prefixIcon: Icon(Icons.location_city_outlined),
                     ),
-                    validator: (value) => (value ?? '').trim().isEmpty
-                        ? 'اكتب المدينة'
-                        : null,
+                    validator: (value) =>
+                        (value ?? '').trim().isEmpty ? 'اكتب المدينة' : null,
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
@@ -283,9 +282,8 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
                       hintText: 'مثال: حي الأمير محمد',
                       prefixIcon: Icon(Icons.map_outlined),
                     ),
-                    validator: (value) => (value ?? '').trim().isEmpty
-                        ? 'اكتب المنطقة'
-                        : null,
+                    validator: (value) =>
+                        (value ?? '').trim().isEmpty ? 'اكتب المنطقة' : null,
                   ),
                 ],
               ),
@@ -498,10 +496,7 @@ class _CoverageMessage extends StatelessWidget {
               serviceable
                   ? 'التوصيل متاح${deliveryFee == null ? '' : ' — الرسوم $deliveryFee د.أ'}'
                   : 'الموقع خارج مناطق التوصيل الحالية',
-              style: TextStyle(
-                color: foreground,
-                fontWeight: FontWeight.w700,
-              ),
+              style: TextStyle(color: foreground, fontWeight: FontWeight.w700),
             ),
           ),
         ],

@@ -8,11 +8,7 @@ class CartItem {
   /// a UX hint. Checkout still receives the server-verifiable atomic quantity.
   double? requestedAmount;
 
-  CartItem({
-    required this.product,
-    this.quantity = 1,
-    this.requestedAmount,
-  });
+  CartItem({required this.product, this.quantity = 1, this.requestedAmount});
 
   double get subtotal => product.price * quantity;
 

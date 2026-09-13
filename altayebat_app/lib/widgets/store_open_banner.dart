@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../services/supabase_service.dart';
 
 class StoreOpenBanner extends StatelessWidget {

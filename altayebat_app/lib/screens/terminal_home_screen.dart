@@ -36,7 +36,10 @@ class _TerminalHomeScreenState extends State<TerminalHomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            error.toString().replaceFirst('PlatformException(', '').replaceFirst('Bad state: ', ''),
+            error
+                .toString()
+                .replaceFirst('PlatformException(', '')
+                .replaceFirst('Bad state: ', ''),
           ),
         ),
       );
@@ -60,10 +63,14 @@ class _TerminalHomeScreenState extends State<TerminalHomeScreen> {
             builder: (context, snapshot) {
               final ready = snapshot.data?['ready'] == true;
               return IconButton(
-                tooltip: ready ? 'طابعة SUNMI جاهزة — اختبار' : 'الطابعة غير متصلة',
-                onPressed: ready ? _testPrinter : () => setState(() {
-                  _printerInfo = SunmiPrinterService.printerInfo();
-                }),
+                tooltip: ready
+                    ? 'طابعة SUNMI جاهزة — اختبار'
+                    : 'الطابعة غير متصلة',
+                onPressed: ready
+                    ? _testPrinter
+                    : () => setState(() {
+                        _printerInfo = SunmiPrinterService.printerInfo();
+                      }),
                 icon: Icon(
                   ready ? Icons.print_rounded : Icons.print_disabled_outlined,
                 ),
@@ -82,10 +89,7 @@ class _TerminalHomeScreenState extends State<TerminalHomeScreen> {
       ),
       body: IndexedStack(
         index: _index,
-        children: const [
-          TerminalOrdersScreen(),
-          TerminalInventoryScreen(),
-        ],
+        children: const [TerminalOrdersScreen(), TerminalInventoryScreen()],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,

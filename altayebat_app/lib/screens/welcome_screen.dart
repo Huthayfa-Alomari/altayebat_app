@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import 'home_screen.dart';
@@ -54,12 +55,14 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     try {
       await SupabaseService.signInAndSaveProfile(name: name, phone: phone);
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
     } catch (_) {
       if (!mounted) return;
-      setState(() => _error = 'تعذر تسجيل الدخول. تأكد من الإنترنت وجرب مرة ثانية.');
+      setState(
+        () => _error = 'تعذر تسجيل الدخول. تأكد من الإنترنت وجرب مرة ثانية.',
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -147,7 +150,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                             controller: _phoneController,
                             keyboardType: TextInputType.phone,
                             textInputAction: TextInputAction.done,
-                            autofillHints: const [AutofillHints.telephoneNumber],
+                            autofillHints: const [
+                              AutofillHints.telephoneNumber,
+                            ],
                             validator: _validatePhone,
                             onFieldSubmitted: (_) {
                               if (!_loading) _continue();
@@ -166,9 +171,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           const SizedBox(height: 18),
                           ElevatedButton(
                             onPressed: _loading ? null : _continue,
-                            child: Text(
-                              _loading ? 'جاري الدخول...' : 'كمّل',
-                            ),
+                            child: Text(_loading ? 'جاري الدخول...' : 'كمّل'),
                           ),
                         ],
                       ),
