@@ -60,6 +60,25 @@ class CartProvider extends ChangeNotifier {
     return true;
   }
 
+  /// Replaces the entire cart in one notification. Used by "إعادة الطلب" so
+  /// widgets never render a half-restored previous order while lines are added.
+  void replaceAll(Iterable<CartItem> nextItems) {
+    _items.clear();
+    for (final item in nextItems) {
+      final product = item.product;
+      if (!product.isAvailable || product.stockQty <= 0) continue;
+      if (item.quantity < product.minQty || item.quantity > product.stockQty) {
+        continue;
+      }
+      _items[product.id] = CartItem(
+        product: product,
+        quantity: item.quantity,
+        requestedAmount: item.requestedAmount,
+      );
+    }
+    notifyListeners();
+  }
+
   void decrement(Product product) {
     final current = _items[product.id];
     if (current == null) return;
