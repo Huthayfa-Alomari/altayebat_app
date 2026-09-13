@@ -15,7 +15,6 @@ class PushNotificationService {
       GlobalKey<NavigatorState>();
 
   static bool _initialized = false;
-  static String? _currentToken;
 
   static bool get isConfigured => _firebaseOptions != null;
 
@@ -76,7 +75,6 @@ class PushNotificationService {
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
       FirebaseMessaging.onMessageOpenedApp.listen(_handleOpenedMessage);
       messaging.onTokenRefresh.listen((token) async {
-        _currentToken = token;
         await _registerToken(token);
       });
 
@@ -107,7 +105,6 @@ class PushNotificationService {
     try {
       final token = await FirebaseMessaging.instance.getToken();
       if (token == null || token.trim().isEmpty) return;
-      _currentToken = token;
       await _registerToken(token);
     } catch (_) {
       // APNs/FCM can be temporarily unavailable. Token refresh will retry later.
