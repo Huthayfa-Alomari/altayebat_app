@@ -155,17 +155,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openNotifications() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const NotificationsScreen()));
     final count = await GrowthService.unreadNotificationCount();
     if (mounted) setState(() => _unreadNotifications = count);
   }
 
   Future<void> _openOrders() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const OrderHistoryScreen()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const OrderHistoryScreen()));
   }
 
   Future<void> _openOffer(StoreOffer offer) async {
@@ -186,7 +186,9 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               child: _loading
                   ? const Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
                     )
                   : RefreshIndicator(
                       onRefresh: _load,
@@ -604,8 +606,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -654,8 +656,8 @@ class _HomeScreenState extends State<HomeScreen> {
         final columns = constraints.maxWidth >= 760
             ? 4
             : constraints.maxWidth >= 540
-                ? 3
-                : 2;
+            ? 3
+            : 2;
         return GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -700,16 +702,17 @@ class _QuickAction extends StatelessWidget {
           padding: const EdgeInsets.all(13),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
           ),
           child: Row(
             children: [
               CircleAvatar(
                 radius: 20,
-                backgroundColor: Theme.of(context)
-                    .colorScheme
-                    .primary
-                    .withValues(alpha: 0.08),
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.08),
                 child: Icon(
                   icon,
                   color: Theme.of(context).colorScheme.primary,
