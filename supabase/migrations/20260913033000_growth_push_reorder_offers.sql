@@ -248,8 +248,6 @@ $$;
 revoke all on function private.refresh_expired_offers_for_store(uuid)
   from public, anon, authenticated;
 
-after_offer_refresh:
-
 create or replace function public.refresh_expired_offers(p_store_id uuid)
 returns integer
 language plpgsql
