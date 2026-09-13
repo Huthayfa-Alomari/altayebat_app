@@ -71,33 +71,27 @@ class GrowthService {
   }
 
   static Future<ReorderResult> buildReorder(String orderId) async {
-    final userId = _userId;
-    if (userId == null) {
+    if (_userId == null) {
       throw StateError('يجب تسجيل الدخول لعرض الطلبات السابقة');
     }
 
-    final ownedOrder = await _client
-        .from('orders')
-        .select('id')
-        .eq('id', orderId)
-        .eq('customer_id', userId)
-        .eq('store_id', AppConfig.storeId)
-        .maybeSingle();
-    if (ownedOrder == null) {
-      throw StateError('الطلب غير موجود');
-    }
+    final data = await _client.rpc(
+      'get_reorder_source',
+      params: {'p_order_id': orderId, 'p_store_id': AppConfig.storeId},
+    );
 
-    final data = await _client
-        .from('order_items')
-        .select('quantity,products(*)')
-        .eq('order_id', orderId);
-
+    final rawLines = data is List ? data : const <dynamic>[];
     final lines = <ReorderLine>[];
     var unavailable = 0;
     var adjusted = 0;
 
-    for (final raw in data as List) {
-      final row = Map<String, dynamic>.from(raw as Map);
+    for (final raw in rawLines) {
+      if (raw is! Map) {
+        unavailable++;
+        continue;
+      }
+
+      final row = Map<String, dynamic>.from(raw);
       final rawProduct = row['products'];
       if (rawProduct is! Map) {
         unavailable++;
