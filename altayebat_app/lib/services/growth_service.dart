@@ -39,9 +39,7 @@ class GrowthService {
 
       return (data as List)
           .map(
-            (row) => StoreOffer.fromMap(
-              Map<String, dynamic>.from(row as Map),
-            ),
+            (row) => StoreOffer.fromMap(Map<String, dynamic>.from(row as Map)),
           )
           .where((offer) => offer.id.isNotEmpty && offer.productId.isNotEmpty)
           .toList(growable: false);
