@@ -209,8 +209,9 @@ class _OrderCard extends StatelessWidget {
     final shortId = id.length >= 8 ? id.substring(0, 8).toUpperCase() : id;
     final status = order['status']?.toString() ?? 'pending';
     final total = (order['total'] as num?)?.toDouble() ?? 0;
-    final createdAt = DateTime.tryParse(order['created_at']?.toString() ?? '')
-        ?.toLocal();
+    final createdAt = DateTime.tryParse(
+      order['created_at']?.toString() ?? '',
+    )?.toLocal();
 
     return Card(
       clipBehavior: Clip.antiAlias,

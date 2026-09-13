@@ -296,7 +296,8 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
           widget.onOrderCreated?.call();
 
           if (!opened) {
-            paymentWarning = 'تم إنشاء عملية الدفع، لكن تعذر فتح صفحة PayTabs. افتح الطلب واضغط تحقق من حالة الدفع.';
+            paymentWarning =
+                'تم إنشاء عملية الدفع، لكن تعذر فتح صفحة PayTabs. افتح الطلب واضغط تحقق من حالة الدفع.';
           }
         } catch (error) {
           // If PayTabs never created a transaction, cancel the just-created
@@ -309,7 +310,8 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
 
           if (cancelled) {
             setState(() {
-              _error = 'تعذر بدء الدفع بالبطاقة، لذلك أُلغي الطلب وأُعيد المخزون تلقائيًا. جرّب مرة ثانية.';
+              _error =
+                  'تعذر بدء الدفع بالبطاقة، لذلك أُلغي الطلب وأُعيد المخزون تلقائيًا. جرّب مرة ثانية.';
             });
             return;
           }
@@ -327,8 +329,9 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
       if (!mounted) return;
 
       if (paymentWarning != null) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(paymentWarning)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(paymentWarning)));
       }
 
       Navigator.of(context).pushReplacement(

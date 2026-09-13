@@ -447,7 +447,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                   const SizedBox(height: 22),
                   if (cancelled)
                     const _MessageBox(
-                      text: 'هذا الطلب ملغي. إذا كنت ما زلت تريد المنتجات، ارجع للسلة وأنشئ طلبًا جديدًا.',
+                      text:
+                          'هذا الطلب ملغي. إذا كنت ما زلت تريد المنتجات، ارجع للسلة وأنشئ طلبًا جديدًا.',
                       error: true,
                     )
                   else

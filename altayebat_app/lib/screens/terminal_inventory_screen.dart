@@ -104,8 +104,9 @@ class _TerminalInventoryScreenState extends State<TerminalInventoryScreen> {
       final refreshed = await TerminalService.lookupProductByBarcode(barcode);
       if (!mounted) return;
       if (refreshed != null) _setProduct(refreshed, barcode: barcode);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('تم تحديث المخزون.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم تحديث المخزون.')));
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = _message(error));

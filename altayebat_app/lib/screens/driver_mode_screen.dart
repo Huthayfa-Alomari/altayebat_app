@@ -116,7 +116,8 @@ class _DriverModeScreenState extends State<DriverModeScreen> {
       return position;
     } on TimeoutException {
       setState(() {
-        _error = 'لم يتمكن الهاتف من تحديد الموقع خلال 20 ثانية. جرّب قرب نافذة أو خارج المبنى.';
+        _error =
+            'لم يتمكن الهاتف من تحديد الموقع خلال 20 ثانية. جرّب قرب نافذة أو خارج المبنى.';
       });
       return null;
     } catch (e) {

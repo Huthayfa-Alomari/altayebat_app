@@ -34,8 +34,9 @@ class CartBar extends StatelessWidget {
               child: FilledButton(
                 onPressed: () {
                   FocusScope.of(context).unfocus();
-                  Navigator.of(context)
-                      .push(MaterialPageRoute(builder: (_) => CartScreen()));
+                  Navigator.of(
+                    context,
+                  ).push(MaterialPageRoute(builder: (_) => CartScreen()));
                 },
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
