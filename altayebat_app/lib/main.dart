@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'providers/cart_provider.dart';
 import 'screens/home_screen.dart';
 import 'services/driver_deep_link_navigator_observer.dart';
+import 'services/push_notification_service.dart';
 import 'services/supabase_service.dart';
 import 'theme/app_theme.dart';
 
@@ -25,6 +26,10 @@ Future<void> main() async {
         throw StateError('تعذر بدء جلسة التسوق');
       }
     }
+
+    // Push is optional until Firebase production credentials are supplied. The
+    // service is a no-op when they are absent, so shopping never depends on FCM.
+    await PushNotificationService.initialize();
   } catch (error, stackTrace) {
     bootstrapError = error;
     FlutterError.reportError(
@@ -49,6 +54,7 @@ class AltayebatApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => CartProvider(),
       child: MaterialApp(
+        navigatorKey: PushNotificationService.navigatorKey,
         navigatorObservers: [DriverDeepLinkNavigatorObserver.instance],
         title: 'أسواق الطيبات',
         debugShowCheckedModeBanner: false,
