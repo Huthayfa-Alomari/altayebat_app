@@ -50,9 +50,19 @@ export default function OrderStatusSelect({
       window.alert(
         error.message.includes("refund") || error.message.includes("gateway")
           ? "لا يمكن إلغاء هذا الطلب قبل معالجة حالة الدفع."
-          : "تعذر تحديث حالة الطلب. حاول مرة ثانية."
+          : "تعذر تحديث حالة الطلب. حاول مرة ثانية.",
       );
       return;
+    }
+
+    // The status update must remain successful even if FCM is temporarily down.
+    // A DB trigger has already written the durable in-app notification.
+    try {
+      await supabase.functions.invoke("send-customer-push", {
+        body: { order_id: orderId },
+      });
+    } catch {
+      // Best-effort remote push; do not roll back the operational status change.
     }
 
     router.refresh();
