@@ -479,7 +479,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ),
                                 const Spacer(),
-                                const Text('🏷️', style: TextStyle(fontSize: 18)),
+                                const Text(
+                                  '🏷️',
+                                  style: TextStyle(fontSize: 18),
+                                ),
                               ],
                             ),
                             const SizedBox(height: 9),
@@ -559,10 +562,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 3),
           const Text(
             'اختَر القسم لتوصل للمنتجات أسرع',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 11,
-            ),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
           ),
           const SizedBox(height: 13),
           LayoutBuilder(
@@ -952,7 +952,9 @@ class _CategoryTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: selected ? AppColors.primaryDark : AppColors.textPrimary,
+                  color: selected
+                      ? AppColors.primaryDark
+                      : AppColors.textPrimary,
                   fontSize: 10.5,
                   fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
                 ),
