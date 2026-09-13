@@ -9,3 +9,6 @@ verify_jwt = false
 
 [functions.payment-return]
 verify_jwt = false
+
+[functions.send-customer-push]
+verify_jwt = true
