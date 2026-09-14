@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/push_notification_service.dart';
 import '../services/supabase_service.dart';
+import '../theme/app_theme.dart';
 
 class CustomerAuthScreen extends StatefulWidget {
   final bool returnAfterSuccess;
@@ -18,10 +19,14 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _otpController = TextEditingController();
 
   bool _saving = false;
   bool _loadingProfile = true;
   bool _profileComplete = false;
+  bool _otpSent = false;
+  String _pendingName = '';
+  String _pendingPhone = '';
   String? _error;
 
   @override
@@ -70,11 +75,15 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
+    _otpController.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  Future<void> _sendOtp() async {
     if (_saving || !_formKey.currentState!.validate()) return;
+
+    final normalizedPhone = _normalizeJordanPhone(_phoneController.text);
+    final name = _nameController.text.trim();
 
     setState(() {
       _saving = true;
@@ -82,16 +91,64 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
     });
 
     try {
-      final normalizedPhone = _normalizeJordanPhone(_phoneController.text);
-      await SupabaseService.signInAndSaveProfile(
-        name: _nameController.text.trim(),
+      final client = Supabase.instance.client;
+
+      // Browsing starts with an anonymous session. Phone OTP becomes the real
+      // persistent customer identity only when the customer reaches checkout.
+      await client.auth.signOut();
+      await client.auth.signInWithOtp(
         phone: normalizedPhone,
+        shouldCreateUser: true,
+      );
+
+      if (!mounted) return;
+      _pendingName = name;
+      _pendingPhone = normalizedPhone;
+      _phoneController.text = normalizedPhone;
+      _otpController.clear();
+      setState(() {
+        _saving = false;
+        _otpSent = true;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = _friendlyError(error);
+      });
+    }
+  }
+
+  Future<void> _verifyOtp() async {
+    if (_saving) return;
+    final code = _otpController.text.trim();
+    if (!RegExp(r'^\d{6}$').hasMatch(code)) {
+      setState(() => _error = 'أدخل رمز التحقق المكوّن من 6 أرقام.');
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+
+    try {
+      final response = await Supabase.instance.client.auth.verifyOTP(
+        phone: _pendingPhone,
+        token: code,
+        type: OtpType.sms,
+      );
+      if (response.user == null) {
+        throw StateError('تعذر تأكيد رقم الموبايل');
+      }
+
+      await SupabaseService.signInAndSaveProfile(
+        name: _pendingName,
+        phone: _pendingPhone,
       );
       await PushNotificationService.syncCurrentToken();
 
       if (!mounted) return;
-      _phoneController.text = normalizedPhone;
-
       if (widget.returnAfterSuccess) {
         Navigator.of(context).pop(true);
         return;
@@ -99,12 +156,38 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
 
       setState(() {
         _saving = false;
+        _otpSent = false;
         _profileComplete = true;
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تم حفظ بياناتك بنجاح')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تأكيد رقمك وحفظ بياناتك بنجاح')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = _friendlyError(error);
+      });
+    }
+  }
+
+  Future<void> _resendOtp() async {
+    if (_saving || _pendingPhone.isEmpty) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await Supabase.instance.client.auth.signInWithOtp(
+        phone: _pendingPhone,
+        shouldCreateUser: true,
+      );
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم إرسال رمز جديد')),
+      );
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -135,12 +218,30 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
 
   String _friendlyError(Object error) {
     final text = error.toString();
+    final lower = text.toLowerCase();
 
-    if (text.contains('network') || text.contains('SocketException')) {
+    if (lower.contains('network') || lower.contains('socketexception')) {
       return 'تعذر الاتصال بالإنترنت. تأكد من الشبكة وحاول مرة ثانية.';
+    }
+    if (lower.contains('rate') || lower.contains('too many')) {
+      return 'تم طلب رموز كثيرة خلال وقت قصير. انتظر قليلًا ثم حاول مرة ثانية.';
+    }
+    if (lower.contains('token') || lower.contains('otp') || lower.contains('expired')) {
+      return 'رمز التحقق غير صحيح أو انتهت صلاحيته. اطلب رمزًا جديدًا.';
+    }
+    if (lower.contains('sms') || lower.contains('provider')) {
+      return 'خدمة رسائل التحقق غير مفعّلة حاليًا. تواصل مع إدارة المول.';
     }
 
     return text.replaceFirst('Bad state: ', '').replaceFirst('Exception: ', '');
+  }
+
+  void _changeNumber() {
+    setState(() {
+      _otpSent = false;
+      _otpController.clear();
+      _error = null;
+    });
   }
 
   @override
@@ -163,7 +264,12 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
               children: [
                 const CircleAvatar(
                   radius: 34,
-                  child: Icon(Icons.person, size: 34),
+                  backgroundColor: AppColors.skySoft,
+                  child: Icon(
+                    Icons.verified_user_outlined,
+                    size: 34,
+                    color: AppColors.skyBlueDark,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -204,6 +310,103 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
       );
     }
 
+    if (_otpSent) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('تأكيد رقم الموبايل')),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  width: 74,
+                  height: 74,
+                  margin: const EdgeInsets.symmetric(horizontal: 120),
+                  decoration: const BoxDecoration(
+                    color: AppColors.skySoft,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.sms_outlined,
+                    color: AppColors.skyBlueDark,
+                    size: 34,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'أرسلنا لك رمز تحقق',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  'أدخل الرمز المرسل إلى $_pendingPhone. هذه الخطوة مطلوبة أول مرة فقط.',
+                  textAlign: TextAlign.center,
+                  textDirection: TextDirection.rtl,
+                  style: const TextStyle(
+                    height: 1.5,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 26),
+                TextField(
+                  controller: _otpController,
+                  autofocus: true,
+                  textAlign: TextAlign.center,
+                  textDirection: TextDirection.ltr,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(6),
+                  ],
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 8,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'رمز التحقق',
+                    hintText: '000000',
+                  ),
+                  onSubmitted: (_) => _verifyOtp(),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 14),
+                  _ErrorBox(text: _error!),
+                ],
+                const SizedBox(height: 18),
+                FilledButton(
+                  onPressed: _saving ? null : _verifyOtp,
+                  child: _saving
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2.5),
+                        )
+                      : const Text('تأكيد ومتابعة'),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton(
+                      onPressed: _saving ? null : _resendOtp,
+                      child: const Text('إرسال الرمز مرة ثانية'),
+                    ),
+                    TextButton(
+                      onPressed: _saving ? null : _changeNumber,
+                      child: const Text('تغيير الرقم'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('بيانات الحساب')),
       body: SafeArea(
@@ -214,7 +417,11 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(Icons.shopping_bag_outlined, size: 54),
+                const Icon(
+                  Icons.shopping_bag_outlined,
+                  size: 54,
+                  color: AppColors.skyBlueDark,
+                ),
                 const SizedBox(height: 12),
                 const Text(
                   'قبل ما نكمل الطلب',
@@ -223,7 +430,7 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'اكتب اسمك ورقم موبايلك فقط. ما في كلمة مرور ولا خطوات معقدة.',
+                  'اكتب اسمك ورقم موبايلك. سنرسل رمز OTP لتأكيد الرقم أول مرة فقط.',
                   textAlign: TextAlign.center,
                   style: TextStyle(height: 1.5, color: Color(0xFF6B7280)),
                 ),
@@ -236,13 +443,10 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
                     labelText: 'الاسم',
                     hintText: 'مثال: محمد أحمد',
                     prefixIcon: Icon(Icons.person_outline),
-                    border: OutlineInputBorder(),
                   ),
                   validator: (value) {
                     final normalized = value?.trim() ?? '';
-                    if (normalized.length < 2) {
-                      return 'اكتب الاسم';
-                    }
+                    if (normalized.length < 2) return 'اكتب الاسم';
                     return null;
                   },
                 ),
@@ -257,19 +461,16 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
                       RegExp(r'[0-9+\-\s\(\)]'),
                     ),
                   ],
-                  onFieldSubmitted: (_) => _submit(),
+                  onFieldSubmitted: (_) => _sendOtp(),
                   textDirection: TextDirection.ltr,
                   decoration: const InputDecoration(
                     labelText: 'رقم الموبايل',
                     hintText: '07XXXXXXXX',
                     prefixIcon: Icon(Icons.phone_outlined),
-                    border: OutlineInputBorder(),
                   ),
                   validator: (value) {
                     final normalized = value?.trim() ?? '';
-                    if (normalized.isEmpty) {
-                      return 'اكتب رقم الموبايل';
-                    }
+                    if (normalized.isEmpty) return 'اكتب رقم الموبايل';
                     if (!_isValidJordanPhone(normalized)) {
                       return 'أدخل رقم أردني صحيح مثل 0791234567';
                     }
@@ -278,38 +479,21 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF1F2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      _error!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Color(0xFF9F1239),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
+                  _ErrorBox(text: _error!),
                 ],
                 const SizedBox(height: 20),
                 SizedBox(
                   height: 52,
-                  child: FilledButton(
-                    onPressed: _saving ? null : _submit,
-                    child: _saving
+                  child: FilledButton.icon(
+                    onPressed: _saving ? null : _sendOtp,
+                    icon: const Icon(Icons.sms_outlined),
+                    label: _saving
                         ? const SizedBox(
                             width: 22,
                             height: 22,
                             child: CircularProgressIndicator(strokeWidth: 2.5),
                           )
-                        : Text(
-                            widget.returnAfterSuccess
-                                ? 'حفظ ومتابعة للطلب'
-                                : 'حفظ بياناتي',
-                          ),
+                        : const Text('إرسال رمز التحقق'),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -324,7 +508,7 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'نستخدم هذه البيانات للتواصل بخصوص الطلب والتوصيل فقط.',
+                        'بعد تأكيد الرقم لن نطلب OTP في كل مرة على نفس الحساب والجهاز.',
                         style: TextStyle(
                           fontSize: 12,
                           height: 1.4,
@@ -337,6 +521,31 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorBox extends StatelessWidget {
+  final String text;
+
+  const _ErrorBox({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF1F2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Color(0xFF9F1239),
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
