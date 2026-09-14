@@ -43,6 +43,14 @@ class _StorefrontShellState extends State<StorefrontShell> {
     final showBanner =
         _ready && _settings.showOffersSection && _offers.isNotEmpty;
 
+    final storefront = showBanner
+        ? MediaQuery.removePadding(
+            context: context,
+            removeTop: true,
+            child: widget.child,
+          )
+        : widget.child;
+
     return Material(
       color: AppColors.background,
       child: Column(
@@ -52,13 +60,10 @@ class _StorefrontShellState extends State<StorefrontShell> {
               bottom: false,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                child: _OfferHero(
-                  settings: _settings,
-                  offer: _offers.first,
-                ),
+                child: _OfferHero(settings: _settings, offer: _offers.first),
               ),
             ),
-          Expanded(child: widget.child),
+          Expanded(child: storefront),
         ],
       ),
     );
@@ -81,11 +86,7 @@ class _OfferHero extends StatelessWidget {
         gradient: const LinearGradient(
           begin: AlignmentDirectional.topStart,
           end: AlignmentDirectional.bottomEnd,
-          colors: [
-            Color(0xFFE31E24),
-            Color(0xFFEF5F68),
-            AppColors.skyBlue,
-          ],
+          colors: [Color(0xFFE31E24), Color(0xFFEF5F68), AppColors.skyBlue],
           stops: [0, 0.58, 1],
         ),
         boxShadow: [
