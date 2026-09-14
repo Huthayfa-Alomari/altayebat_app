@@ -87,9 +87,8 @@ class CatalogService {
 
     return (data as List)
         .map(
-          (row) => ProductCategory.fromMap(
-            Map<String, dynamic>.from(row as Map),
-          ),
+          (row) =>
+              ProductCategory.fromMap(Map<String, dynamic>.from(row as Map)),
         )
         .toList(growable: false);
   }
@@ -160,9 +159,7 @@ class CatalogService {
         .range(offset, offset + limit - 1);
 
     final items = (data as List)
-        .map(
-          (row) => Product.fromMap(Map<String, dynamic>.from(row as Map)),
-        )
+        .map((row) => Product.fromMap(Map<String, dynamic>.from(row as Map)))
         .toList(growable: false);
 
     return CatalogPage(
