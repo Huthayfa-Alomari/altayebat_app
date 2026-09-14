@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/sunmi_printer_service.dart';
 import '../services/terminal_receipt.dart';
 import '../services/terminal_service.dart';
+import '../widgets/terminal_order_adjustment_sheet.dart';
 
 class TerminalOrderDetailScreen extends StatefulWidget {
   final String orderId;
@@ -63,6 +64,69 @@ class _TerminalOrderDetailScreenState extends State<TerminalOrderDetailScreen> {
     }
   }
 
+  Future<void> _adjustOrder() async {
+    final order = _order;
+    if (order == null || _busy) return;
+
+    final status = order['status']?.toString() ?? 'pending';
+    if (status != 'pending' && status != 'preparing') {
+      _show('يمكن تعديل الطلب فقط قبل خروجه للتوصيل.');
+      return;
+    }
+
+    final itemsRaw = order['items'];
+    final items = itemsRaw is List
+        ? itemsRaw
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList(growable: false)
+        : <Map<String, dynamic>>[];
+    if (items.isEmpty) {
+      _show('لا يوجد أصناف قابلة للتعديل.');
+      return;
+    }
+
+    final adjustment = await showTerminalOrderAdjustmentSheet(context, items);
+    if (adjustment == null || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      final result = await TerminalService.adjustOrderItems(
+        orderId: widget.orderId,
+        reason: adjustment.reason,
+        lines: adjustment.lines,
+      );
+      await _load();
+      if (!mounted) return;
+
+      final newTotal = _number(result['new_total']);
+      final refundAmount = _number(result['refund_amount']);
+      if (refundAmount > 0) {
+        _show(
+          'تم تعديل الطلب وإبلاغ الزبون. المجموع الجديد ${newTotal.toStringAsFixed(2)} د.أ — راجع رد ${refundAmount.toStringAsFixed(2)} د.أ للبطاقة.',
+        );
+      } else {
+        _show(
+          'تم تعديل الطلب وإبلاغ الزبون. المجموع الجديد ${newTotal.toStringAsFixed(2)} د.أ.',
+        );
+      }
+    } catch (error) {
+      if (!mounted) return;
+      final message = _message(error);
+      if (message.contains('ORDER_LOCKED_FOR_ADJUSTMENT')) {
+        _show('لا يمكن تعديل الطلب بعد خروجه للتوصيل.');
+      } else if (message.contains('EMPTY_ORDER_AFTER_ADJUSTMENT')) {
+        _show('لا يمكن حذف كل الأصناف. ألغِ الطلب بدلًا من ذلك.');
+      } else if (message.contains('INSUFFICIENT_STOCK_FOR_ADJUSTMENT')) {
+        _show('الكمية الجديدة أكبر من المخزون المتوفر.');
+      } else {
+        _show(message);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _changeStatus(String status) async {
     if (_busy) return;
     setState(() => _busy = true);
@@ -96,7 +160,7 @@ class _TerminalOrderDetailScreenState extends State<TerminalOrderDetailScreen> {
     final id = order['id']?.toString() ?? '';
     final shortId = id.length >= 8 ? id.substring(0, 8).toUpperCase() : id;
     final status = order['status']?.toString() ?? 'pending';
-    final total = (order['total'] as num?)?.toDouble() ?? 0;
+    final total = _number(order['total']);
     final customerRaw = order['customers'];
     final customer = customerRaw is Map
         ? Map<String, dynamic>.from(customerRaw)
@@ -104,14 +168,22 @@ class _TerminalOrderDetailScreenState extends State<TerminalOrderDetailScreen> {
     final itemsRaw = order['items'];
     final items = itemsRaw is List
         ? itemsRaw
-              .map((item) => Map<String, dynamic>.from(item as Map))
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
               .toList(growable: false)
         : <Map<String, dynamic>>[];
+    final canAdjust = status == 'pending' || status == 'preparing';
 
     return Scaffold(
       appBar: AppBar(
         title: Text('طلب #$shortId'),
         actions: [
+          if (canAdjust)
+            IconButton(
+              tooltip: 'تعديل الأصناف',
+              onPressed: _busy ? null : _adjustOrder,
+              icon: const Icon(Icons.edit_note_rounded),
+            ),
           IconButton(
             tooltip: 'طباعة الفاتورة',
             onPressed: _busy ? null : _print,
@@ -133,6 +205,47 @@ class _TerminalOrderDetailScreenState extends State<TerminalOrderDetailScreen> {
                 ('الحالة', _statusLabel(status)),
               ],
             ),
+            if (canAdjust) ...[
+              const SizedBox(height: 12),
+              Card(
+                color: const Color(0xFFEAF8FD),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.inventory_2_outlined,
+                        color: Color(0xFF319AC2),
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'صنف ناقص أو غير متوفر؟',
+                              style: TextStyle(fontWeight: FontWeight.w900),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'عدّل الطلب قبل التجهيز النهائي وسيظهر التعديل للزبون.',
+                              style: TextStyle(
+                                color: Color(0xFF5F6B72),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _busy ? null : _adjustOrder,
+                        child: const Text('تعديل'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             Text(
               'محتويات الطلب (${items.length})',
@@ -178,10 +291,16 @@ class _TerminalOrderDetailScreenState extends State<TerminalOrderDetailScreen> {
             busy: _busy,
             onChange: _changeStatus,
             onPrint: _print,
+            onAdjust: canAdjust ? _adjustOrder : null,
           ),
         ),
       ),
     );
+  }
+
+  double _number(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   String _message(Object error) => error
@@ -310,12 +429,14 @@ class _StatusActions extends StatelessWidget {
   final bool busy;
   final ValueChanged<String> onChange;
   final VoidCallback onPrint;
+  final VoidCallback? onAdjust;
 
   const _StatusActions({
     required this.status,
     required this.busy,
     required this.onChange,
     required this.onPrint,
+    this.onAdjust,
   });
 
   @override
@@ -340,6 +461,14 @@ class _StatusActions extends StatelessWidget {
           onPressed: busy ? null : onPrint,
           icon: const Icon(Icons.print_rounded),
         ),
+        if (onAdjust != null) ...[
+          const SizedBox(width: 6),
+          IconButton.filledTonal(
+            tooltip: 'تعديل الطلب',
+            onPressed: busy ? null : onAdjust,
+            icon: const Icon(Icons.edit_note_rounded),
+          ),
+        ],
         const SizedBox(width: 8),
         if (next != null)
           Expanded(
