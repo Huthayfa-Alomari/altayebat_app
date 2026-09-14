@@ -39,7 +39,36 @@ class StorefrontSettingsService {
 
   static SupabaseClient get _client => Supabase.instance.client;
 
-  static Future<StorefrontSettings> fetch() async {
+  static const Duration _cacheTtl = Duration(minutes: 2);
+  static StorefrontSettings? _cached;
+  static DateTime? _cachedAt;
+  static Future<StorefrontSettings>? _inFlight;
+
+  static bool get _cacheFresh {
+    final value = _cached;
+    final savedAt = _cachedAt;
+    return value != null &&
+        savedAt != null &&
+        DateTime.now().difference(savedAt) < _cacheTtl;
+  }
+
+  static Future<StorefrontSettings> fetch({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cacheFresh) return _cached!;
+    if (!forceRefresh && _inFlight != null) return _inFlight!;
+
+    final future = _load();
+    _inFlight = future;
+    try {
+      final value = await future;
+      _cached = value;
+      _cachedAt = DateTime.now();
+      return value;
+    } finally {
+      if (identical(_inFlight, future)) _inFlight = null;
+    }
+  }
+
+  static Future<StorefrontSettings> _load() async {
     try {
       final row = await _client
           .from('storefront_settings')
@@ -54,7 +83,12 @@ class StorefrontSettingsService {
     } catch (_) {
       // Keep the storefront usable if the migration has not reached an
       // environment yet. The admin toggle becomes authoritative once deployed.
-      return const StorefrontSettings.fallback();
+      return _cached ?? const StorefrontSettings.fallback();
     }
+  }
+
+  static void invalidate() {
+    _cached = null;
+    _cachedAt = null;
   }
 }
