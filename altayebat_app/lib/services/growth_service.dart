@@ -4,6 +4,7 @@ import '../config/app_config.dart';
 import '../models/product.dart';
 import '../models/reorder_result.dart';
 import '../models/store_offer.dart';
+import 'storefront_settings_service.dart';
 
 class GrowthService {
   GrowthService._();
@@ -24,6 +25,9 @@ class GrowthService {
   }
 
   static Future<List<StoreOffer>> fetchActiveOffers() async {
+    final settings = await StorefrontSettingsService.fetch();
+    if (!settings.showOffersSection) return const <StoreOffer>[];
+
     await refreshExpiredOffers();
     try {
       final data = await _client
