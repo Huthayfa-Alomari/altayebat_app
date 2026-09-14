@@ -256,7 +256,14 @@ export default function RiderPage() {
     }, 30000);
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
-      void supabase.rpc("rider_heartbeat").then(() => loadRider()).catch(() => undefined);
+      void (async () => {
+        try {
+          await supabase.rpc("rider_heartbeat");
+          await loadRider();
+        } catch {
+          // Presence will recover on the next heartbeat.
+        }
+      })();
       void loadTasks(true);
     };
     document.addEventListener("visibilitychange", onVisible);
