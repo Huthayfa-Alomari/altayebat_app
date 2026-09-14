@@ -40,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hasMore = true;
   int _nextOffset = 0;
   int _requestGeneration = 0;
+  int _secondaryGeneration = 0;
   int _unreadNotifications = 0;
 
   @override
@@ -70,6 +71,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       if (forceRefresh) CatalogService.invalidateAll();
+
+      // Only data required to paint the storefront blocks the first content
+      // frame. Offers and notification count are secondary and load immediately
+      // after the catalog is visible.
       final results = await Future.wait<dynamic>([
         CatalogService.fetchCategories(forceRefresh: forceRefresh),
         CatalogService.fetchProductsPage(
@@ -79,8 +84,6 @@ class _HomeScreenState extends State<HomeScreen> {
           limit: _pageSize,
           forceRefresh: forceRefresh,
         ),
-        GrowthService.fetchActiveOffers(forceRefresh: forceRefresh),
-        GrowthService.unreadNotificationCount(forceRefresh: forceRefresh),
       ]);
 
       if (!mounted || generation != _requestGeneration) return;
@@ -88,14 +91,14 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _categories = results[0] as List<ProductCategory>;
         _products = page.items;
-        _offers = results[2] as List<StoreOffer>;
-        _unreadNotifications = results[3] as int;
         _nextOffset = page.nextOffset;
         _hasMore = page.hasMore;
         _loading = false;
         _loadingProducts = false;
         _loadingMore = false;
       });
+
+      unawaited(_loadSecondary(forceRefresh: forceRefresh));
     } catch (_) {
       if (!mounted || generation != _requestGeneration) return;
       setState(() {
@@ -105,6 +108,24 @@ class _HomeScreenState extends State<HomeScreen> {
         _errorMessage =
             'تعذر تحميل المنتجات. تأكد من اتصال الإنترنت وحاول مرة ثانية.';
       });
+    }
+  }
+
+  Future<void> _loadSecondary({bool forceRefresh = false}) async {
+    final generation = ++_secondaryGeneration;
+    try {
+      final results = await Future.wait<dynamic>([
+        GrowthService.fetchActiveOffers(forceRefresh: forceRefresh),
+        GrowthService.unreadNotificationCount(forceRefresh: forceRefresh),
+      ]);
+      if (!mounted || generation != _secondaryGeneration) return;
+      setState(() {
+        _offers = results[0] as List<StoreOffer>;
+        _unreadNotifications = results[1] as int;
+      });
+    } catch (_) {
+      // Offers and notification badges are enhancements. A temporary failure
+      // must never block browsing the catalogue or using the cart.
     }
   }
 
