@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/product.dart';
+import '../theme/app_theme.dart';
 
 class ProductSelection {
   final int quantity;
@@ -47,6 +48,8 @@ class _MeasuredProductSheetState extends State<_MeasuredProductSheet> {
   final _quantityController = TextEditingController();
   final _amountController = TextEditingController();
   String? _error;
+  int? _selectedQuantity;
+  double? _selectedRequestedAmount;
 
   Product get product => widget.product;
 
@@ -55,6 +58,8 @@ class _MeasuredProductSheetState extends State<_MeasuredProductSheet> {
     super.initState();
     final current = widget.currentQuantity;
     if (current != null && current > 0) {
+      _selectedQuantity = current;
+      _selectedRequestedAmount = widget.currentRequestedAmount;
       _quantityController.text = (current / product.inventoryScale)
           .toStringAsFixed(3)
           .replaceFirst(RegExp(r'0+$'), '')
@@ -120,9 +125,6 @@ class _MeasuredProductSheetState extends State<_MeasuredProductSheet> {
       return null;
     }
 
-    // The checkout contract validates the product quantity step. Convert the
-    // requested JOD amount to grams/ml, then snap to the nearest valid step so
-    // values such as 571 g do not reach the server as INVALID_ITEM.
     final rawQuantity = (amount / product.price).round();
     final quantity = _nearestValidQuantity(rawQuantity);
 
@@ -136,14 +138,24 @@ class _MeasuredProductSheetState extends State<_MeasuredProductSheet> {
     return ProductSelection(quantity: quantity, requestedAmount: amount);
   }
 
-  void _pickQuantity(int quantity) {
+  void _chooseQuantity(int quantity) {
     final selection = _quantitySelection(quantity);
-    if (selection != null) Navigator.of(context).pop(selection);
+    if (selection == null) return;
+    setState(() {
+      _selectedQuantity = selection.quantity;
+      _selectedRequestedAmount = null;
+      _error = null;
+    });
   }
 
-  void _pickAmount(double amount) {
+  void _chooseAmount(double amount) {
     final selection = _amountSelection(amount);
-    if (selection != null) Navigator.of(context).pop(selection);
+    if (selection == null) return;
+    setState(() {
+      _selectedQuantity = selection.quantity;
+      _selectedRequestedAmount = selection.requestedAmount;
+      _error = null;
+    });
   }
 
   void _submitCustomQuantity() {
@@ -152,7 +164,7 @@ class _MeasuredProductSheetState extends State<_MeasuredProductSheet> {
       setState(() => _error = 'اكتب كمية صحيحة.');
       return;
     }
-    _pickQuantity((units * product.inventoryScale).round());
+    _chooseQuantity((units * product.inventoryScale).round());
   }
 
   void _submitCustomAmount() {
@@ -161,13 +173,28 @@ class _MeasuredProductSheetState extends State<_MeasuredProductSheet> {
       setState(() => _error = 'اكتب مبلغًا صحيحًا.');
       return;
     }
-    _pickAmount(amount);
+    _chooseAmount(amount);
+  }
+
+  void _addToCart() {
+    final quantity = _selectedQuantity;
+    if (quantity == null || quantity <= 0) {
+      setState(() => _error = 'اختر الكمية أو المبلغ أولًا.');
+      return;
+    }
+    Navigator.of(context).pop(
+      ProductSelection(
+        quantity: quantity,
+        requestedAmount: _selectedRequestedAmount,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final quickQuantities = _quickQuantities;
+    final selectedQuantity = _selectedQuantity;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -197,6 +224,11 @@ class _MeasuredProductSheetState extends State<_MeasuredProductSheet> {
               'اختر الكمية',
               style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
             ),
+            const SizedBox(height: 6),
+            const Text(
+              'اختيار الكمية لا يضيف المنتج مباشرة. راجع اختيارك ثم اضغط «إضافة للسلة».',
+              style: TextStyle(color: Color(0xFF6B7280), fontSize: 12),
+            ),
             const SizedBox(height: 10),
             if (quickQuantities.isNotEmpty)
               Wrap(
@@ -204,9 +236,12 @@ class _MeasuredProductSheetState extends State<_MeasuredProductSheet> {
                 runSpacing: 8,
                 children: quickQuantities
                     .map(
-                      (quantity) => ActionChip(
+                      (quantity) => ChoiceChip(
                         label: Text(product.formatQuantity(quantity)),
-                        onPressed: () => _pickQuantity(quantity),
+                        selected:
+                            selectedQuantity == quantity &&
+                            _selectedRequestedAmount == null,
+                        onSelected: (_) => _chooseQuantity(quantity),
                       ),
                     )
                     .toList(growable: false),
@@ -228,9 +263,9 @@ class _MeasuredProductSheetState extends State<_MeasuredProductSheet> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                FilledButton(
+                OutlinedButton(
                   onPressed: _submitCustomQuantity,
-                  child: const Text('اختيار'),
+                  child: const Text('اعتماد'),
                 ),
               ],
             ),
@@ -254,11 +289,12 @@ class _MeasuredProductSheetState extends State<_MeasuredProductSheet> {
                 runSpacing: 8,
                 children: const [0.5, 1.0, 2.0, 5.0]
                     .map(
-                      (amount) => ActionChip(
+                      (amount) => ChoiceChip(
                         label: Text(
                           '${amount.toStringAsFixed(amount < 1 ? 2 : 0)} د.أ',
                         ),
-                        onPressed: () => _pickAmount(amount),
+                        selected: _selectedRequestedAmount == amount,
+                        onSelected: (_) => _chooseAmount(amount),
                       ),
                     )
                     .toList(growable: false),
@@ -280,11 +316,44 @@ class _MeasuredProductSheetState extends State<_MeasuredProductSheet> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  FilledButton(
+                  OutlinedButton(
                     onPressed: _submitCustomAmount,
-                    child: const Text('اختيار'),
+                    child: const Text('اعتماد'),
                   ),
                 ],
+              ),
+            ],
+            if (selectedQuantity != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(13),
+                decoration: BoxDecoration(
+                  color: AppColors.skySoft,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: AppColors.skyBlue.withValues(alpha: 0.45),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle_outline_rounded,
+                      color: AppColors.skyBlueDark,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _selectedRequestedAmount != null
+                            ? 'اختيارك: ${_selectedRequestedAmount!.toStringAsFixed(2)} د.أ ≈ ${product.formatQuantity(selectedQuantity)}'
+                            : 'اختيارك: ${product.formatQuantity(selectedQuantity)}',
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
             if (_error != null) ...[
@@ -297,7 +366,16 @@ class _MeasuredProductSheetState extends State<_MeasuredProductSheet> {
                 ),
               ),
             ],
-            const SizedBox(height: 10),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: selectedQuantity == null ? null : _addToCart,
+              icon: const Icon(Icons.add_shopping_cart_rounded),
+              label: const Text('إضافة للسلة'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(54),
+              ),
+            ),
+            const SizedBox(height: 6),
           ],
         ),
       ),
