@@ -86,7 +86,10 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.skyBlueDark, width: 1.25),
+          borderSide: const BorderSide(
+            color: AppColors.skyBlueDark,
+            width: 1.25,
+          ),
         ),
       ),
       cardTheme: CardThemeData(
