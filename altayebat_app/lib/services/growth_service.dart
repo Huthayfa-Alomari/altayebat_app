@@ -13,7 +13,47 @@ class GrowthService {
 
   static String? get _userId => _client.auth.currentUser?.id;
 
-  static Future<void> refreshExpiredOffers() async {
+  static const Duration _offerCacheTtl = Duration(seconds: 45);
+  static const Duration _offerRefreshThrottle = Duration(minutes: 1);
+  static const Duration _loyaltyCacheTtl = Duration(seconds: 30);
+  static const Duration _notificationCountTtl = Duration(seconds: 10);
+
+  static List<StoreOffer>? _offersCache;
+  static DateTime? _offersCachedAt;
+  static Future<List<StoreOffer>>? _offersInFlight;
+  static DateTime? _lastOfferRefresh;
+  static Future<void>? _offerRefreshInFlight;
+
+  static final Map<String, Map<String, dynamic>?> _loyaltyCache = {};
+  static final Map<String, DateTime> _loyaltyCachedAt = {};
+  static final Map<String, Future<Map<String, dynamic>?>> _loyaltyInFlight = {};
+
+  static final Map<String, int> _notificationCountCache = {};
+  static final Map<String, DateTime> _notificationCountCachedAt = {};
+  static final Map<String, Future<int>> _notificationCountInFlight = {};
+
+  static bool _fresh(DateTime? savedAt, Duration ttl) {
+    return savedAt != null && DateTime.now().difference(savedAt) < ttl;
+  }
+
+  static Future<void> refreshExpiredOffers({bool force = false}) async {
+    if (!force && _fresh(_lastOfferRefresh, _offerRefreshThrottle)) return;
+    final pending = _offerRefreshInFlight;
+    if (pending != null) return pending;
+
+    final future = _runOfferRefresh();
+    _offerRefreshInFlight = future;
+    try {
+      await future;
+    } finally {
+      _lastOfferRefresh = DateTime.now();
+      if (identical(_offerRefreshInFlight, future)) {
+        _offerRefreshInFlight = null;
+      }
+    }
+  }
+
+  static Future<void> _runOfferRefresh() async {
     try {
       await _client.rpc(
         'refresh_expired_offers',
@@ -24,11 +64,37 @@ class GrowthService {
     }
   }
 
-  static Future<List<StoreOffer>> fetchActiveOffers() async {
-    final settings = await StorefrontSettingsService.fetch();
+  static Future<List<StoreOffer>> fetchActiveOffers({
+    bool forceRefresh = false,
+  }) async {
+    final settings = await StorefrontSettingsService.fetch(
+      forceRefresh: forceRefresh,
+    );
     if (!settings.showOffersSection) return const <StoreOffer>[];
 
-    await refreshExpiredOffers();
+    if (!forceRefresh &&
+        _offersCache != null &&
+        _fresh(_offersCachedAt, _offerCacheTtl)) {
+      return _offersCache!;
+    }
+    if (!forceRefresh && _offersInFlight != null) return _offersInFlight!;
+
+    final future = _loadActiveOffers(forceRefresh: forceRefresh);
+    _offersInFlight = future;
+    try {
+      final value = await future;
+      _offersCache = value;
+      _offersCachedAt = DateTime.now();
+      return value;
+    } finally {
+      if (identical(_offersInFlight, future)) _offersInFlight = null;
+    }
+  }
+
+  static Future<List<StoreOffer>> _loadActiveOffers({
+    required bool forceRefresh,
+  }) async {
+    await refreshExpiredOffers(force: forceRefresh);
     try {
       final data = await _client
           .from('store_offers')
@@ -48,12 +114,39 @@ class GrowthService {
           .where((offer) => offer.id.isNotEmpty && offer.productId.isNotEmpty)
           .toList(growable: false);
     } catch (_) {
-      return const <StoreOffer>[];
+      return _offersCache ?? const <StoreOffer>[];
     }
   }
 
-  static Future<Map<String, dynamic>?> fetchLoyaltyStatus() async {
-    if (_userId == null) return null;
+  static Future<Map<String, dynamic>?> fetchLoyaltyStatus({
+    bool forceRefresh = false,
+  }) async {
+    final userId = _userId;
+    if (userId == null) return null;
+
+    if (!forceRefresh &&
+        _loyaltyCache.containsKey(userId) &&
+        _fresh(_loyaltyCachedAt[userId], _loyaltyCacheTtl)) {
+      return _loyaltyCache[userId];
+    }
+    final pending = _loyaltyInFlight[userId];
+    if (!forceRefresh && pending != null) return pending;
+
+    final future = _loadLoyaltyStatus(userId);
+    _loyaltyInFlight[userId] = future;
+    try {
+      final value = await future;
+      _loyaltyCache[userId] = value;
+      _loyaltyCachedAt[userId] = DateTime.now();
+      return value;
+    } finally {
+      if (identical(_loyaltyInFlight[userId], future)) {
+        _loyaltyInFlight.remove(userId);
+      }
+    }
+  }
+
+  static Future<Map<String, dynamic>?> _loadLoyaltyStatus(String userId) async {
     try {
       final data = await _client.rpc(
         'get_my_loyalty_status',
@@ -65,7 +158,7 @@ class GrowthService {
       return status;
     } catch (_) {
       // Keep old deployments working until the loyalty migration is deployed.
-      return null;
+      return _loyaltyCache[userId];
     }
   }
 
@@ -195,10 +288,35 @@ class GrowthService {
     }
   }
 
-  static Future<int> unreadNotificationCount() async {
+  static Future<int> unreadNotificationCount({
+    bool forceRefresh = false,
+  }) async {
     final userId = _userId;
     if (userId == null) return 0;
 
+    if (!forceRefresh &&
+        _notificationCountCache.containsKey(userId) &&
+        _fresh(_notificationCountCachedAt[userId], _notificationCountTtl)) {
+      return _notificationCountCache[userId]!;
+    }
+    final pending = _notificationCountInFlight[userId];
+    if (!forceRefresh && pending != null) return pending;
+
+    final future = _loadUnreadNotificationCount(userId);
+    _notificationCountInFlight[userId] = future;
+    try {
+      final value = await future;
+      _notificationCountCache[userId] = value;
+      _notificationCountCachedAt[userId] = DateTime.now();
+      return value;
+    } finally {
+      if (identical(_notificationCountInFlight[userId], future)) {
+        _notificationCountInFlight.remove(userId);
+      }
+    }
+  }
+
+  static Future<int> _loadUnreadNotificationCount(String userId) async {
     try {
       final data = await _client
           .from('customer_notifications')
@@ -209,7 +327,7 @@ class GrowthService {
           .limit(100);
       return (data as List).length;
     } catch (_) {
-      return 0;
+      return _notificationCountCache[userId] ?? 0;
     }
   }
 
@@ -223,8 +341,21 @@ class GrowthService {
           .update({'read_at': DateTime.now().toUtc().toIso8601String()})
           .eq('id', notificationId)
           .eq('customer_id', userId);
+      _notificationCountCache.remove(userId);
+      _notificationCountCachedAt.remove(userId);
     } catch (_) {
       // Reading a notification must never block navigation to an order.
     }
+  }
+
+  static void invalidateStorefrontCaches() {
+    _offersCache = null;
+    _offersCachedAt = null;
+    _lastOfferRefresh = null;
+    _loyaltyCache.clear();
+    _loyaltyCachedAt.clear();
+    _notificationCountCache.clear();
+    _notificationCountCachedAt.clear();
+    StorefrontSettingsService.invalidate();
   }
 }
