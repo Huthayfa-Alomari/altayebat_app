@@ -72,16 +72,47 @@ class TerminalService {
       },
     );
 
-    // Status change is the source of truth; remote push is best-effort only.
-    // The database trigger has already written the durable inbox notification.
+    await _sendOrderPush(orderId);
+  }
+
+  static Future<Map<String, dynamic>> adjustOrderItems({
+    required String orderId,
+    required String reason,
+    required List<Map<String, dynamic>> lines,
+  }) async {
+    if (reason.trim().isEmpty) {
+      throw ArgumentError('سبب التعديل مطلوب');
+    }
+    if (lines.isEmpty) {
+      throw ArgumentError('لا يوجد تعديل على الطلب');
+    }
+
+    final result = await _client.rpc(
+      'admin_adjust_order_items',
+      params: <String, dynamic>{
+        'p_order_id': orderId,
+        'p_reason': reason.trim(),
+        'p_items': lines,
+      },
+    );
+
+    await _sendOrderPush(orderId);
+
+    if (result is Map<String, dynamic>) return result;
+    if (result is Map) return Map<String, dynamic>.from(result);
+    throw StateError('استجابة تعديل الطلب غير صالحة');
+  }
+
+  static Future<void> _sendOrderPush(String orderId) async {
+    // Database/in-app notification is the durable source of truth. FCM remains
+    // best-effort so a temporary push outage never blocks an operator action.
     try {
       await _client.functions.invoke(
         'send-customer-push',
         body: <String, dynamic>{'order_id': orderId},
       );
     } catch (_) {
-      // Never make the SUNMI operator repeat a status transition because FCM is
-      // temporarily unavailable or has not been configured yet.
+      // Ignore push delivery failures here.
     }
   }
 
