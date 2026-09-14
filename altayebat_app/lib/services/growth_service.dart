@@ -77,7 +77,7 @@ class GrowthService {
         _fresh(_offersCachedAt, _offerCacheTtl)) {
       return _offersCache!;
     }
-    if (!forceRefresh && _offersInFlight != null) return _offersInFlight!;
+    if (_offersInFlight != null) return _offersInFlight!;
 
     final future = _loadActiveOffers(forceRefresh: forceRefresh);
     _offersInFlight = future;
@@ -130,7 +130,7 @@ class GrowthService {
       return _loyaltyCache[userId];
     }
     final pending = _loyaltyInFlight[userId];
-    if (!forceRefresh && pending != null) return pending;
+    if (pending != null) return pending;
 
     final future = _loadLoyaltyStatus(userId);
     _loyaltyInFlight[userId] = future;
@@ -300,7 +300,7 @@ class GrowthService {
       return _notificationCountCache[userId]!;
     }
     final pending = _notificationCountInFlight[userId];
-    if (!forceRefresh && pending != null) return pending;
+    if (pending != null) return pending;
 
     final future = _loadUnreadNotificationCount(userId);
     _notificationCountInFlight[userId] = future;
