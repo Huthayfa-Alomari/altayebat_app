@@ -59,6 +59,7 @@ declare
   v_offer public.store_offers%rowtype;
   v_campaign public.store_offer_campaigns%rowtype;
   v_count integer := 0;
+  v_rows integer := 0;
 begin
   -- 1) End active offers whose window closed and restore the regular price only
   -- when the product still carries the offer price.
@@ -98,7 +99,8 @@ begin
     and ends_at is not null
     and ends_at <= now();
 
-  get diagnostics v_count = v_count + row_count;
+  get diagnostics v_rows = row_count;
+  v_count := v_count + v_rows;
 
   -- 3) Activate due scheduled offers. Overlapping windows are prevented by the
   -- batch creation RPC, so this can safely update the authoritative product
