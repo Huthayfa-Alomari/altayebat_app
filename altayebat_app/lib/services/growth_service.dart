@@ -52,6 +52,23 @@ class GrowthService {
     }
   }
 
+  static Future<Map<String, dynamic>?> fetchLoyaltyStatus() async {
+    if (_userId == null) return null;
+    try {
+      final data = await _client.rpc(
+        'get_my_loyalty_status',
+        params: {'p_store_id': AppConfig.storeId},
+      );
+      if (data is! Map) return null;
+      final status = Map<String, dynamic>.from(data);
+      if (status['enabled'] != true) return null;
+      return status;
+    } catch (_) {
+      // Keep old deployments working until the loyalty migration is deployed.
+      return null;
+    }
+  }
+
   static Future<List<Map<String, dynamic>>> fetchMyOrders({
     int limit = 30,
   }) async {
