@@ -250,7 +250,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onSubmitted: (_) => _search(),
             onTapOutside: (_) => FocusScope.of(context).unfocus(),
             decoration: InputDecoration(
-              hintText: 'شو بدك؟ ابحث باسم المنتج',
+              hintText: 'ابحث باسم المنتج أو الماركة بالعربي أو الإنجليزي',
               prefixIcon: const Icon(
                 Icons.search,
                 size: 20,
@@ -305,21 +305,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<ProductCategory> _orderedCategories() {
     const order = <String>[
-      'الأرز',
-      'الزيوت',
-      'معكرونة وشعيرية',
       'الألبان والأجبان',
+      'الأرز',
+      'معلبات وصلصات',
+      'السناكات والحلويات',
       'المجمدات',
       'المشروبات',
-      'مرقة وشوربات',
+      'بقوليات',
+      'معكرونة وشعيرية',
       'سكر ومستلزمات الخَبز',
-      'معلبات وصلصات',
       'طحينية وحلاوة ومربى',
+      'قهوة',
+      'مكسرات',
       'اللحوم والدواجن',
-      'غسيل الملابس',
-      'تنظيف المنزل والجلي',
-      'مناديل وورقيات',
       'العناية الشخصية',
+      'عناية الأطفال',
+      'تنظيف المنزل والجلي',
+      'غسيل الملابس',
+      'مستهلكات منزلية',
+      'مرقة وشوربات',
+      'الزيوت',
+      'مناديل وورقيات',
     ];
 
     final priority = <String, int>{
@@ -342,16 +348,26 @@ class _HomeScreenState extends State<HomeScreen> {
         name.contains('مرقة')) {
       return Icons.restaurant_outlined;
     }
+    if (name.contains('بقوليات') || name.contains('مكسرات')) {
+      return Icons.grain;
+    }
     if (name.contains('زيوت')) return Icons.water_drop_outlined;
     if (name.contains('ألبان') || name.contains('أجبان')) {
       return Icons.kitchen_outlined;
     }
     if (name.contains('مجمدات')) return Icons.ac_unit;
+    if (name.contains('قهوة')) return Icons.coffee_outlined;
     if (name.contains('مشروبات')) return Icons.local_cafe_outlined;
+    if (name.contains('سناكات') || name.contains('حلويات')) {
+      return Icons.cookie_outlined;
+    }
+    if (name.contains('عناية الأطفال')) return Icons.child_care_outlined;
     if (name.contains('غسيل') || name.contains('تنظيف')) {
       return Icons.cleaning_services_outlined;
     }
-    if (name.contains('مناديل')) return Icons.inventory_2_outlined;
+    if (name.contains('مناديل') || name.contains('مستهلكات')) {
+      return Icons.inventory_2_outlined;
+    }
     if (name.contains('العناية')) return Icons.spa_outlined;
     if (name.contains('معلبات') ||
         name.contains('طحينية') ||
@@ -677,7 +693,7 @@ class _HomeScreenState extends State<HomeScreen> {
             if (_searchController.text.trim().isNotEmpty) ...[
               const SizedBox(height: 6),
               const Text(
-                'جرّب كلمة أقصر أو اسم الماركة',
+                'جرّب كلمة أقصر أو اسم الماركة بالعربي أو الإنجليزي',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
