@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -27,10 +29,6 @@ Future<void> main() async {
         throw StateError('تعذر بدء جلسة التسوق');
       }
     }
-
-    // Push is optional until Firebase production credentials are supplied. The
-    // service is a no-op when they are absent, so shopping never depends on FCM.
-    await PushNotificationService.initialize();
   } catch (error, stackTrace) {
     bootstrapError = error;
     FlutterError.reportError(
@@ -43,6 +41,13 @@ Future<void> main() async {
   }
 
   runApp(AltayebatApp(bootstrapError: bootstrapError));
+
+  // Push permission, token retrieval and registration may involve Firebase and
+  // network round-trips. They are optional for shopping, so never delay the
+  // first rendered frame while they initialize.
+  if (bootstrapError == null) {
+    unawaited(PushNotificationService.initialize());
+  }
 }
 
 class AltayebatApp extends StatelessWidget {
