@@ -6,7 +6,7 @@ export default async function OffersPage() {
   const supabase = await createClient();
   const { storeId } = await requireAdminStore();
 
-  const [{ data: products }, { data: offers }] = await Promise.all([
+  const [{ data: products }, { data: offers }, { data: settings }] = await Promise.all([
     supabase
       .from("products")
       .select("id,name,price_per_unit,sale_type,base_unit,is_available")
@@ -20,6 +20,11 @@ export default async function OffersPage() {
       )
       .eq("store_id", storeId)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("storefront_settings")
+      .select("show_offers_section,offer_banner_title,offer_banner_subtitle")
+      .eq("store_id", storeId)
+      .maybeSingle(),
   ]);
 
   return (
@@ -27,13 +32,19 @@ export default async function OffersPage() {
       <div>
         <h1 className="text-lg font-semibold">العروض</h1>
         <p className="mt-1 text-sm text-gray-500">
-          السعر المخفّض ينعكس على التطبيق والطلب مباشرة، وليس مجرد إعلان.
+          تحكم بالعروض، بالبَنر، وبظهور قسم العروض داخل التطبيق من نفس الصفحة.
         </p>
       </div>
       <OffersManager
         storeId={storeId}
         products={products || []}
         initialOffers={offers || []}
+        initialSettings={{
+          show_offers_section: settings?.show_offers_section ?? true,
+          offer_banner_title: settings?.offer_banner_title || "عروض مميزة اليوم",
+          offer_banner_subtitle:
+            settings?.offer_banner_subtitle || "وفر أكثر مع عروض أسواق الطيبات",
+        }}
       />
     </div>
   );
