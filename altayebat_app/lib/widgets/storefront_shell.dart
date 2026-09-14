@@ -55,7 +55,8 @@ class _StorefrontShellState extends State<StorefrontShell> {
 
     // Keep the storefront clean for brand-new shoppers. Loyalty appears after
     // the customer earns the first basket, or immediately when a reward exists.
-    final showLoyalty = _ready && _loyalty != null && (baskets > 0 || rewards > 0);
+    final showLoyalty =
+        _ready && _loyalty != null && (baskets > 0 || rewards > 0);
     final hasTopContent = showBanner || showLoyalty;
 
     final storefront = hasTopContent
