@@ -90,7 +90,9 @@ class _AdjustmentSheetState extends State<_AdjustmentSheet> {
     if (widget.items.every(
       (item) => (_quantities[item['id'].toString()] ?? 0) == 0,
     )) {
-      setState(() => _error = 'لا يمكن حذف كل الأصناف. ألغِ الطلب بدلًا من ذلك.');
+      setState(
+        () => _error = 'لا يمكن حذف كل الأصناف. ألغِ الطلب بدلًا من ذلك.',
+      );
       return;
     }
 
@@ -113,9 +115,9 @@ class _AdjustmentSheetState extends State<_AdjustmentSheet> {
       return;
     }
 
-    Navigator.of(context).pop(
-      TerminalOrderAdjustment(lines: lines, reason: reason),
-    );
+    Navigator.of(
+      context,
+    ).pop(TerminalOrderAdjustment(lines: lines, reason: reason));
   }
 
   @override
@@ -160,7 +162,8 @@ class _AdjustmentSheetState extends State<_AdjustmentSheet> {
                       Row(
                         children: [
                           IconButton.outlined(
-                            onPressed: () => _setQuantity(item, quantity - step),
+                            onPressed: () =>
+                                _setQuantity(item, quantity - step),
                             icon: const Icon(Icons.remove_rounded),
                           ),
                           Expanded(
@@ -174,14 +177,19 @@ class _AdjustmentSheetState extends State<_AdjustmentSheet> {
                             ),
                           ),
                           IconButton.outlined(
-                            onPressed: () => _setQuantity(item, quantity + step),
+                            onPressed: () =>
+                                _setQuantity(item, quantity + step),
                             icon: const Icon(Icons.add_rounded),
                           ),
                           const SizedBox(width: 8),
                           FilledButton.tonalIcon(
                             onPressed: () => _unavailable(item),
-                            icon: const Icon(Icons.remove_shopping_cart_outlined),
-                            label: Text(unavailable ? 'غير متوفر ✓' : 'غير متوفر'),
+                            icon: const Icon(
+                              Icons.remove_shopping_cart_outlined,
+                            ),
+                            label: Text(
+                              unavailable ? 'غير متوفر ✓' : 'غير متوفر',
+                            ),
                           ),
                         ],
                       ),
