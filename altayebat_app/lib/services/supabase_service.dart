@@ -32,6 +32,27 @@ class SupabaseService {
     String? categoryId,
     String? searchQuery,
   }) async {
+    final normalizedSearch = searchQuery?.trim();
+
+    if (normalizedSearch != null && normalizedSearch.isNotEmpty) {
+      final data = await _client.rpc(
+        'search_store_products',
+        params: {
+          'p_store_id': AppConfig.storeId,
+          'p_query': normalizedSearch,
+          'p_category_id': categoryId,
+          'p_limit': 1000,
+          'p_offset': 0,
+        },
+      );
+
+      return (data as List)
+          .map(
+            (e) => Product.fromMap(Map<String, dynamic>.from(e as Map)),
+          )
+          .toList(growable: false);
+    }
+
     var query = _client
         .from('products')
         .select()
@@ -40,15 +61,15 @@ class SupabaseService {
 
     if (categoryId != null) query = query.eq('category_id', categoryId);
 
-    final normalizedSearch = searchQuery?.trim();
-    if (normalizedSearch != null && normalizedSearch.isNotEmpty) {
-      query = query.ilike('name', '%$normalizedSearch%');
-    }
+    final data = await query
+        .order('sort_order')
+        .order('created_at', ascending: false);
 
-    final data = await query.order('created_at', ascending: false);
     return (data as List)
-        .map((e) => Product.fromMap(e as Map<String, dynamic>))
-        .toList();
+        .map(
+          (e) => Product.fromMap(Map<String, dynamic>.from(e as Map)),
+        )
+        .toList(growable: false);
   }
 
   static Future<void> signInAndSaveProfile({
