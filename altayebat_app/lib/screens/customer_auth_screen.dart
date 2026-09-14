@@ -93,9 +93,9 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
     try {
       final client = Supabase.instance.client;
 
-      // Browsing starts with an anonymous session. Phone OTP becomes the real
-      // persistent customer identity only when the customer reaches checkout.
-      await client.auth.signOut();
+      // Keep the anonymous browsing session alive while the SMS is pending.
+      // verifyOTP replaces it with the phone-authenticated customer session only
+      // after the customer enters the correct code.
       await client.auth.signInWithOtp(
         phone: normalizedPhone,
         shouldCreateUser: true,
@@ -185,9 +185,9 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
       );
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم إرسال رمز جديد')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم إرسال رمز جديد')));
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -226,7 +226,9 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
     if (lower.contains('rate') || lower.contains('too many')) {
       return 'تم طلب رموز كثيرة خلال وقت قصير. انتظر قليلًا ثم حاول مرة ثانية.';
     }
-    if (lower.contains('token') || lower.contains('otp') || lower.contains('expired')) {
+    if (lower.contains('token') ||
+        lower.contains('otp') ||
+        lower.contains('expired')) {
       return 'رمز التحقق غير صحيح أو انتهت صلاحيته. اطلب رمزًا جديدًا.';
     }
     if (lower.contains('sms') || lower.contains('provider')) {
@@ -319,18 +321,19 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  width: 74,
-                  height: 74,
-                  margin: const EdgeInsets.symmetric(horizontal: 120),
-                  decoration: const BoxDecoration(
-                    color: AppColors.skySoft,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.sms_outlined,
-                    color: AppColors.skyBlueDark,
-                    size: 34,
+                Align(
+                  child: Container(
+                    width: 74,
+                    height: 74,
+                    decoration: const BoxDecoration(
+                      color: AppColors.skySoft,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.sms_outlined,
+                      color: AppColors.skyBlueDark,
+                      size: 34,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 18),
