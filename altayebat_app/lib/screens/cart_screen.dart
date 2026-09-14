@@ -18,7 +18,7 @@ class CartScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final cart = context.watch<CartProvider>();
     final lines = cart.items;
-    final totalItems = cart.itemCount;
+    final totalLines = cart.lineCount;
     final subtotal = cart.total;
 
     return Scaffold(
@@ -79,7 +79,7 @@ class CartScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '$totalItems ${totalItems == 1 ? 'قطعة' : 'قطع'}',
+                                  '$totalLines ${totalLines == 1 ? 'صنف' : 'أصناف'}',
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: theme.colorScheme.onSurfaceVariant,
                                   ),
@@ -249,14 +249,17 @@ class _CartLineCard extends StatelessWidget {
     final theme = Theme.of(context);
     final product = item.product;
     final stockQty = product.stockQty;
-    final outOfStock = !product.isAvailable || stockQty <= 0;
-    final canIncrement = !outOfStock && item.quantity < stockQty;
+    final outOfStock =
+        !product.isAvailable || stockQty < product.initialCartQuantity;
+    final canIncrement =
+        !outOfStock && item.quantity + product.cartStep <= stockQty;
     final lineTotal = item.subtotal;
+    final quantityText = product.formatQuantity(item.quantity);
 
     return Semantics(
       container: true,
       label:
-          '${product.name}، الكمية ${item.quantity}، المجموع ${lineTotal.toStringAsFixed(2)} دينار',
+          '${product.name}، الكمية $quantityText، المجموع ${lineTotal.toStringAsFixed(2)} دينار',
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -302,7 +305,7 @@ class _CartLineCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${product.price.toStringAsFixed(2)} د.أ للقطعة',
+                    product.priceDisplayText,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -316,10 +319,10 @@ class _CartLineCard extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ] else if (stockQty <= 3) ...[
+                  ] else if (product.isLowStock) ...[
                     const SizedBox(height: 4),
                     Text(
-                      'متبقي $stockQty فقط',
+                      'متبقي ${product.stockDisplayText} فقط',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
@@ -341,7 +344,9 @@ class _CartLineCard extends StatelessWidget {
                         ),
                       ),
                       _QuantityControl(
-                        quantity: item.quantity,
+                        quantityText: quantityText,
+                        removeOnDecrement:
+                            item.quantity <= product.initialCartQuantity,
                         canIncrement: canIncrement,
                         onIncrement: onIncrement,
                         onDecrement: onDecrement,
@@ -400,13 +405,15 @@ class _CartProductImage extends StatelessWidget {
 }
 
 class _QuantityControl extends StatelessWidget {
-  final int quantity;
+  final String quantityText;
+  final bool removeOnDecrement;
   final bool canIncrement;
   final VoidCallback onIncrement;
   final VoidCallback onDecrement;
 
   const _QuantityControl({
-    required this.quantity,
+    required this.quantityText,
+    required this.removeOnDecrement,
     required this.canIncrement,
     required this.onIncrement,
     required this.onDecrement,
@@ -426,14 +433,14 @@ class _QuantityControl extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: 48,
+            width: 44,
             height: 48,
             child: IconButton(
-              tooltip: quantity <= 1 ? 'إزالة من السلة' : 'تقليل الكمية',
+              tooltip: removeOnDecrement ? 'إزالة من السلة' : 'تقليل الكمية',
               padding: EdgeInsets.zero,
               onPressed: onDecrement,
               icon: Icon(
-                quantity <= 1
+                removeOnDecrement
                     ? Icons.delete_outline_rounded
                     : Icons.remove_rounded,
                 color: Colors.white,
@@ -442,19 +449,22 @@ class _QuantityControl extends StatelessWidget {
             ),
           ),
           Container(
-            constraints: const BoxConstraints(minWidth: 40),
+            constraints: const BoxConstraints(minWidth: 50, maxWidth: 72),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             alignment: Alignment.center,
             child: Text(
-              '$quantity',
+              quantityText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 17,
+                fontSize: 12.5,
                 fontWeight: FontWeight.w900,
               ),
             ),
           ),
           SizedBox(
-            width: 48,
+            width: 44,
             height: 48,
             child: IconButton(
               tooltip: canIncrement ? 'زيادة الكمية' : 'وصلت للكمية المتوفرة',
