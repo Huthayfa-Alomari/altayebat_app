@@ -275,14 +275,12 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Widget> _buildSlivers() {
     final showDiscovery = _searchController.text.trim().isEmpty;
     return [
-      if (_errorMessage != null)
-        SliverToBoxAdapter(child: _errorState()),
+      if (_errorMessage != null) SliverToBoxAdapter(child: _errorState()),
       if (showDiscovery && _categories.isNotEmpty)
         SliverToBoxAdapter(child: _categoriesStrip()),
       if (showDiscovery && _offers.isNotEmpty)
         SliverToBoxAdapter(child: _offersStrip()),
-      if (showDiscovery)
-        SliverToBoxAdapter(child: _reorderCard()),
+      if (showDiscovery) SliverToBoxAdapter(child: _reorderCard()),
       SliverToBoxAdapter(child: _resultsHeader()),
       if (_loadingProducts)
         const SliverToBoxAdapter(
