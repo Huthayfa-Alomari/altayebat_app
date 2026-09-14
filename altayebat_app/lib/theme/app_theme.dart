@@ -3,12 +3,15 @@ import 'package:flutter/material.dart';
 class AppColors {
   static const Color primary = Color(0xFFE31E24);
   static const Color primaryDark = Color(0xFFA32D2D);
-  static const Color background = Color(0xFFF7F7F5);
+  static const Color skyBlue = Color(0xFF72C9E8);
+  static const Color skyBlueDark = Color(0xFF319AC2);
+  static const Color skySoft = Color(0xFFEAF8FD);
+  static const Color background = Color(0xFFF6F9FA);
   static const Color surface = Color(0xFFFFFFFF);
   static const Color textPrimary = Color(0xFF1F1F1F);
   static const Color textSecondary = Color(0xFF737373);
-  static const Color border = Color(0xFFE9E8E3);
-  static const Color softSurface = Color(0xFFF4F4F1);
+  static const Color border = Color(0xFFE7EBED);
+  static const Color softSurface = Color(0xFFF3F7F8);
 }
 
 class AppTheme {
@@ -17,6 +20,7 @@ class AppTheme {
       seedColor: AppColors.primary,
       brightness: Brightness.light,
       primary: AppColors.primary,
+      secondary: AppColors.skyBlueDark,
       surface: AppColors.surface,
     );
 
@@ -67,7 +71,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.surface,
+        fillColor: const Color(0xFFFBFDFE),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 12,
@@ -82,7 +86,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.25),
+          borderSide: const BorderSide(color: AppColors.skyBlueDark, width: 1.25),
         ),
       ),
       cardTheme: CardThemeData(
@@ -107,8 +111,8 @@ class AppTheme {
         color: AppColors.primary,
       ),
       textSelectionTheme: const TextSelectionThemeData(
-        cursorColor: AppColors.primary,
-        selectionHandleColor: AppColors.primary,
+        cursorColor: AppColors.skyBlueDark,
+        selectionHandleColor: AppColors.skyBlueDark,
       ),
     );
   }
