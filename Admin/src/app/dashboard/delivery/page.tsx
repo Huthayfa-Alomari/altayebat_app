@@ -4,11 +4,17 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
+type RiderStatus = "offline" | "available" | "busy" | "break";
+type RiderApproval = "pending" | "approved" | "rejected";
+
 type Driver = {
   id: string;
   name: string;
   phone: string | null;
   is_active: boolean;
+  approval_status: RiderApproval;
+  availability_status: RiderStatus;
+  effective_status: RiderStatus;
   active_orders: number;
 };
 
@@ -45,6 +51,27 @@ function statusLabel(value: string) {
   if (value === "preparing") return "قيد التحضير";
   if (value === "out_for_delivery") return "بالتوصيل";
   return value;
+}
+
+function riderStatusLabel(value: RiderStatus) {
+  if (value === "available") return "متاح";
+  if (value === "busy") return "في توصيل";
+  if (value === "break") return "استراحة";
+  return "غير متصل";
+}
+
+function riderStatusRank(value: RiderStatus) {
+  if (value === "available") return 0;
+  if (value === "busy") return 1;
+  if (value === "break") return 2;
+  return 3;
+}
+
+function riderStatusClass(value: RiderStatus) {
+  if (value === "available") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (value === "busy") return "border-sky-200 bg-sky-50 text-sky-700";
+  if (value === "break") return "border-amber-200 bg-amber-50 text-amber-700";
+  return "border-gray-200 bg-gray-100 text-gray-600";
 }
 
 function paymentLabel(method: string, status: string) {
@@ -114,7 +141,7 @@ export default function DeliveryManagementPage() {
 
       const [{ data: driverRows, error: driversError }, { data: orderRows, error: ordersError }] =
         await Promise.all([
-          supabase.rpc("admin_list_delivery_drivers", {
+          supabase.rpc("admin_list_riders", {
             p_store_id: currentStoreId,
           }),
           supabase
@@ -130,15 +157,26 @@ export default function DeliveryManagementPage() {
       if (driversError) throw driversError;
       if (ordersError) throw ordersError;
 
-      const normalizedDrivers = ((driverRows ?? []) as Array<Record<string, unknown>>).map(
-        (row) => ({
+      const normalizedDrivers = ((driverRows ?? []) as Array<Record<string, unknown>>)
+        .map((row) => ({
           id: String(row.id),
           name: String(row.name ?? ""),
           phone: row.phone ? String(row.phone) : null,
           is_active: Boolean(row.is_active),
+          approval_status: String(row.approval_status ?? "approved") as RiderApproval,
+          availability_status: String(row.availability_status ?? "offline") as RiderStatus,
+          effective_status: String(row.effective_status ?? "offline") as RiderStatus,
           active_orders: Number(row.active_orders ?? 0),
-        }),
-      );
+        }))
+        .sort((a, b) => {
+          const approvalA = a.approval_status === "approved" && a.is_active ? 0 : 1;
+          const approvalB = b.approval_status === "approved" && b.is_active ? 0 : 1;
+          if (approvalA !== approvalB) return approvalA - approvalB;
+          const statusDiff = riderStatusRank(a.effective_status) - riderStatusRank(b.effective_status);
+          if (statusDiff !== 0) return statusDiff;
+          return a.name.localeCompare(b.name, "ar");
+        });
+
       const normalizedOrders = ((orderRows ?? []) as Array<Record<string, unknown>>).map(
         (row) => ({
           id: String(row.id),
@@ -217,12 +255,28 @@ export default function DeliveryManagementPage() {
       )
       .on(
         "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "drivers",
+          filter: `store_id=eq.${storeId}`,
+        },
+        () => void load(),
+      )
+      .on(
+        "postgres_changes",
         { event: "*", schema: "public", table: "driver_locations" },
         () => void load(),
       )
       .subscribe();
 
+    // Presence is time-based: a rider becomes effectively offline two minutes
+    // after the last heartbeat even when no row changes. Polling recomputes the
+    // effective status so an abandoned rider page cannot remain visibly available.
+    const presenceTimer = window.setInterval(() => void load(), 20000);
+
     return () => {
+      window.clearInterval(presenceTimer);
       void supabase.removeChannel(channel);
     };
   }, [load, storeId, supabase]);
@@ -257,6 +311,17 @@ export default function DeliveryManagementPage() {
       setError("اختر المندوب أولاً");
       return;
     }
+
+    const selectedDriver = drivers.find((driver) => driver.id === driverId);
+    if (
+      !selectedDriver ||
+      !selectedDriver.is_active ||
+      selectedDriver.approval_status !== "approved"
+    ) {
+      setError("لا يمكن إسناد الطلب لمندوب غير معتمد أو حسابه موقوف");
+      return;
+    }
+
     if (order.status === "pending") {
       setError("حوّل حالة الطلب إلى قيد التحضير قبل إرسال الطلب للمندوب");
       return;
@@ -394,9 +459,14 @@ export default function DeliveryManagementPage() {
             <span className="text-sm text-gray-500">أضف أول مندوب للبدء.</span>
           ) : (
             drivers.map((driver) => (
-              <span key={driver.id} className="rounded-full border bg-gray-50 px-3 py-1.5 text-xs text-gray-700">
-                {driver.name}{driver.phone ? ` • ${driver.phone}` : ""}
+              <span
+                key={driver.id}
+                className={`rounded-full border px-3 py-1.5 text-xs ${riderStatusClass(driver.effective_status)}`}
+              >
+                {driver.name} • {riderStatusLabel(driver.effective_status)}
                 {driver.active_orders > 0 ? ` • ${driver.active_orders} طلب` : ""}
+                {driver.approval_status !== "approved" ? " • غير معتمد" : ""}
+                {!driver.is_active && driver.approval_status === "approved" ? " • الحساب موقوف" : ""}
               </span>
             ))
           )}
@@ -407,7 +477,7 @@ export default function DeliveryManagementPage() {
         <div className="flex items-end justify-between gap-3">
           <div>
             <h2 className="font-bold text-gray-950">طلبات التوصيل الحالية</h2>
-            <p className="text-xs text-gray-500">الموقع يتحدث تلقائيًا عند وصول GPS من جهاز المندوب.</p>
+            <p className="text-xs text-gray-500">الموقع وحالة المندوب يتحدثان تلقائيًا.</p>
           </div>
           <Link href="/dashboard" className="text-sm font-semibold text-red-600 hover:underline">
             كل الطلبات
@@ -425,7 +495,14 @@ export default function DeliveryManagementPage() {
             const addressText = order.address_snapshot?.address_text?.toString() || "العنوان غير مكتمل";
             const generatedLink = generatedLinks[order.id];
             const currentDriver = selectedDrivers[order.id] || order.driver_id || "";
-            const canIssue = order.status !== "pending" && drivers.some((driver) => driver.is_active);
+            const chosenDriver = drivers.find((driver) => driver.id === currentDriver);
+            const canIssue =
+              order.status !== "pending" &&
+              Boolean(
+                chosenDriver &&
+                  chosenDriver.is_active &&
+                  chosenDriver.approval_status === "approved",
+              );
 
             return (
               <article key={order.id} className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
@@ -463,10 +540,13 @@ export default function DeliveryManagementPage() {
                     >
                       <option value="">اختر المندوب</option>
                       {drivers
-                        .filter((driver) => driver.is_active)
+                        .filter(
+                          (driver) =>
+                            driver.is_active && driver.approval_status === "approved",
+                        )
                         .map((driver) => (
                           <option key={driver.id} value={driver.id}>
-                            {driver.name}
+                            {driver.name} — {riderStatusLabel(driver.effective_status)}
                           </option>
                         ))}
                     </select>
