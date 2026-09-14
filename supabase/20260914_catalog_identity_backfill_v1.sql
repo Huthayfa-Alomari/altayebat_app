@@ -5,7 +5,7 @@
 --   * Does NOT delete products.
 --   * Does NOT modify prices, stock, availability, category, image, barcode, or brand_id.
 --   * Generates an internal SKU only where sku IS NULL.
---   * Fills pack_size only where an explicit mass/volume appears in the product name.
+--   * Fills pack_size only where an explicit mass/volume token appears in the product name.
 --   * Multipacks containing *, ×, or spaced x are excluded from automatic pack-size backfill.
 
 begin;
@@ -18,19 +18,21 @@ set
   updated_at = now()
 where sku is null;
 
--- 2) Safe pack-size extraction from explicit mass / volume tokens.
+-- 2) Safe pack-size extraction from the explicit number+unit token itself.
+-- Using the complete regex token prevents taking an earlier unrelated number
+-- (example: "16 قطعة / 280g" must produce 280g, not 16g).
 with candidates as (
   select
     id,
     case
       when name ~* '([0-9]+([.,][0-9]+)?)\s*(kg|كغم|كغ|كيلو|كجم)'
-        then replace(substring(name from '(?i)([0-9]+([.,][0-9]+)?)'), ',', '.') || ' kg'
+        then substring(name from '(?i)([0-9]+([.,][0-9]+)?\s*(kg|كغم|كغ|كيلو|كجم))')
       when name ~* '([0-9]+([.,][0-9]+)?)\s*(ml|مل|مليلتر)'
-        then replace(substring(name from '(?i)([0-9]+([.,][0-9]+)?)'), ',', '.') || ' ml'
+        then substring(name from '(?i)([0-9]+([.,][0-9]+)?\s*(ml|مل|مليلتر))')
       when name ~* '([0-9]+([.,][0-9]+)?)\s*(g|غرام|غم)'
-        then replace(substring(name from '(?i)([0-9]+([.,][0-9]+)?)'), ',', '.') || ' g'
+        then substring(name from '(?i)([0-9]+([.,][0-9]+)?\s*(g|غرام|غم))')
       when name ~* '([0-9]+([.,][0-9]+)?)\s*(l|لتر)'
-        then replace(substring(name from '(?i)([0-9]+([.,][0-9]+)?)'), ',', '.') || ' L'
+        then substring(name from '(?i)([0-9]+([.,][0-9]+)?\s*(l|لتر))')
       else null
     end as inferred_pack_size
   from public.products
