@@ -12,6 +12,7 @@ const navItems = [
   { href: "/dashboard/loyalty", label: "المكافآت" },
   { href: "/dashboard/categories", label: "التصنيفات" },
   { href: "/dashboard/support", label: "طلبات التواصل" },
+  { href: "/dashboard/riders", label: "المندوبون" },
   { href: "/dashboard/delivery", label: "التوصيل" },
   { href: "/dashboard/settings", label: "إعدادات الدفع" },
 ];
