@@ -35,8 +35,11 @@ class Product {
 
   factory Product.fromMap(Map<String, dynamic> map) {
     final price = (map['price'] as num).toDouble();
-    final inventoryScale = (map['inventory_scale'] as num?)?.toInt() ?? 1;
+    final rawInventoryScale = (map['inventory_scale'] as num?)?.toInt() ?? 1;
+    final inventoryScale = rawInventoryScale > 0 ? rawInventoryScale : 1;
     final explicitDisplayPrice = (map['price_per_unit'] as num?)?.toDouble();
+    final rawMinQty = (map['min_qty'] as num?)?.toInt() ?? 1;
+    final rawQtyStep = (map['qty_step'] as num?)?.toInt() ?? 1;
 
     return Product(
       id: map['id'] as String,
@@ -49,11 +52,10 @@ class Product {
       categoryId: map['category_id'] as String?,
       saleType: map['sale_type']?.toString() ?? 'piece',
       baseUnit: map['base_unit']?.toString() ?? 'piece',
-      inventoryScale: inventoryScale > 0 ? inventoryScale : 1,
-      pricePerUnit:
-          explicitDisplayPrice ?? price * (inventoryScale > 0 ? inventoryScale : 1),
-      minQty: ((map['min_qty'] as num?)?.toInt() ?? 1).clamp(1, 1 << 30),
-      qtyStep: ((map['qty_step'] as num?)?.toInt() ?? 1).clamp(1, 1 << 30),
+      inventoryScale: inventoryScale,
+      pricePerUnit: explicitDisplayPrice ?? price * inventoryScale,
+      minQty: rawMinQty > 0 ? rawMinQty : 1,
+      qtyStep: rawQtyStep > 0 ? rawQtyStep : 1,
       allowAmountPurchase: map['allow_amount_purchase'] as bool? ?? false,
     );
   }
