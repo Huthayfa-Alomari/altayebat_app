@@ -26,6 +26,12 @@ type Offer = {
   products: { name: string } | { name: string }[] | null;
 };
 
+type StorefrontSettings = {
+  show_offers_section: boolean;
+  offer_banner_title: string;
+  offer_banner_subtitle: string;
+};
+
 function productName(offer: Offer) {
   if (Array.isArray(offer.products)) return offer.products[0]?.name || "منتج";
   return offer.products?.name || "منتج";
@@ -39,10 +45,12 @@ export default function OffersManager({
   storeId,
   products,
   initialOffers,
+  initialSettings,
 }: {
   storeId: string;
   products: Product[];
   initialOffers: Offer[];
+  initialSettings: StorefrontSettings;
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -56,10 +64,37 @@ export default function OffersManager({
   const [endingId, setEndingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  const [showOffersSection, setShowOffersSection] = useState(initialSettings.show_offers_section);
+  const [bannerTitle, setBannerTitle] = useState(initialSettings.offer_banner_title);
+  const [bannerSubtitle, setBannerSubtitle] = useState(initialSettings.offer_banner_subtitle);
+  const [settingsBusy, setSettingsBusy] = useState(false);
+
   const selected = products.find((product) => product.id === productId);
   const regular = Number(selected?.price_per_unit || 0);
   const activeOffers = initialOffers.filter((offer) => offer.is_active);
   const oldOffers = initialOffers.filter((offer) => !offer.is_active).slice(0, 20);
+
+  async function saveStorefrontSettings() {
+    if (settingsBusy) return;
+    setSettingsBusy(true);
+    setMessage(null);
+    try {
+      const { error } = await supabase.from("storefront_settings").upsert({
+        store_id: storeId,
+        show_offers_section: showOffersSection,
+        offer_banner_title: bannerTitle.trim() || "عروض مميزة اليوم",
+        offer_banner_subtitle: bannerSubtitle.trim() || "وفر أكثر مع عروض أسواق الطيبات",
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      setMessage(showOffersSection ? "تم إظهار قسم العروض والبنر داخل التطبيق." : "تم إخفاء قسم العروض والبنر من التطبيق.");
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      setSettingsBusy(false);
+    }
+  }
 
   async function createOffer(event: FormEvent) {
     event.preventDefault();
@@ -135,6 +170,55 @@ export default function OffersManager({
 
   return (
     <div className="space-y-6">
+      <section className="rounded-2xl border border-sky-200 bg-gradient-to-l from-sky-50 via-white to-red-50 p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-sky-800">واجهة العروض في التطبيق</p>
+            <h2 className="mt-1 text-lg font-bold">إظهار / إخفاء قسم العروض والبنر</h2>
+            <p className="mt-1 text-xs text-gray-600">العروض تبقى محفوظة في النظام حتى لو أخفيت القسم عن الزبائن.</p>
+          </div>
+          <label className="flex items-center gap-3 rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm font-semibold">
+            <input
+              type="checkbox"
+              checked={showOffersSection}
+              onChange={(event) => setShowOffersSection(event.target.checked)}
+              className="h-5 w-5"
+            />
+            {showOffersSection ? "ظاهر داخل التطبيق" : "مخفي عن التطبيق"}
+          </label>
+        </div>
+
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          <label className="space-y-1 text-sm font-medium">
+            <span>عنوان البنر</span>
+            <input
+              value={bannerTitle}
+              onChange={(event) => setBannerTitle(event.target.value)}
+              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5"
+              placeholder="عروض مميزة اليوم"
+            />
+          </label>
+          <label className="space-y-1 text-sm font-medium">
+            <span>النص تحت العنوان</span>
+            <input
+              value={bannerSubtitle}
+              onChange={(event) => setBannerSubtitle(event.target.value)}
+              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5"
+              placeholder="وفر أكثر مع عروض أسواق الطيبات"
+            />
+          </label>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => void saveStorefrontSettings()}
+          disabled={settingsBusy}
+          className="mt-4 rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          {settingsBusy ? "جاري الحفظ..." : "حفظ إعدادات عرض العروض"}
+        </button>
+      </section>
+
       <form
         onSubmit={createOffer}
         className="grid gap-4 rounded-2xl border border-gray-200 bg-white p-5 lg:grid-cols-2"
@@ -243,17 +327,11 @@ export default function OffersManager({
                 <p className="font-semibold">{offer.title}</p>
                 <p className="text-sm text-gray-600">{productName(offer)}</p>
                 <p className="mt-1 text-sm">
-                  <span className="line-through text-gray-400">
-                    {money(offer.regular_price_per_unit)}
-                  </span>{" "}
-                  <span className="font-bold text-orange-700">
-                    {money(offer.offer_price_per_unit)}
-                  </span>
+                  <span className="line-through text-gray-400">{money(offer.regular_price_per_unit)}</span>{" "}
+                  <span className="font-bold text-orange-700">{money(offer.offer_price_per_unit)}</span>
                 </p>
                 {offer.ends_at ? (
-                  <p className="mt-1 text-xs text-gray-500">
-                    ينتهي: {new Date(offer.ends_at).toLocaleString("ar-JO")}
-                  </p>
+                  <p className="mt-1 text-xs text-gray-500">ينتهي: {new Date(offer.ends_at).toLocaleString("ar-JO")}</p>
                 ) : null}
               </div>
               <button
@@ -274,10 +352,7 @@ export default function OffersManager({
           <h2 className="font-semibold">العروض السابقة</h2>
           <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
             {oldOffers.map((offer) => (
-              <div
-                key={offer.id}
-                className="flex items-center justify-between gap-4 border-b border-gray-100 px-4 py-3 last:border-b-0"
-              >
+              <div key={offer.id} className="flex items-center justify-between gap-4 border-b border-gray-100 px-4 py-3 last:border-b-0">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{offer.title}</p>
                   <p className="truncate text-xs text-gray-500">{productName(offer)}</p>
