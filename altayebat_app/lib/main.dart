@@ -8,6 +8,7 @@ import 'services/driver_deep_link_navigator_observer.dart';
 import 'services/push_notification_service.dart';
 import 'services/supabase_service.dart';
 import 'theme/app_theme.dart';
+import 'widgets/storefront_shell.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,7 +69,7 @@ class AltayebatApp extends StatelessWidget {
         },
         home: bootstrapError != null
             ? const _BootstrapErrorScreen()
-            : const HomeScreen(),
+            : const StorefrontShell(child: HomeScreen()),
       ),
     );
   }
