@@ -9,7 +9,12 @@ class CartProvider extends ChangeNotifier {
 
   List<CartItem> get items => UnmodifiableListView(_items.values);
 
-  int get itemCount => _items.values.fold(0, (sum, item) => sum + item.quantity);
+  int get lineCount => _items.length;
+
+  int get itemCount => _items.values.fold(
+    0,
+    (sum, item) => sum + (item.product.isMeasured ? 1 : item.quantity),
+  );
 
   double get total =>
       _items.values.fold(0.0, (sum, item) => sum + item.subtotal);
@@ -21,10 +26,16 @@ class CartProvider extends ChangeNotifier {
 
     final current = _items[product.id];
     if (current != null) {
-      if (current.quantity >= product.stockQty) return false;
-      current.quantity++;
+      final nextQuantity = current.quantity + product.cartStep;
+      if (nextQuantity > product.stockQty) return false;
+      current.quantity = nextQuantity;
     } else {
-      _items[product.id] = CartItem(product: product);
+      final initialQuantity = product.initialCartQuantity;
+      if (initialQuantity > product.stockQty) return false;
+      _items[product.id] = CartItem(
+        product: product,
+        quantity: initialQuantity,
+      );
     }
 
     notifyListeners();
@@ -35,10 +46,13 @@ class CartProvider extends ChangeNotifier {
     final current = _items[product.id];
     if (current == null) return;
 
-    if (current.quantity > 1) {
-      current.quantity--;
-    } else {
+    if (current.quantity <= product.initialCartQuantity) {
       _items.remove(product.id);
+    } else {
+      final nextQuantity = current.quantity - product.cartStep;
+      current.quantity = nextQuantity < product.initialCartQuantity
+          ? product.initialCartQuantity
+          : nextQuantity;
     }
     notifyListeners();
   }
@@ -59,6 +73,12 @@ class CartProvider extends ChangeNotifier {
 
   bool canAdd(Product product) {
     if (!product.isAvailable || product.stockQty <= 0) return false;
-    return quantityOf(product.id) < product.stockQty;
+
+    final currentQuantity = quantityOf(product.id);
+    if (currentQuantity == 0) {
+      return product.initialCartQuantity <= product.stockQty;
+    }
+
+    return currentQuantity + product.cartStep <= product.stockQty;
   }
 }
