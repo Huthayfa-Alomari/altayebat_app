@@ -3,6 +3,7 @@ returns text
 language sql
 immutable
 parallel safe
+set search_path = ''
 as $$
   select trim(
     regexp_replace(
