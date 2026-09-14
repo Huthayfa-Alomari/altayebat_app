@@ -15,11 +15,12 @@ class ProductCard extends StatelessWidget {
     final cart = context.watch<CartProvider>();
     final qty = cart.quantityOf(product.id);
     final canAdd = cart.canAdd(product);
-    final outOfStock = !product.isAvailable || product.stockQty <= 0;
+    final outOfStock = !product.isAvailable ||
+        product.stockQty < product.initialCartQuantity;
 
     return Semantics(
       container: true,
-      label: '${product.name}، ${product.price.toStringAsFixed(2)} دينار',
+      label: '${product.name}، ${product.priceDisplayText}',
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
@@ -81,7 +82,9 @@ class ProductCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              '${product.price.toStringAsFixed(2)} د.أ',
+              product.priceDisplayText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 16,
                 height: 1.15,
@@ -122,9 +125,9 @@ class ProductCard extends StatelessWidget {
       );
     }
 
-    if (product.stockQty <= 3) {
+    if (product.isLowStock) {
       return Text(
-        'متبقي ${product.stockQty} فقط',
+        'متبقي ${product.stockDisplayText} فقط',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
@@ -143,11 +146,15 @@ class ProductCard extends StatelessWidget {
     required bool enabled,
     required bool outOfStock,
   }) {
+    final addLabel = product.isMeasured
+        ? 'أضف ${product.formatQuantity(product.initialCartQuantity)}'
+        : 'أضف';
+
     return Semantics(
       button: true,
       enabled: enabled,
       label: enabled
-          ? 'أضف ${product.name} للسلة'
+          ? 'أضف ${product.name} للسلة، $addLabel'
           : '${product.name} غير متوفر',
       child: SizedBox(
         width: double.infinity,
@@ -163,18 +170,20 @@ class ProductCard extends StatelessWidget {
             backgroundColor: AppColors.primary,
             disabledBackgroundColor: AppColors.border,
             disabledForegroundColor: AppColors.textSecondary,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
           ),
           icon: Icon(
             outOfStock ? Icons.block_outlined : Icons.add_shopping_cart_rounded,
-            size: 19,
+            size: 18,
           ),
           label: Text(
-            outOfStock ? 'غير متوفر' : 'أضف',
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+            outOfStock ? 'غير متوفر' : addLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
           ),
         ),
       ),
@@ -182,9 +191,12 @@ class ProductCard extends StatelessWidget {
   }
 
   Widget _stepper(BuildContext context, int qty, {required bool canAdd}) {
+    final quantityText = product.formatQuantity(qty);
+    final removeOnDecrement = qty <= product.initialCartQuantity;
+
     return Semantics(
       container: true,
-      label: 'الكمية في السلة $qty',
+      label: 'الكمية في السلة $quantityText',
       child: Container(
         width: double.infinity,
         height: 44,
@@ -196,10 +208,10 @@ class ProductCard extends StatelessWidget {
           children: [
             Expanded(
               child: IconButton(
-                tooltip: qty == 1 ? 'إزالة من السلة' : 'تقليل الكمية',
+                tooltip: removeOnDecrement ? 'إزالة من السلة' : 'تقليل الكمية',
                 padding: EdgeInsets.zero,
                 icon: Icon(
-                  qty == 1
+                  removeOnDecrement
                       ? Icons.delete_outline_rounded
                       : Icons.remove_rounded,
                   color: Colors.white,
@@ -210,13 +222,14 @@ class ProductCard extends StatelessWidget {
               ),
             ),
             Container(
-              constraints: const BoxConstraints(minWidth: 36),
+              constraints: const BoxConstraints(minWidth: 48),
               alignment: Alignment.center,
               child: Text(
-                '$qty',
+                quantityText,
+                maxLines: 1,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: 12.5,
                   fontWeight: FontWeight.w900,
                 ),
               ),
