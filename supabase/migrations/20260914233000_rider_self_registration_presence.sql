@@ -1,6 +1,7 @@
 -- Altayebat rider self-registration + presence v1
 -- Adds phone-OTP rider accounts, admin approval, live availability and rider heartbeat.
--- Existing manually-created delivery drivers remain approved and usable.
+-- Existing manually-created delivery drivers remain approved and usable via column defaults.
+-- No production rider rows are backfilled or rewritten by this migration.
 
 alter table public.drivers
   add column if not exists auth_user_id uuid references auth.users(id) on delete set null,
@@ -13,18 +14,6 @@ alter table public.drivers
   add column if not exists status_updated_at timestamptz not null default now(),
   add column if not exists approved_at timestamptz,
   add column if not exists approved_by uuid references auth.users(id) on delete set null;
-
--- Existing drivers were created by the store, so keep them approved.
-update public.drivers
-   set approval_status = coalesce(nullif(approval_status, ''), 'approved'),
-       registration_source = coalesce(nullif(registration_source, ''), 'admin'),
-       availability_status = coalesce(nullif(availability_status, ''), 'offline'),
-       approved_at = case
-         when coalesce(nullif(approval_status, ''), 'approved') = 'approved'
-           then coalesce(approved_at, created_at, now())
-         else approved_at
-       end
- where true;
 
 create unique index if not exists drivers_auth_user_unique_idx
   on public.drivers(auth_user_id)
