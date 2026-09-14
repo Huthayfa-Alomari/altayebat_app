@@ -290,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         )
       else if (_products.isEmpty)
-        const SliverToBoxAdapter(child: _emptyState())
+        const SliverToBoxAdapter(child: _EmptyState())
       else
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -687,8 +687,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _emptyState extends StatelessWidget {
-  const _emptyState();
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
 
   @override
   Widget build(BuildContext context) {
