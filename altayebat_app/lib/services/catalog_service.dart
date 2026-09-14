@@ -102,7 +102,7 @@ class CatalogService {
     bool forceRefresh = false,
   }) async {
     final safeOffset = offset < 0 ? 0 : offset;
-    final safeLimit = limit.clamp(10, 60);
+    final safeLimit = limit.clamp(10, 60).toInt();
     final key = _pageKey(
       categoryId: categoryId,
       searchQuery: searchQuery,
