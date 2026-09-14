@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'providers/cart_provider.dart';
-import 'screens/home_screen_v3.dart';
+import 'screens/home_screen_fast.dart';
 import 'services/driver_deep_link_navigator_observer.dart';
 import 'services/push_notification_service.dart';
 import 'services/supabase_service.dart';
