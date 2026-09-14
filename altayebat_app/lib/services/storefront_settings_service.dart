@@ -54,7 +54,7 @@ class StorefrontSettingsService {
 
   static Future<StorefrontSettings> fetch({bool forceRefresh = false}) async {
     if (!forceRefresh && _cacheFresh) return _cached!;
-    if (!forceRefresh && _inFlight != null) return _inFlight!;
+    if (_inFlight != null) return _inFlight!;
 
     final future = _load();
     _inFlight = future;
