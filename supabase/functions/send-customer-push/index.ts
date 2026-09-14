@@ -22,6 +22,16 @@ type PushTarget = {
   data: Record<string, string>;
 };
 
+function stringData(value: unknown) {
+  if (!value || typeof value !== "object") return {} as Record<string, string>;
+  const out: Record<string, string> = {};
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (raw === null || raw === undefined) continue;
+    out[key] = typeof raw === "string" ? raw : String(raw);
+  }
+  return out;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -75,28 +85,38 @@ Deno.serve(async (req: Request) => {
         delivered: ["تم توصيل طلبك", "شكراً لتسوقك من أسواق الطيبات."],
         cancelled: ["تم إلغاء الطلب", "افتح التطبيق لمعرفة التفاصيل أو إعادة الطلب."],
       };
-      const copy = statusCopy[order.status] || ["تحديث على طلبك", "تم تحديث حالة طلبك."];
+      const statusText = statusCopy[order.status] || ["تحديث على طلبك", "تم تحديث حالة طلبك."];
 
       const { data: inboxRow } = await admin
         .from("customer_notifications")
-        .select("id")
+        .select("id,type,title,body,data")
         .eq("order_id", order.id)
         .eq("customer_id", order.customer_id)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
+      const inboxData = stringData(inboxRow?.data);
+      const isAdjustment = inboxData.kind === "order_adjusted";
+
       target = {
-        title: copy[0],
-        body: copy[1],
+        title: isAdjustment ? String(inboxRow?.title || "تم تعديل طلبك") : statusText[0],
+        body: isAdjustment ? String(inboxRow?.body || "تم تحديث بعض أصناف طلبك.") : statusText[1],
         storeId: order.store_id,
         customerId: order.customer_id,
-        data: {
-          kind: "order_status",
-          order_id: order.id,
-          status: order.status,
-          ...(inboxRow?.id ? { notification_id: inboxRow.id } : {}),
-        },
+        data: isAdjustment
+          ? {
+              kind: "order_adjusted",
+              order_id: order.id,
+              ...inboxData,
+              ...(inboxRow?.id ? { notification_id: inboxRow.id } : {}),
+            }
+          : {
+              kind: "order_status",
+              order_id: order.id,
+              status: order.status,
+              ...(inboxRow?.id ? { notification_id: inboxRow.id } : {}),
+            },
       };
     } else if (offerId) {
       const { data: offer, error: offerError } = await admin
