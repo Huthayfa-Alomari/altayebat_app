@@ -120,20 +120,19 @@ class RiderLocationService {
     lastError.value = null;
     await _pushPosition(initial, force: true);
 
-    _positionSubscription = Geolocator.getPositionStream(
-      locationSettings: settings,
-    ).listen(
-      (position) {
-        _lastPosition = position;
-        unawaited(_pushPosition(position));
-      },
-      onError: (Object _) {
-        tracking.value = false;
-        lastError.value =
-            'توقف تحديث GPS. افتح وضع المندوب وشغّل التتبع مرة أخرى.';
-      },
-      cancelOnError: false,
-    );
+    _positionSubscription =
+        Geolocator.getPositionStream(locationSettings: settings).listen(
+          (position) {
+            _lastPosition = position;
+            unawaited(_pushPosition(position));
+          },
+          onError: (Object _) {
+            tracking.value = false;
+            lastError.value =
+                'توقف تحديث GPS. افتح وضع المندوب وشغّل التتبع مرة أخرى.';
+          },
+          cancelOnError: false,
+        );
   }
 
   Future<void> updateOrders(Iterable<String> orderIds) async {
@@ -171,10 +170,7 @@ class RiderLocationService {
     try {
       for (final orderId in List<String>.from(_orderIds)) {
         try {
-          await RiderService.pushLocation(
-            orderId: orderId,
-            position: position,
-          );
+          await RiderService.pushLocation(orderId: orderId, position: position);
         } catch (error) {
           final message = RiderService.friendlyError(error);
           if (message.contains('ابدأ التوصيل أولًا') ||
