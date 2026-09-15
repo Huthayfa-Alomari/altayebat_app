@@ -57,7 +57,9 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
     _apartment = TextEditingController(text: address?.apartment ?? '');
     _landmark = TextEditingController(text: address?.landmark ?? '');
     _recipientName = TextEditingController(text: address?.recipientName ?? '');
-    _recipientPhone = TextEditingController(text: address?.recipientPhone ?? '');
+    _recipientPhone = TextEditingController(
+      text: address?.recipientPhone ?? '',
+    );
     _notes = TextEditingController(text: address?.notes ?? '');
 
     if (address?.latitude != null && address?.longitude != null) {
@@ -155,7 +157,8 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
     if (!mounted) return;
     if (_coverage?['serviceable'] != true) {
       setState(() {
-        _error = 'هذا الموقع خارج نطاق التوصيل الحالي. حرّك العلامة إلى عنوان داخل النطاق.';
+        _error =
+            'هذا الموقع خارج نطاق التوصيل الحالي. حرّك العلامة إلى عنوان داخل النطاق.';
       });
       return;
     }
@@ -357,7 +360,9 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
                         child: TextFormField(
                           controller: _building,
                           textInputAction: TextInputAction.next,
-                          decoration: const InputDecoration(labelText: 'رقم البناية'),
+                          decoration: const InputDecoration(
+                            labelText: 'رقم البناية',
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -365,7 +370,9 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
                         child: TextFormField(
                           controller: _floor,
                           textInputAction: TextInputAction.next,
-                          decoration: const InputDecoration(labelText: 'الطابق'),
+                          decoration: const InputDecoration(
+                            labelText: 'الطابق',
+                          ),
                         ),
                       ),
                     ],
