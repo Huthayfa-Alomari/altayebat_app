@@ -6,6 +6,7 @@ import '../providers/cart_provider.dart';
 import '../services/catalog_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/measured_product_sheet.dart';
+import 'cart_screen.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
   final Product product;
@@ -71,7 +72,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               isLabelVisible: cart.itemCount > 0,
               child: IconButton(
                 tooltip: 'السلة',
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const CartScreen()),
+                  );
+                },
                 icon: const Icon(Icons.shopping_cart_outlined),
               ),
             ),
@@ -140,11 +145,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           elevation: 14,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: _primaryAction(
-              cart,
-              qty,
-              outOfStock: outOfStock,
-            ),
+            child: _primaryAction(cart, qty, outOfStock: outOfStock),
           ),
         ),
       ),
@@ -176,7 +177,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           onPressed: _chooseMeasured,
           icon: const Icon(Icons.scale_outlined),
           label: Text(
-            qty > 0 ? 'تعديل الكمية • ${product.formatQuantity(qty)}' : 'اختر الكمية',
+            qty > 0
+                ? 'تعديل الكمية • ${product.formatQuantity(qty)}'
+                : 'اختر الكمية',
           ),
         ),
       );
@@ -289,10 +292,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         const SizedBox(height: 5),
         const Text(
           'اختيارات تكمل المنتج وتوفّر عليك البحث',
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 12.5,
-          ),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
         ),
         const SizedBox(height: 12),
         ..._related.map(
