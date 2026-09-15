@@ -79,7 +79,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: tokenRows, error: tokenError } = await admin
       .from("rider_push_tokens")
-      .select("id,token")
+      .select("id,token,platform")
       .eq("store_id", order.store_id)
       .eq("driver_id", rider.id);
     if (tokenError) throw tokenError;
@@ -100,7 +100,7 @@ Deno.serve(async (req: Request) => {
 
     const shortOrder = String(order.id).replaceAll("-", "").slice(0, 8).toUpperCase();
     const title = "طلب توصيل جديد — أسواق الطيبات";
-    const body = `تم إسناد الطلب #${shortOrder} إليك. افتح بوابة المندوب للتفاصيل.`;
+    const body = `تم إسناد الطلب #${shortOrder} إليك. افتح التطبيق للتفاصيل.`;
     const data = {
       kind: "rider_assignment",
       order_id: String(order.id),
@@ -115,6 +115,43 @@ Deno.serve(async (req: Request) => {
     const staleIds: string[] = [];
 
     for (const row of tokenRows) {
+      const platform = String(row.platform || "web").toLowerCase();
+      const message: Record<string, unknown> = {
+        token: row.token,
+        data,
+      };
+
+      if (platform === "web") {
+        message.webpush = {
+          headers: {
+            Urgency: "high",
+            TTL: "3600",
+          },
+        };
+      } else if (platform === "android") {
+        message.notification = { title, body };
+        message.android = {
+          priority: "high",
+          ttl: "3600s",
+          notification: {
+            sound: "default",
+            defaultVibrateTimings: true,
+          },
+        };
+      } else if (platform === "ios") {
+        message.notification = { title, body };
+        message.apns = {
+          headers: { "apns-priority": "10" },
+          payload: {
+            aps: {
+              sound: "default",
+            },
+          },
+        };
+      } else {
+        message.notification = { title, body };
+      }
+
       const response = await fetch(
         `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
         {
@@ -123,18 +160,7 @@ Deno.serve(async (req: Request) => {
             Authorization: `Bearer ${accessToken}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            message: {
-              token: row.token,
-              data,
-              webpush: {
-                headers: {
-                  Urgency: "high",
-                  TTL: "3600",
-                },
-              },
-            },
-          }),
+          body: JSON.stringify({ message }),
         },
       );
 
@@ -145,6 +171,12 @@ Deno.serve(async (req: Request) => {
 
       failed++;
       const text = await response.text();
+      console.warn("rider push failed", {
+        token_id: row.id,
+        platform,
+        status: response.status,
+        response: text.slice(0, 500),
+      });
       if (
         text.includes("UNREGISTERED") ||
         text.includes("registration-token-not-registered")
