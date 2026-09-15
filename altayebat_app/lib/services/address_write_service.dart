@@ -102,27 +102,32 @@ class AddressWriteService {
     String locationSource = 'manual',
     bool isDefault = false,
   }) async {
-    final payload = _payload(
-      label: label,
-      city: city,
-      area: area,
-      street: street,
-      building: building,
-      floor: floor,
-      apartment: apartment,
-      landmark: landmark,
-      recipientName: recipientName,
-      recipientPhone: recipientPhone,
-      notes: notes,
-      latitude: latitude,
-      longitude: longitude,
-      accuracyMeters: accuracyMeters,
-      locationSource: locationSource,
-    )
-      ..['customer_id'] = _requireUserId()
-      ..['is_default'] = isDefault;
+    final payload =
+        _payload(
+            label: label,
+            city: city,
+            area: area,
+            street: street,
+            building: building,
+            floor: floor,
+            apartment: apartment,
+            landmark: landmark,
+            recipientName: recipientName,
+            recipientPhone: recipientPhone,
+            notes: notes,
+            latitude: latitude,
+            longitude: longitude,
+            accuracyMeters: accuracyMeters,
+            locationSource: locationSource,
+          )
+          ..['customer_id'] = _requireUserId()
+          ..['is_default'] = isDefault;
 
-    final row = await _client.from('addresses').insert(payload).select().single();
+    final row = await _client
+        .from('addresses')
+        .insert(payload)
+        .select()
+        .single();
     return CustomerAddress.fromMap(Map<String, dynamic>.from(row));
   }
 
