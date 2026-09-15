@@ -83,9 +83,8 @@ class PushNotificationService {
         await _registerToken(token);
       });
 
-      _authSubscription ??= Supabase.instance.client.auth.onAuthStateChange.listen(
-        (_) => syncCurrentToken(),
-      );
+      _authSubscription ??= Supabase.instance.client.auth.onAuthStateChange
+          .listen((_) => syncCurrentToken());
 
       await syncCurrentToken();
 
