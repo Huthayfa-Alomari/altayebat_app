@@ -35,7 +35,6 @@ jobs:
         run: |
           flutter --version
           xcodebuild -version
-          pod --version
 
       - name: Generate iOS platform
         run: |
@@ -57,13 +56,13 @@ jobs:
           p = Path('ios/Runner.xcodeproj/project.pbxproj')
           text = p.read_text()
           text = re.sub(
-              r'PRODUCT_BUNDLE_IDENTIFIER = [^;]+\.RunnerTests;',
-              'PRODUCT_BUNDLE_IDENTIFIER = com.altayebat.app.RunnerTests;',
+              r'PRODUCT_BUNDLE_IDENTIFIER = (?![^;]*RunnerTests)[^;]+;',
+              'PRODUCT_BUNDLE_IDENTIFIER = com.altayebat.app;',
               text,
           )
           text = re.sub(
-              r'PRODUCT_BUNDLE_IDENTIFIER = [^;]+;',
-              'PRODUCT_BUNDLE_IDENTIFIER = com.altayebat.app;',
+              r'PRODUCT_BUNDLE_IDENTIFIER = [^;]*RunnerTests;',
+              'PRODUCT_BUNDLE_IDENTIFIER = com.altayebat.app.RunnerTests;',
               text,
           )
           p.write_text(text)
@@ -82,11 +81,8 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" "$PLIST"
           /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:1 string location" "$PLIST"
 
-      - name: Resolve Flutter and CocoaPods dependencies
-        run: |
-          flutter pub get
-          cd ios
-          pod install --repo-update
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
 
       - name: Build unsigned iOS release
         run: flutter build ios --release --no-codesign
