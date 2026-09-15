@@ -1,3 +1,6 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -169,7 +172,46 @@ class RiderService {
     );
   }
 
-  static Future<void> signOut() => _client.auth.signOut();
+  static Future<bool> syncPushToken() async {
+    if (!hasPhoneSession || Firebase.apps.isEmpty) return false;
+
+    final rider = await me();
+    if (rider == null ||
+        rider['approval_status']?.toString() != 'approved' ||
+        rider['is_active'] != true) {
+      return false;
+    }
+
+    final token = await FirebaseMessaging.instance.getToken();
+    if (token == null || token.trim().isEmpty) return false;
+
+    final platform = kIsWeb
+        ? 'web'
+        : defaultTargetPlatform == TargetPlatform.iOS
+        ? 'ios'
+        : 'android';
+    await registerPushToken(token: token, platform: platform);
+    return true;
+  }
+
+  static Future<void> signOutToAnonymous() async {
+    if (hasPhoneSession && Firebase.apps.isNotEmpty) {
+      try {
+        final token = await FirebaseMessaging.instance.getToken();
+        if (token != null && token.trim().isNotEmpty) {
+          await unregisterPushToken(token);
+        }
+      } catch (_) {
+        // Sign-out must remain available even if FCM is temporarily unavailable.
+      }
+    }
+
+    await _client.auth.signOut();
+    final response = await _client.auth.signInAnonymously();
+    if (response.user == null) {
+      throw StateError('تعذر بدء جلسة التسوق');
+    }
+  }
 
   static String friendlyError(Object error) {
     final raw = error.toString();
