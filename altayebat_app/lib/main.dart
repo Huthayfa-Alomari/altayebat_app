@@ -101,7 +101,10 @@ class _StorefrontHome extends StatelessWidget {
                 );
               },
               style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 elevation: 2,
               ),
               icon: const Icon(Icons.delivery_dining_rounded, size: 19),
