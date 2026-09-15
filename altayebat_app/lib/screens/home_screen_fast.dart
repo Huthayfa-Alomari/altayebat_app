@@ -500,7 +500,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
                       suffixIcon: _searchController.text.isEmpty
                           ? null
                           : IconButton(
@@ -681,7 +683,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     height: 42,
                     child: FilledButton.icon(
                       onPressed: _shopNow,
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 14),
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        size: 14,
+                      ),
                       label: const Text(
                         'تسوق الآن',
                         style: TextStyle(fontWeight: FontWeight.w900),
@@ -733,11 +738,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: () => _selectCategory(category?.id),
                   borderRadius: BorderRadius.circular(18),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 9,
+                    ),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
-                        color: selected ? AppColors.skyBlue : Colors.transparent,
+                        color: selected
+                            ? AppColors.skyBlue
+                            : Colors.transparent,
                         width: 1.2,
                       ),
                     ),
@@ -746,7 +756,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Icon(
                           _categoryIcon(name),
-                          color: selected ? AppColors.skyBlueDark : AppColors.navy,
+                          color: selected
+                              ? AppColors.skyBlueDark
+                              : AppColors.navy,
                           size: 31,
                         ),
                         const SizedBox(height: 7),
@@ -918,7 +930,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 Spacer(),
-                Icon(Icons.local_offer_rounded, color: AppColors.primary, size: 19),
+                Icon(
+                  Icons.local_offer_rounded,
+                  color: AppColors.primary,
+                  size: 19,
+                ),
               ],
             ),
           ),
@@ -1118,7 +1134,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF20783A), size: 17),
+            const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Color(0xFF20783A),
+              size: 17,
+            ),
           ],
         ),
       ),
@@ -1211,10 +1231,22 @@ class _HeroProductCluster extends StatelessWidget {
         ),
         for (var index = 0; index < products.length; index++)
           Positioned(
-            right: index == 0 ? 36 : index == 1 ? 4 : 76,
-            top: index == 0 ? 36 : index == 1 ? 78 : 83,
+            right: index == 0
+                ? 36
+                : index == 1
+                ? 4
+                : 76,
+            top: index == 0
+                ? 36
+                : index == 1
+                ? 78
+                : 83,
             child: Transform.rotate(
-              angle: index == 1 ? 0.09 : index == 2 ? -0.08 : 0,
+              angle: index == 1
+                  ? 0.09
+                  : index == 2
+                  ? -0.08
+                  : 0,
               child: Container(
                 width: index == 0 ? 78 : 65,
                 height: index == 0 ? 96 : 76,
