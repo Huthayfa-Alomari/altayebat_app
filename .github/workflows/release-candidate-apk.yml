@@ -34,7 +34,7 @@ jobs:
         run: |
           set -euo pipefail
           STORE_PASSWORD="$(openssl rand -hex 24)"
-          KEY_PASSWORD="$(openssl rand -hex 24)"
+          KEY_PASSWORD="$STORE_PASSWORD"
           KEY_ALIAS="altayebat-release-candidate"
 
           keytool -genkeypair -v \
