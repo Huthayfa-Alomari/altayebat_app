@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config/app_config.dart';
+import '../services/analytics_service.dart';
 import '../theme/app_theme.dart';
 
 class SponsoredAdStrip extends StatefulWidget {
@@ -14,6 +17,7 @@ class SponsoredAdStrip extends StatefulWidget {
 
 class _SponsoredAdStripState extends State<SponsoredAdStrip> {
   late final Future<List<_SponsoredAd>> _adsFuture = _loadAds();
+  final Set<String> _trackedImpressions = <String>{};
 
   Future<List<_SponsoredAd>> _loadAds() async {
     try {
@@ -42,7 +46,28 @@ class _SponsoredAdStripState extends State<SponsoredAdStrip> {
     }
   }
 
+  void _trackVisibleAds(List<_SponsoredAd> ads) {
+    for (final ad in ads) {
+      if (!_trackedImpressions.add(ad.id)) continue;
+      unawaited(
+        AnalyticsService.track(
+          'ad_impression',
+          entityType: 'sponsored_banner',
+          entityId: ad.id,
+          properties: {'title': ad.title},
+        ),
+      );
+    }
+  }
+
   Future<void> _open(_SponsoredAd ad) async {
+    await AnalyticsService.track(
+      'ad_click',
+      entityType: 'sponsored_banner',
+      entityId: ad.id,
+      properties: {'title': ad.title, 'target_type': ad.targetType},
+    );
+
     if (ad.targetType != 'url') return;
     final uri = Uri.tryParse(ad.targetValue ?? '');
     if (uri == null || !(uri.scheme == 'https' || uri.scheme == 'http')) return;
@@ -56,6 +81,7 @@ class _SponsoredAdStripState extends State<SponsoredAdStrip> {
       builder: (context, snapshot) {
         final ads = snapshot.data ?? const <_SponsoredAd>[];
         if (ads.isEmpty) return const SizedBox.shrink();
+        WidgetsBinding.instance.addPostFrameCallback((_) => _trackVisibleAds(ads));
 
         return Container(
           color: Colors.white,
@@ -75,7 +101,7 @@ class _SponsoredAdStripState extends State<SponsoredAdStrip> {
                     borderRadius: BorderRadius.circular(18),
                     clipBehavior: Clip.antiAlias,
                     child: InkWell(
-                      onTap: ad.targetType == 'url' ? () => _open(ad) : null,
+                      onTap: () => _open(ad),
                       child: Row(
                         children: [
                           if (ad.imageUrl != null)
@@ -186,6 +212,7 @@ class _SponsoredAdStripState extends State<SponsoredAdStrip> {
 }
 
 class _SponsoredAd {
+  final String id;
   final String title;
   final String? subtitle;
   final String? imageUrl;
@@ -195,6 +222,7 @@ class _SponsoredAd {
   final DateTime? endsAt;
 
   const _SponsoredAd({
+    required this.id,
     required this.title,
     this.subtitle,
     this.imageUrl,
@@ -214,6 +242,7 @@ class _SponsoredAd {
         DateTime.tryParse(value?.toString() ?? '')?.toUtc();
 
     return _SponsoredAd(
+      id: clean(map['id']) ?? '',
       title: clean(map['title']) ?? 'إعلان',
       subtitle: clean(map['subtitle']),
       imageUrl: clean(map['image_url']),
@@ -225,6 +254,7 @@ class _SponsoredAd {
   }
 
   bool isLiveAt(DateTime now) {
+    if (id.isEmpty) return false;
     if (startsAt != null && now.isBefore(startsAt!)) return false;
     if (endsAt != null && now.isAfter(endsAt!)) return false;
     return true;
