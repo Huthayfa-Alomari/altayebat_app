@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/cart_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/sponsored_ad_strip.dart';
 import 'account_screen.dart';
 import 'cart_screen.dart';
 import 'home_screen_v2.dart';
@@ -24,13 +25,20 @@ class _StorefrontRootScreenState extends State<StorefrontRootScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: AppColors.background,
-        body: IndexedStack(
-          index: _index,
-          children: const [
-            HomeScreen(),
-            OrderHistoryScreen(),
-            CartScreen(),
-            AccountScreen(),
+        body: Column(
+          children: [
+            Expanded(
+              child: IndexedStack(
+                index: _index,
+                children: const [
+                  HomeScreen(),
+                  OrderHistoryScreen(),
+                  CartScreen(),
+                  AccountScreen(),
+                ],
+              ),
+            ),
+            if (_index == 0) const SponsoredAdStrip(),
           ],
         ),
         bottomNavigationBar: Selector<CartProvider, int>(
