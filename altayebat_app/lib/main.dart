@@ -5,13 +5,11 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'providers/cart_provider.dart';
-import 'screens/home_screen_fast.dart';
-import 'screens/rider_mode_screen.dart';
+import 'screens/storefront_root_screen.dart';
 import 'services/driver_deep_link_navigator_observer.dart';
 import 'services/push_notification_service.dart';
 import 'services/supabase_service.dart';
 import 'theme/app_theme.dart';
-import 'widgets/storefront_shell.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -75,47 +73,8 @@ class AltayebatApp extends StatelessWidget {
         },
         home: bootstrapError != null
             ? const _BootstrapErrorScreen()
-            : const _StorefrontHome(),
+            : const StorefrontRootScreen(),
       ),
-    );
-  }
-}
-
-class _StorefrontHome extends StatelessWidget {
-  const _StorefrontHome();
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        const StorefrontShell(child: HomeScreen()),
-        PositionedDirectional(
-          end: 14,
-          bottom: 88,
-          child: SafeArea(
-            top: false,
-            child: FilledButton.tonalIcon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const RiderModeScreen()),
-                );
-              },
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                elevation: 2,
-              ),
-              icon: const Icon(Icons.delivery_dining_rounded, size: 19),
-              label: const Text(
-                'مندوب',
-                style: TextStyle(fontWeight: FontWeight.w900),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
