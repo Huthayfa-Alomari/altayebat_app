@@ -104,10 +104,7 @@ class AppTheme {
           horizontal: 16,
           vertical: 14,
         ),
-        hintStyle: const TextStyle(
-          color: Color(0xFF989FAA),
-          fontSize: 13,
-        ),
+        hintStyle: const TextStyle(color: Color(0xFF989FAA), fontSize: 13),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: const BorderSide(color: AppColors.border),
@@ -118,10 +115,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(
-            color: AppColors.skyBlue,
-            width: 1.3,
-          ),
+          borderSide: const BorderSide(color: AppColors.skyBlue, width: 1.3),
         ),
       ),
       cardTheme: CardThemeData(
