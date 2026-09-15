@@ -49,7 +49,9 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('product card does not overflow on a 375px phone', (tester) async {
+  testWidgets('product card does not overflow on a 375px phone', (
+    tester,
+  ) async {
     await pumpCard(tester, height: 278, textScale: 1);
     expect(tester.takeException(), isNull);
   });
