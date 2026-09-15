@@ -1,12 +1,16 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
 import '../screens/order_tracking_screen.dart';
+import '../screens/rider_mode_screen.dart';
 import 'growth_service.dart';
+import 'rider_service.dart';
 
 class PushNotificationService {
   PushNotificationService._();
@@ -15,6 +19,7 @@ class PushNotificationService {
       GlobalKey<NavigatorState>();
 
   static bool _initialized = false;
+  static StreamSubscription<AuthState>? _authSubscription;
 
   static bool get isConfigured => _firebaseOptions != null;
 
@@ -78,6 +83,10 @@ class PushNotificationService {
         await _registerToken(token);
       });
 
+      _authSubscription ??= Supabase.instance.client.auth.onAuthStateChange.listen(
+        (_) => syncCurrentToken(),
+      );
+
       await syncCurrentToken();
 
       final initialMessage = await messaging.getInitialMessage();
@@ -111,11 +120,27 @@ class PushNotificationService {
     }
   }
 
-  static Future<void> _registerToken(String token) {
-    return GrowthService.registerPushToken(
-      token: token,
-      platform: Platform.isIOS ? 'ios' : 'android',
-    );
+  static Future<void> _registerToken(String token) async {
+    final platform = Platform.isIOS ? 'ios' : 'android';
+
+    if (RiderService.hasPhoneSession) {
+      try {
+        final rider = await RiderService.me();
+        if (rider != null &&
+            rider['approval_status']?.toString() == 'approved' &&
+            rider['is_active'] == true) {
+          await RiderService.registerPushToken(
+            token: token,
+            platform: platform,
+          );
+          return;
+        }
+      } catch (_) {
+        // Fall through to the normal customer token registration path.
+      }
+    }
+
+    await GrowthService.registerPushToken(token: token, platform: platform);
   }
 
   static void _handleForegroundMessage(RemoteMessage message) {
@@ -139,7 +164,7 @@ class PushNotificationService {
             ? null
             : SnackBarAction(
                 label: 'فتح',
-                onPressed: () => _openOrder(orderId),
+                onPressed: () => _openMessageTarget(message),
               ),
       ),
     );
@@ -151,10 +176,35 @@ class PushNotificationService {
       await GrowthService.markNotificationRead(notificationId);
     }
 
+    _openMessageTarget(message);
+  }
+
+  static void _openMessageTarget(RemoteMessage message) {
+    final kind = message.data['kind']?.toString() ?? '';
     final orderId = message.data['order_id']?.toString() ?? '';
-    if (orderId.isNotEmpty) {
-      _openOrder(orderId);
+
+    if (kind == 'rider_assignment') {
+      _openRiderMode(orderId: orderId);
+      return;
     }
+
+    if (orderId.isNotEmpty) _openOrder(orderId);
+  }
+
+  static void _openRiderMode({String? orderId}) {
+    final navigator = navigatorKey.currentState;
+    if (navigator == null) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _openRiderMode(orderId: orderId),
+      );
+      return;
+    }
+
+    navigator.push(
+      MaterialPageRoute(
+        builder: (_) => RiderModeScreen(initialOrderId: orderId),
+      ),
+    );
   }
 
   static void _openOrder(String orderId) {
