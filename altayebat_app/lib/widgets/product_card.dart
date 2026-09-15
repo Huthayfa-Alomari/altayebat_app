@@ -309,9 +309,7 @@ class ProductCard extends StatelessWidget {
               tooltip: qty == 1 ? 'إزالة من السلة' : 'تقليل الكمية',
               padding: EdgeInsets.zero,
               icon: Icon(
-                qty == 1
-                    ? Icons.delete_outline_rounded
-                    : Icons.remove_rounded,
+                qty == 1 ? Icons.delete_outline_rounded : Icons.remove_rounded,
                 color: Colors.white,
                 size: 18,
               ),
