@@ -73,9 +73,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               child: IconButton(
                 tooltip: 'السلة',
                 onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const CartScreen()),
-                  );
+                  Navigator.of(
+                    context,
+                  ).push(MaterialPageRoute(builder: (_) => const CartScreen()));
                 },
                 icon: const Icon(Icons.shopping_cart_outlined),
               ),
