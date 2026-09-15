@@ -68,7 +68,9 @@ class LocationIntelligenceService {
         'reverse-geocode',
         body: {'lat': latitude, 'lng': longitude},
       );
-      if (response.status < 200 || response.status >= 300 || response.data is! Map) {
+      if (response.status < 200 ||
+          response.status >= 300 ||
+          response.data is! Map) {
         return null;
       }
       return ReverseGeocodeResult.fromMap(
@@ -95,10 +97,14 @@ class LocationIntelligenceService {
           'to_lng': toLongitude,
         },
       );
-      if (response.status < 200 || response.status >= 300 || response.data is! Map) {
+      if (response.status < 200 ||
+          response.status >= 300 ||
+          response.data is! Map) {
         return null;
       }
-      return RouteEtaResult.fromMap(Map<String, dynamic>.from(response.data as Map));
+      return RouteEtaResult.fromMap(
+        Map<String, dynamic>.from(response.data as Map),
+      );
     } catch (_) {
       return null;
     }
