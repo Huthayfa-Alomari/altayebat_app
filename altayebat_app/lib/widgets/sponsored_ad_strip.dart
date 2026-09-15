@@ -81,7 +81,9 @@ class _SponsoredAdStripState extends State<SponsoredAdStrip> {
       builder: (context, snapshot) {
         final ads = snapshot.data ?? const <_SponsoredAd>[];
         if (ads.isEmpty) return const SizedBox.shrink();
-        WidgetsBinding.instance.addPostFrameCallback((_) => _trackVisibleAds(ads));
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _trackVisibleAds(ads),
+        );
 
         return Container(
           color: Colors.white,
