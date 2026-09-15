@@ -12,3 +12,6 @@ verify_jwt = false
 
 [functions.send-customer-push]
 verify_jwt = true
+
+[functions.send-rider-push]
+verify_jwt = true
