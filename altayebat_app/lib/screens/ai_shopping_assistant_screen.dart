@@ -10,7 +10,8 @@ class AiShoppingAssistantScreen extends StatefulWidget {
   const AiShoppingAssistantScreen({super.key});
 
   @override
-  State<AiShoppingAssistantScreen> createState() => _AiShoppingAssistantScreenState();
+  State<AiShoppingAssistantScreen> createState() =>
+      _AiShoppingAssistantScreenState();
 }
 
 class _AiShoppingAssistantScreenState extends State<AiShoppingAssistantScreen> {
@@ -79,7 +80,10 @@ class _AiShoppingAssistantScreenState extends State<AiShoppingAssistantScreen> {
     AnalyticsService.track(
       'ai_assistant_add_all',
       entityType: 'ai_assistant',
-      properties: {'added_lines': added, 'suggested_lines': result.items.length},
+      properties: {
+        'added_lines': added,
+        'suggested_lines': result.items.length,
+      },
     );
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -111,7 +115,11 @@ class _AiShoppingAssistantScreenState extends State<AiShoppingAssistantScreen> {
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 34),
+                  Icon(
+                    Icons.auto_awesome_rounded,
+                    color: Colors.white,
+                    size: 34,
+                  ),
                   SizedBox(height: 10),
                   Text(
                     'اطلب سلتك بالكلام',
@@ -151,7 +159,11 @@ class _AiShoppingAssistantScreenState extends State<AiShoppingAssistantScreen> {
               children: _examples
                   .map(
                     (example) => ActionChip(
-                      label: Text(example, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      label: Text(
+                        example,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       onPressed: _loading ? null : () => _ask(example),
                     ),
                   )
@@ -166,10 +178,15 @@ class _AiShoppingAssistantScreenState extends State<AiShoppingAssistantScreen> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          color: Colors.white,
+                        ),
                       )
                     : const Icon(Icons.auto_awesome_rounded),
-                label: Text(_loading ? 'جاري تجهيز السلة...' : 'جهزلي اقتراحات'),
+                label: Text(
+                  _loading ? 'جاري تجهيز السلة...' : 'جهزلي اقتراحات',
+                ),
               ),
             ),
             if (_error != null) ...[
@@ -182,7 +199,10 @@ class _AiShoppingAssistantScreenState extends State<AiShoppingAssistantScreen> {
                 ),
                 child: Text(
                   _error!,
-                  style: const TextStyle(color: Color(0xFF9F1239), fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    color: Color(0xFF9F1239),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -193,12 +213,17 @@ class _AiShoppingAssistantScreenState extends State<AiShoppingAssistantScreen> {
                   Expanded(
                     child: Text(
                       result.message,
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                   Text(
                     '${result.totalEstimate.toStringAsFixed(2)} د.أ تقريبًا',
-                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w900),
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ],
               ),
@@ -262,7 +287,8 @@ class _SuggestionTile extends StatelessWidget {
                       fit: BoxFit.contain,
                       cacheWidth: 240,
                       filterQuality: FilterQuality.low,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.shopping_bag_outlined),
+                      errorBuilder: (_, __, ___) =>
+                          const Icon(Icons.shopping_bag_outlined),
                     ),
             ),
             const SizedBox(width: 12),
@@ -281,18 +307,26 @@ class _SuggestionTile extends StatelessWidget {
                     item.reason,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
                   ),
                   const SizedBox(height: 5),
                   Text(
                     product.priceLabel,
-                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w900),
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ],
               ),
             ),
             Text(
-              product.isMeasured ? product.formatQuantity(item.quantity) : '×${item.quantity}',
+              product.isMeasured
+                  ? product.formatQuantity(item.quantity)
+                  : '×${item.quantity}',
               style: const TextStyle(fontWeight: FontWeight.w800),
             ),
           ],
