@@ -31,7 +31,10 @@ class _SponsoredAdStripState extends State<SponsoredAdStrip> {
 
       final now = DateTime.now().toUtc();
       return (rows as List)
-          .map((row) => _SponsoredAd.fromMap(Map<String, dynamic>.from(row as Map)))
+          .map(
+            (row) =>
+                _SponsoredAd.fromMap(Map<String, dynamic>.from(row as Map)),
+          )
           .where((ad) => ad.isLiveAt(now))
           .toList(growable: false);
     } catch (_) {
@@ -207,7 +210,8 @@ class _SponsoredAd {
       return text == null || text.isEmpty ? null : text;
     }
 
-    DateTime? date(dynamic value) => DateTime.tryParse(value?.toString() ?? '')?.toUtc();
+    DateTime? date(dynamic value) =>
+        DateTime.tryParse(value?.toString() ?? '')?.toUtc();
 
     return _SponsoredAd(
       title: clean(map['title']) ?? 'إعلان',
