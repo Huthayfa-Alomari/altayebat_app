@@ -1,0 +1,85 @@
+name: Release Candidate APK
+
+on:
+  push:
+    branches: [chatgpt-weighted-sunmi]
+    paths:
+      - .github/workflows/release-candidate-apk.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build-release-candidate:
+    name: Build signed Android release candidate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: altayebat_app
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.4"
+          channel: stable
+          cache: true
+
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+
+      - name: Generate temporary release-candidate signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          STORE_PASSWORD="$(openssl rand -hex 24)"
+          KEY_PASSWORD="$(openssl rand -hex 24)"
+          KEY_ALIAS="altayebat-release-candidate"
+
+          keytool -genkeypair -v \
+            -keystore android/app/altayebat-release-candidate.jks \
+            -storepass "$STORE_PASSWORD" \
+            -keypass "$KEY_PASSWORD" \
+            -alias "$KEY_ALIAS" \
+            -keyalg RSA \
+            -keysize 4096 \
+            -validity 3650 \
+            -dname "CN=Altayebat Release Candidate, OU=Mobile, O=Altayebat, L=Zarqa, ST=Zarqa, C=JO"
+
+          cat > android/key.properties <<EOF
+          storePassword=$STORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=altayebat-release-candidate.jks
+          EOF
+
+      - name: Build optimized release APK
+        run: flutter build apk --release
+
+      - name: Verify APK signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="build/app/outputs/flutter-apk/app-release.apk"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$APKSIGNER"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          sha256sum "$APK" | tee build/app/outputs/flutter-apk/app-release.apk.sha256
+
+      - name: Rename release candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/Altayebat-0.2.0-rc.apk
+          cp build/app/outputs/flutter-apk/app-release.apk.sha256 build/app/outputs/flutter-apk/Altayebat-0.2.0-rc.apk.sha256
+
+      - name: Upload release candidate APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: Altayebat-0.2.0-release-candidate
+          path: |
+            altayebat_app/build/app/outputs/flutter-apk/Altayebat-0.2.0-rc.apk
+            altayebat_app/build/app/outputs/flutter-apk/Altayebat-0.2.0-rc.apk.sha256
+          if-no-files-found: error
+          retention-days: 7
