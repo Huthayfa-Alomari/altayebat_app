@@ -1300,18 +1300,18 @@ class _HeroProductCluster extends StatelessWidget {
               Positioned(
                 right:
                     (index == 0
-                            ? 34
-                            : index == 1
-                            ? 3
-                            : 69) *
-                        scale,
+                        ? 34
+                        : index == 1
+                        ? 3
+                        : 69) *
+                    scale,
                 top:
                     (index == 0
-                            ? 35
-                            : index == 1
-                            ? 76
-                            : 80) *
-                        scale,
+                        ? 35
+                        : index == 1
+                        ? 76
+                        : 80) *
+                    scale,
                 child: Transform.rotate(
                   angle: index == 1
                       ? 0.08
