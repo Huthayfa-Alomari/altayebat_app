@@ -102,6 +102,20 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
 
     if (result == null || !mounted) return;
 
+    if (_city.text.trim().isEmpty && (result.city ?? '').trim().isNotEmpty) {
+      _city.text = result.city!.trim();
+    }
+    if (_area.text.trim().isEmpty && (result.area ?? '').trim().isNotEmpty) {
+      _area.text = result.area!.trim();
+    }
+    if (_street.text.trim().isEmpty && (result.street ?? '').trim().isNotEmpty) {
+      _street.text = result.street!.trim();
+    }
+    if (_building.text.trim().isEmpty &&
+        (result.building ?? '').trim().isNotEmpty) {
+      _building.text = result.building!.trim();
+    }
+
     setState(() {
       _location = result;
       _coverage = null;
