@@ -195,8 +195,12 @@ class _RiderModeScreenState extends State<RiderModeScreen>
               final aFocus = a['id']?.toString() == focusId ? 0 : 1;
               final bFocus = b['id']?.toString() == focusId ? 0 : 1;
               if (aFocus != bFocus) return aFocus.compareTo(bFocus);
-              final aOut = a['status']?.toString() == 'out_for_delivery' ? 0 : 1;
-              final bOut = b['status']?.toString() == 'out_for_delivery' ? 0 : 1;
+              final aOut = a['status']?.toString() == 'out_for_delivery'
+                  ? 0
+                  : 1;
+              final bOut = b['status']?.toString() == 'out_for_delivery'
+                  ? 0
+                  : 1;
               return aOut.compareTo(bOut);
             });
         }
@@ -338,7 +342,9 @@ class _RiderModeScreenState extends State<RiderModeScreen>
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: Text(cashDue > 0 ? 'استلمت الكاش وتم التسليم' : 'تم التسليم'),
+              child: Text(
+                cashDue > 0 ? 'استلمت الكاش وتم التسليم' : 'تم التسليم',
+              ),
             ),
           ],
         ),
@@ -351,7 +357,8 @@ class _RiderModeScreenState extends State<RiderModeScreen>
       if (position == null) {
         if (!mounted) return;
         setState(() {
-          _error = RiderLocationService.instance.lastError.value ??
+          _error =
+              RiderLocationService.instance.lastError.value ??
               'يجب تشغيل GPS قبل بدء التوصيل.';
         });
         return;
@@ -406,7 +413,8 @@ class _RiderModeScreenState extends State<RiderModeScreen>
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error = RiderLocationService.instance.lastError.value ??
+        _error =
+            RiderLocationService.instance.lastError.value ??
             'تعذر تشغيل تتبع GPS.';
       });
     } finally {
@@ -421,7 +429,8 @@ class _RiderModeScreenState extends State<RiderModeScreen>
       return;
     }
     final uri = Uri(scheme: 'tel', path: clean);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) && mounted) {
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+        mounted) {
       setState(() => _error = 'تعذر فتح تطبيق الاتصال.');
     }
   }
@@ -451,7 +460,8 @@ class _RiderModeScreenState extends State<RiderModeScreen>
       });
     }
 
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) && mounted) {
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+        mounted) {
       setState(() => _error = 'تعذر فتح تطبيق الخرائط.');
     }
   }
@@ -615,7 +625,11 @@ class _RiderModeScreenState extends State<RiderModeScreen>
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Icon(_otpSent ? Icons.verified_user_outlined : Icons.sms_outlined),
+                  : Icon(
+                      _otpSent
+                          ? Icons.verified_user_outlined
+                          : Icons.sms_outlined,
+                    ),
               label: Text(_otpSent ? 'تأكيد الرمز' : 'إرسال رمز الدخول'),
             ),
           ),
@@ -667,7 +681,7 @@ class _RiderModeScreenState extends State<RiderModeScreen>
             textCapitalization: TextCapitalization.characters,
             decoration: const InputDecoration(
               labelText: 'رقم المركبة (اختياري)',
-              prefixIcon: Icon(Icons.pin_outlined),
+              prefixIcon: Icon(Icons.directions_car_outlined),
             ),
           ),
           const SizedBox(height: 14),
@@ -800,7 +814,9 @@ class _RiderModeScreenState extends State<RiderModeScreen>
           const SizedBox(height: 12),
           _panel(
             title: 'تتبع GPS',
-            icon: tracking ? Icons.gps_fixed_rounded : Icons.gps_not_fixed_rounded,
+            icon: tracking
+                ? Icons.gps_fixed_rounded
+                : Icons.gps_not_fixed_rounded,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -854,10 +870,7 @@ class _RiderModeScreenState extends State<RiderModeScreen>
           ],
         ),
         const SizedBox(height: 10),
-        if (_tasks.isEmpty)
-          _emptyTasks()
-        else
-          ..._tasks.map(_taskCard),
+        if (_tasks.isEmpty) _emptyTasks() else ..._tasks.map(_taskCard),
       ],
     );
   }
@@ -926,11 +939,16 @@ class _RiderModeScreenState extends State<RiderModeScreen>
             ],
           ),
           const SizedBox(height: 12),
-          _taskRow(Icons.person_outline, task['customer_name']?.toString() ?? 'الزبون'),
+          _taskRow(
+            Icons.person_outline,
+            task['customer_name']?.toString() ?? 'الزبون',
+          ),
           const SizedBox(height: 7),
           _taskRow(
             Icons.location_on_outlined,
-            _addressText(address).isEmpty ? 'العنوان غير مكتمل' : _addressText(address),
+            _addressText(address).isEmpty
+                ? 'العنوان غير مكتمل'
+                : _addressText(address),
           ),
           const SizedBox(height: 7),
           _taskRow(
@@ -985,7 +1003,9 @@ class _RiderModeScreenState extends State<RiderModeScreen>
             FilledButton.icon(
               onPressed: _working ? null : () => _runAction(task, 'complete'),
               icon: const Icon(Icons.check_circle_outline_rounded),
-              label: Text(cashDue > 0 ? 'تأكيد التحصيل والتسليم' : 'تم التسليم'),
+              label: Text(
+                cashDue > 0 ? 'تأكيد التحصيل والتسليم' : 'تم التسليم',
+              ),
             ),
           ],
         ],
@@ -1083,7 +1103,10 @@ class _RiderModeScreenState extends State<RiderModeScreen>
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ],
             ),
@@ -1115,7 +1138,10 @@ class _RiderModeScreenState extends State<RiderModeScreen>
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ],
@@ -1219,16 +1245,17 @@ class _RiderModeScreenState extends State<RiderModeScreen>
   static String _addressText(Map<String, dynamic> address) {
     final direct = address['address_text']?.toString().trim() ?? '';
     if (direct.isNotEmpty) return direct;
-    final parts = [
-      address['city'],
-      address['area'],
-      address['street'],
-      address['building'],
-      address['floor'],
-    ]
-        .map((value) => value?.toString().trim() ?? '')
-        .where((value) => value.isNotEmpty)
-        .toList(growable: false);
+    final parts =
+        [
+              address['city'],
+              address['area'],
+              address['street'],
+              address['building'],
+              address['floor'],
+            ]
+            .map((value) => value?.toString().trim() ?? '')
+            .where((value) => value.isNotEmpty)
+            .toList(growable: false);
     return parts.join('، ');
   }
 
