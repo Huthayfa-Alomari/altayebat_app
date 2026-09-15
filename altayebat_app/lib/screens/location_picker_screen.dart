@@ -301,8 +301,13 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                       )
                     : const Icon(Icons.check_rounded),
                 label: Text(
-                  _resolvingAddress ? 'جاري قراءة العنوان...' : 'اعتماد هذا الموقع',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                  _resolvingAddress
+                      ? 'جاري قراءة العنوان...'
+                      : 'اعتماد هذا الموقع',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ),
