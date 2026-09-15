@@ -14,9 +14,14 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cart = context.watch<CartProvider>();
-    final qty = cart.quantityOf(product.id);
-    final canAdd = cart.canAdd(product);
+    final cartState = context.select<CartProvider, ({int qty, bool canAdd})>(
+      (cart) => (
+        qty: cart.quantityOf(product.id),
+        canAdd: cart.canAdd(product),
+      ),
+    );
+    final qty = cartState.qty;
+    final canAdd = cartState.canAdd;
     final outOfStock = !product.isAvailable || product.stockQty <= 0;
 
     return Semantics(
@@ -138,7 +143,10 @@ class ProductCard extends StatelessWidget {
                       product.imageUrl!,
                       fit: BoxFit.contain,
                       alignment: Alignment.center,
-                      filterQuality: FilterQuality.medium,
+                      cacheWidth: 480,
+                      filterQuality: FilterQuality.low,
+                      gaplessPlayback: true,
+                      excludeFromSemantics: true,
                       errorBuilder: (_, _, _) => const Center(
                         child: Icon(
                           Icons.inventory_2_outlined,
