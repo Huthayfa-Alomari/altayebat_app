@@ -108,7 +108,8 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
     if (_area.text.trim().isEmpty && (result.area ?? '').trim().isNotEmpty) {
       _area.text = result.area!.trim();
     }
-    if (_street.text.trim().isEmpty && (result.street ?? '').trim().isNotEmpty) {
+    if (_street.text.trim().isEmpty &&
+        (result.street ?? '').trim().isNotEmpty) {
       _street.text = result.street!.trim();
     }
     if (_building.text.trim().isEmpty &&
