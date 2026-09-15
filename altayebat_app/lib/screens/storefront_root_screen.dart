@@ -5,6 +5,7 @@ import '../providers/cart_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/sponsored_ad_strip.dart';
 import 'account_screen.dart';
+import 'ai_shopping_assistant_screen.dart';
 import 'cart_screen.dart';
 import 'home_screen_v2.dart';
 import 'order_history_screen.dart';
@@ -18,6 +19,12 @@ class StorefrontRootScreen extends StatefulWidget {
 
 class _StorefrontRootScreenState extends State<StorefrontRootScreen> {
   int _index = 0;
+
+  Future<void> _openAiAssistant() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AiShoppingAssistantScreen()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +48,19 @@ class _StorefrontRootScreenState extends State<StorefrontRootScreen> {
             if (_index == 0) const SponsoredAdStrip(),
           ],
         ),
+        floatingActionButton: _index == 0
+            ? FloatingActionButton.extended(
+                onPressed: _openAiAssistant,
+                backgroundColor: AppColors.navy,
+                foregroundColor: Colors.white,
+                icon: const Icon(Icons.auto_awesome_rounded),
+                label: const Text(
+                  'اسأل الذكاء',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+              )
+            : null,
+        floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
         bottomNavigationBar: Selector<CartProvider, int>(
           selector: (_, cart) => cart.itemCount,
           builder: (context, cartCount, child) {
