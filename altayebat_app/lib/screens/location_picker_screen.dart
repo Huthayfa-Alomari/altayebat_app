@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../models/picked_location.dart';
+import '../services/location_intelligence_service.dart';
 
 class LocationPickerScreen extends StatefulWidget {
   final double? initialLatitude;
@@ -26,6 +27,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
   double? _accuracy;
   String _source = 'map';
   bool _locating = false;
+  bool _resolvingAddress = false;
   String? _error;
 
   @override
@@ -93,13 +95,30 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
     }
   }
 
-  void _confirm() {
+  Future<void> _confirm() async {
+    if (_resolvingAddress) return;
+    setState(() {
+      _resolvingAddress = true;
+      _error = null;
+    });
+
+    final resolved = await LocationIntelligenceService.reverseGeocode(
+      latitude: _selected.latitude,
+      longitude: _selected.longitude,
+    );
+
+    if (!mounted) return;
     Navigator.of(context).pop(
       PickedLocation(
         latitude: _selected.latitude,
         longitude: _selected.longitude,
         accuracyMeters: _accuracy,
         source: _source,
+        displayName: resolved?.displayName,
+        city: resolved?.city,
+        area: resolved?.area,
+        street: resolved?.street,
+        building: resolved?.building,
       ),
     );
   }
@@ -270,11 +289,20 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
             child: SizedBox(
               height: 56,
               child: FilledButton.icon(
-                onPressed: _confirm,
-                icon: const Icon(Icons.check_rounded),
-                label: const Text(
-                  'اعتماد هذا الموقع',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                onPressed: _resolvingAddress ? null : _confirm,
+                icon: _resolvingAddress
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.3,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.check_rounded),
+                label: Text(
+                  _resolvingAddress ? 'جاري قراءة العنوان...' : 'اعتماد هذا الموقع',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
                 ),
               ),
             ),
