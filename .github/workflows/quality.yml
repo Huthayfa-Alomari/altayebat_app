@@ -39,6 +39,15 @@ jobs:
           path: altayebat_app/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 7
+      - name: Build customer Android profile APK
+        run: flutter build apk --profile
+      - name: Upload customer profile APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: altayebat-profile-apk
+          path: altayebat_app/build/app/outputs/flutter-apk/app-profile.apk
+          if-no-files-found: error
+          retention-days: 7
       - name: Build SUNMI terminal debug APK
         run: flutter build apk --debug -t lib/main_terminal.dart
       - name: Upload SUNMI terminal debug APK
