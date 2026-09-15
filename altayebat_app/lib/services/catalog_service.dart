@@ -188,8 +188,24 @@ class CatalogService {
       }
     }
 
+    // Primary source: products customers actually bought together. The RPC
+    // ranks completed-order pairs higher, while still learning from current
+    // non-cancelled baskets. If a local/older backend does not have the RPC,
+    // the catalogue fallbacks below keep the product page fully functional.
+    try {
+      final ranked = await _client.rpc(
+        'get_product_recommendations',
+        params: {'p_product_id': product.id, 'p_limit': safeLimit},
+      );
+      await appendRows(ranked);
+    } catch (_) {
+      // Fall through to catalogue-based recommendations.
+    }
+
     final categoryId = product.categoryId?.trim();
-    if (categoryId != null && categoryId.isNotEmpty) {
+    if (related.length < safeLimit &&
+        categoryId != null &&
+        categoryId.isNotEmpty) {
       final sameCategory = await _client
           .from('products')
           .select(_productColumns)
