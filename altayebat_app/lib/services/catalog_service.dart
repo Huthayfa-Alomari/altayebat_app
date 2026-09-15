@@ -35,7 +35,7 @@ class CatalogService {
   static const Duration _productPageTtl = Duration(minutes: 2);
 
   static const String _productColumns =
-      'id,name,price,image_url,stock_qty,is_available,category_id,'
+      'id,name,description,price,image_url,stock_qty,is_available,category_id,'
       'sale_type,base_unit,inventory_scale,price_per_unit,min_qty,qty_step,'
       'allow_amount_purchase';
 
@@ -167,6 +167,54 @@ class CatalogService {
       hasMore: items.length == limit,
       nextOffset: offset + items.length,
     );
+  }
+
+  static Future<List<Product>> fetchRelatedProducts({
+    required Product product,
+    int limit = 4,
+  }) async {
+    final safeLimit = limit.clamp(2, 8).toInt();
+    final related = <Product>[];
+    final seen = <String>{product.id};
+
+    Future<void> appendRows(dynamic data) async {
+      for (final row in data as List) {
+        final item = Product.fromMap(Map<String, dynamic>.from(row as Map));
+        if (item.stockQty <= 0 || !item.isAvailable || !seen.add(item.id)) {
+          continue;
+        }
+        related.add(item);
+        if (related.length >= safeLimit) return;
+      }
+    }
+
+    final categoryId = product.categoryId?.trim();
+    if (categoryId != null && categoryId.isNotEmpty) {
+      final sameCategory = await _client
+          .from('products')
+          .select(_productColumns)
+          .eq('store_id', AppConfig.storeId)
+          .eq('is_available', true)
+          .eq('category_id', categoryId)
+          .neq('id', product.id)
+          .order('stock_qty', ascending: false)
+          .limit(safeLimit * 2);
+      await appendRows(sameCategory);
+    }
+
+    if (related.length < safeLimit) {
+      final fallback = await _client
+          .from('products')
+          .select(_productColumns)
+          .eq('store_id', AppConfig.storeId)
+          .eq('is_available', true)
+          .neq('id', product.id)
+          .order('created_at', ascending: false)
+          .limit(safeLimit * 2);
+      await appendRows(fallback);
+    }
+
+    return related.take(safeLimit).toList(growable: false);
   }
 
   static void invalidateProducts() {
