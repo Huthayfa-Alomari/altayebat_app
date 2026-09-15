@@ -57,7 +57,7 @@ class _StorefrontRootScreenState extends State<StorefrontRootScreen> {
               height: 76,
               elevation: 0,
               backgroundColor: Colors.white,
-              indicatorColor: AppColors.primarySoft,
+              indicatorColor: AppColors.primary.withValues(alpha: 0.10),
               labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
               destinations: [
                 const NavigationDestination(
