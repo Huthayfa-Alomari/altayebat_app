@@ -232,9 +232,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openNotifications() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const NotificationsScreen()));
     final count = await GrowthService.unreadNotificationCount(
       forceRefresh: true,
     );
@@ -242,21 +242,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openOrders() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const OrderHistoryScreen()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const OrderHistoryScreen()));
   }
 
   Future<void> _openCart() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const CartScreen()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const CartScreen()));
   }
 
   Future<void> _openAccount() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AccountScreen()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AccountScreen()));
   }
 
   Future<void> _openOffer(StoreOffer offer) async {
@@ -519,7 +519,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
                       suffixIcon: _searchController.text.isEmpty
                           ? null
                           : IconButton(
@@ -598,7 +600,9 @@ class _HomeScreenState extends State<HomeScreen> {
         .take(3)
         .toList(growable: false);
     final offer = _offers.isEmpty ? null : _offers.first;
-    final textScale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.35);
+    final textScale = MediaQuery.textScalerOf(
+      context,
+    ).scale(1).clamp(1.0, 1.35);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
@@ -793,7 +797,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
-                        color: selected ? AppColors.skyBlue : Colors.transparent,
+                        color: selected
+                            ? AppColors.skyBlue
+                            : Colors.transparent,
                         width: 1.2,
                       ),
                     ),
@@ -1241,10 +1247,7 @@ class _HomeScreenState extends State<HomeScreen> {
           color: const Color(0xFFFFF4F4),
           borderRadius: BorderRadius.circular(14),
         ),
-        child: Text(
-          _errorMessage ?? '',
-          style: const TextStyle(fontSize: 12),
-        ),
+        child: Text(_errorMessage ?? '', style: const TextStyle(fontSize: 12)),
       ),
     );
   }
@@ -1295,18 +1298,20 @@ class _HeroProductCluster extends StatelessWidget {
             ),
             for (var index = 0; index < products.length; index++)
               Positioned(
-                right: (index == 0
-                        ? 34
-                        : index == 1
-                        ? 3
-                        : 69) *
-                    scale,
-                top: (index == 0
-                        ? 35
-                        : index == 1
-                        ? 76
-                        : 80) *
-                    scale,
+                right:
+                    (index == 0
+                            ? 34
+                            : index == 1
+                            ? 3
+                            : 69) *
+                        scale,
+                top:
+                    (index == 0
+                            ? 35
+                            : index == 1
+                            ? 76
+                            : 80) *
+                        scale,
                 child: Transform.rotate(
                   angle: index == 1
                       ? 0.08
