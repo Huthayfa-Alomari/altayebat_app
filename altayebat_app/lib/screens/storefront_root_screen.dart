@@ -5,7 +5,7 @@ import '../providers/cart_provider.dart';
 import '../theme/app_theme.dart';
 import 'account_screen.dart';
 import 'cart_screen.dart';
-import 'home_screen_fast.dart';
+import 'home_screen_v2.dart';
 import 'order_history_screen.dart';
 
 class StorefrontRootScreen extends StatefulWidget {
@@ -54,6 +54,10 @@ class _StorefrontRootScreenState extends State<StorefrontRootScreen> {
                 if (_index == value) return;
                 setState(() => _index = value);
               },
+              height: 76,
+              elevation: 0,
+              backgroundColor: Colors.white,
+              indicatorColor: AppColors.primarySoft,
               labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
               destinations: [
                 const NavigationDestination(
