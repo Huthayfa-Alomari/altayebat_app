@@ -1,0 +1,117 @@
+name: iOS No-Mac Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [chatgpt-weighted-sunmi]
+    paths:
+      - ".github/workflows/ios-build.yml"
+      - "altayebat_app/lib/**"
+      - "altayebat_app/pubspec.yaml"
+      - "altayebat_app/pubspec.lock"
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    name: Build unsigned iOS app on macOS
+    runs-on: macos-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: altayebat_app
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.4"
+          channel: stable
+          cache: true
+
+      - name: Toolchain info
+        run: |
+          flutter --version
+          xcodebuild -version
+          pod --version
+
+      - name: Generate iOS platform
+        run: |
+          if [ ! -d ios ]; then
+            flutter create \
+              --platforms=ios \
+              --org com.altayebat \
+              --project-name altayebat_app \
+              .
+          fi
+
+      - name: Configure bundle id and iOS permissions
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('ios/Runner.xcodeproj/project.pbxproj')
+          text = p.read_text()
+          text = re.sub(
+              r'PRODUCT_BUNDLE_IDENTIFIER = [^;]+\.RunnerTests;',
+              'PRODUCT_BUNDLE_IDENTIFIER = com.altayebat.app.RunnerTests;',
+              text,
+          )
+          text = re.sub(
+              r'PRODUCT_BUNDLE_IDENTIFIER = [^;]+;',
+              'PRODUCT_BUNDLE_IDENTIFIER = com.altayebat.app;',
+              text,
+          )
+          p.write_text(text)
+          PY
+
+          PLIST="ios/Runner/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName أسواق الطيبات" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string نستخدم الكاميرا لمسح باركود المنتجات" "$PLIST" || \
+            /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription نستخدم الكاميرا لمسح باركود المنتجات" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string نستخدم موقعك لخدمات التوصيل وتتبع الطلب" "$PLIST" || \
+            /usr/libexec/PlistBuddy -c "Set :NSLocationWhenInUseUsageDescription نستخدم موقعك لخدمات التوصيل وتتبع الطلب" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :NSLocationAlwaysAndWhenInUseUsageDescription string يحتاج وضع المندوب للموقع أثناء تنفيذ التوصيل" "$PLIST" || \
+            /usr/libexec/PlistBuddy -c "Set :NSLocationAlwaysAndWhenInUseUsageDescription يحتاج وضع المندوب للموقع أثناء تنفيذ التوصيل" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:1 string location" "$PLIST"
+
+      - name: Resolve Flutter and CocoaPods dependencies
+        run: |
+          flutter pub get
+          cd ios
+          pod install --repo-update
+
+      - name: Build unsigned iOS release
+        run: flutter build ios --release --no-codesign
+
+      - name: Package unsigned app and generated iOS scaffold
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/ios/iphoneos/Runner.app \
+            build/Altayebat-iOS-unsigned.zip
+          ditto -c -k --sequesterRsrc --keepParent \
+            ios \
+            build/Altayebat-iOS-scaffold.zip
+
+      - name: Upload unsigned iOS app
+        uses: actions/upload-artifact@v7
+        with:
+          name: altayebat-ios-unsigned-app
+          path: altayebat_app/build/Altayebat-iOS-unsigned.zip
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload generated iOS scaffold
+        uses: actions/upload-artifact@v7
+        with:
+          name: altayebat-ios-scaffold
+          path: altayebat_app/build/Altayebat-iOS-scaffold.zip
+          if-no-files-found: error
+          retention-days: 7
