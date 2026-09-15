@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/rider_location_service.dart';
@@ -33,6 +32,7 @@ class _RiderModeScreenState extends State<RiderModeScreen>
   bool _loading = true;
   bool _working = false;
   bool _otpSent = false;
+  bool _pushSynced = false;
   String? _verifiedPhone;
   String? _error;
 
@@ -91,6 +91,7 @@ class _RiderModeScreenState extends State<RiderModeScreen>
           _rider = null;
           _tasks = const [];
           _loading = false;
+          _pushSynced = false;
         });
         return;
       }
@@ -109,10 +110,7 @@ class _RiderModeScreenState extends State<RiderModeScreen>
 
       if (rider != null) {
         _startRefreshTimer();
-        if (_approved) {
-          await _refreshAll(showLoader: false);
-          _startHeartbeat();
-        }
+        await _refreshAll(showLoader: false);
       }
     } catch (error) {
       if (!mounted) return;
@@ -180,13 +178,17 @@ class _RiderModeScreenState extends State<RiderModeScreen>
         setState(() {
           _rider = null;
           _tasks = const [];
+          _pushSynced = false;
         });
         return;
       }
 
+      final approvedNow =
+          rider['approval_status']?.toString() == 'approved' &&
+          rider['is_active'] == true;
+
       List<Map<String, dynamic>> tasks = const [];
-      if (rider['approval_status']?.toString() == 'approved' &&
-          rider['is_active'] == true) {
+      if (approvedNow) {
         tasks = await RiderService.deliveryTasks();
         final focusId = widget.initialOrderId?.trim();
         if (focusId != null && focusId.isNotEmpty) {
@@ -212,6 +214,21 @@ class _RiderModeScreenState extends State<RiderModeScreen>
         _tasks = tasks;
         _error = null;
       });
+
+      if (approvedNow) {
+        if (_heartbeatTimer == null) _startHeartbeat();
+        if (!_pushSynced) {
+          try {
+            _pushSynced = await RiderService.syncPushToken();
+          } catch (_) {
+            // FCM can retry on the next refresh without blocking rider work.
+          }
+        }
+      } else {
+        _heartbeatTimer?.cancel();
+        _heartbeatTimer = null;
+        _pushSynced = false;
+      }
 
       final activeTrackingOrders = tasks
           .where((task) => task['status']?.toString() == 'out_for_delivery')
@@ -268,6 +285,7 @@ class _RiderModeScreenState extends State<RiderModeScreen>
       setState(() {
         _otpSent = false;
         _otpController.clear();
+        _pushSynced = false;
       });
       await _bootstrap();
     } catch (error) {
@@ -471,7 +489,8 @@ class _RiderModeScreenState extends State<RiderModeScreen>
     setState(() => _working = true);
     try {
       await RiderLocationService.instance.stop();
-      await RiderService.signOut();
+      await RiderService.signOutToAnonymous();
+      _pushSynced = false;
       await _bootstrap();
       if (!mounted) return;
       setState(() {
