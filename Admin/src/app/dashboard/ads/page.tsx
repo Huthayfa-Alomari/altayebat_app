@@ -14,11 +14,20 @@ type AdRow = {
   sort_order: number;
 };
 
+type AdMetric = {
+  banner_id: string;
+  title: string;
+  impressions: number;
+  clicks: number;
+  ctr_percent: number;
+};
+
 export default function AdsPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [storeId, setStoreId] = useState("");
   const [ads, setAds] = useState<AdRow[]>([]);
+  const [metrics, setMetrics] = useState<Record<string, AdMetric>>({});
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -58,14 +67,21 @@ export default function AdsPage() {
   }
 
   async function refresh(id: string) {
-    const { data, error: queryError } = await supabase
-      .from("storefront_banners")
-      .select("id,title,subtitle,image_url,target_value,is_active,sort_order")
-      .eq("store_id", id)
-      .eq("position", "sponsor")
-      .order("sort_order");
+    const [{ data, error: queryError }, { data: metricRows, error: metricError }] = await Promise.all([
+      supabase
+        .from("storefront_banners")
+        .select("id,title,subtitle,image_url,target_value,is_active,sort_order")
+        .eq("store_id", id)
+        .eq("position", "sponsor")
+        .order("sort_order"),
+      supabase.rpc("admin_ad_performance", { p_store_id: id, p_days: 30 }),
+    ]);
     if (queryError) throw queryError;
+    if (metricError) throw metricError;
     setAds((data ?? []) as AdRow[]);
+    const next: Record<string, AdMetric> = {};
+    for (const row of (metricRows ?? []) as AdMetric[]) next[row.banner_id] = row;
+    setMetrics(next);
   }
 
   async function addAd(event: FormEvent<HTMLFormElement>) {
@@ -125,7 +141,7 @@ export default function AdsPage() {
       <div>
         <h1 className="text-2xl font-bold">إعلانات الشركات</h1>
         <p className="mt-1 text-sm text-gray-500">
-          الإعلانات المفعلة تظهر في تطبيق الزبون مع وسم «إعلان ممول».
+          الإعلانات المفعلة تظهر في تطبيق الزبون مع وسم «إعلان ممول». الإحصائيات أدناه لآخر 30 يومًا.
         </p>
       </div>
 
@@ -174,21 +190,40 @@ export default function AdsPage() {
             لا يوجد إعلان حاليًا، لذلك القسم مخفي تلقائيًا داخل التطبيق.
           </div>
         ) : (
-          ads.map((ad) => (
-            <div key={ad.id} className="flex items-center justify-between gap-4 rounded-2xl border bg-white p-4">
-              <div className="min-w-0">
-                <div className="font-semibold">{ad.title}</div>
-                {ad.subtitle && <div className="mt-1 text-sm text-gray-500">{ad.subtitle}</div>}
+          ads.map((ad) => {
+            const metric = metrics[ad.id];
+            return (
+              <div key={ad.id} className="rounded-2xl border bg-white p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="font-semibold">{ad.title}</div>
+                    {ad.subtitle && <div className="mt-1 text-sm text-gray-500">{ad.subtitle}</div>}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void toggle(ad)}
+                    className={`rounded-lg px-4 py-2 text-sm font-semibold ${ad.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}
+                  >
+                    {ad.is_active ? "ظاهر — إخفاء" : "مخفي — إظهار"}
+                  </button>
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="text-lg font-bold">{metric?.impressions ?? 0}</div>
+                    <div className="text-xs text-gray-500">ظهور</div>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="text-lg font-bold">{metric?.clicks ?? 0}</div>
+                    <div className="text-xs text-gray-500">ضغطات</div>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="text-lg font-bold">{Number(metric?.ctr_percent ?? 0).toFixed(2)}%</div>
+                    <div className="text-xs text-gray-500">CTR</div>
+                  </div>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => void toggle(ad)}
-                className={`rounded-lg px-4 py-2 text-sm font-semibold ${ad.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}
-              >
-                {ad.is_active ? "ظاهر — إخفاء" : "مخفي — إظهار"}
-              </button>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
