@@ -15,10 +15,8 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cartState = context.select<CartProvider, ({int qty, bool canAdd})>(
-      (cart) => (
-        qty: cart.quantityOf(product.id),
-        canAdd: cart.canAdd(product),
-      ),
+      (cart) =>
+          (qty: cart.quantityOf(product.id), canAdd: cart.canAdd(product)),
     );
     final qty = cartState.qty;
     final canAdd = cartState.canAdd;
