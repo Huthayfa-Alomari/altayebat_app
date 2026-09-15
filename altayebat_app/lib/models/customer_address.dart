@@ -7,6 +7,10 @@ class CustomerAddress {
   final String? street;
   final String? building;
   final String? floor;
+  final String? apartment;
+  final String? landmark;
+  final String? recipientName;
+  final String? recipientPhone;
   final String? notes;
   final double? latitude;
   final double? longitude;
@@ -23,6 +27,10 @@ class CustomerAddress {
     this.street,
     this.building,
     this.floor,
+    this.apartment,
+    this.landmark,
+    this.recipientName,
+    this.recipientPhone,
     this.notes,
     this.latitude,
     this.longitude,
@@ -46,6 +54,10 @@ class CustomerAddress {
       street: map['street']?.toString(),
       building: map['building']?.toString(),
       floor: map['floor']?.toString(),
+      apartment: map['apartment']?.toString(),
+      landmark: map['landmark']?.toString(),
+      recipientName: map['recipient_name']?.toString(),
+      recipientPhone: map['recipient_phone']?.toString(),
       notes: map['notes']?.toString(),
       latitude: toDouble(map['lat']),
       longitude: toDouble(map['lng']),
@@ -71,6 +83,8 @@ class CustomerAddress {
       if ((street ?? '').trim().isNotEmpty) street!.trim(),
       if ((building ?? '').trim().isNotEmpty) 'بناية ${building!.trim()}',
       if ((floor ?? '').trim().isNotEmpty) 'طابق ${floor!.trim()}',
+      if ((apartment ?? '').trim().isNotEmpty) 'شقة ${apartment!.trim()}',
+      if ((landmark ?? '').trim().isNotEmpty) 'قرب ${landmark!.trim()}',
     ];
     return parts.isEmpty ? 'لم تتم إضافة تفاصيل العنوان' : parts.join('، ');
   }
