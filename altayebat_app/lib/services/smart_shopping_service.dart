@@ -25,7 +25,9 @@ class SmartShoppingResult {
       message: map['message']?.toString() ?? 'هذه أفضل الاقتراحات المتاحة.',
       items: rawItems
           .whereType<Map>()
-          .map((raw) => SmartShoppingItem.fromMap(Map<String, dynamic>.from(raw)))
+          .map(
+            (raw) => SmartShoppingItem.fromMap(Map<String, dynamic>.from(raw)),
+          )
           .toList(growable: false),
       totalEstimate: (map['total_estimate'] as num?)?.toDouble() ?? 0,
       provider: map['provider']?.toString() ?? 'catalog_fallback',
