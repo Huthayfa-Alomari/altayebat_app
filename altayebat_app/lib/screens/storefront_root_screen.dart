@@ -20,8 +20,6 @@ class _StorefrontRootScreenState extends State<StorefrontRootScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cartCount = context.watch<CartProvider>().itemCount;
-
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -35,64 +33,69 @@ class _StorefrontRootScreenState extends State<StorefrontRootScreen> {
             AccountScreen(),
           ],
         ),
-        bottomNavigationBar: DecoratedBox(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF11213B).withValues(alpha: 0.08),
-                blurRadius: 22,
-                offset: const Offset(0, -5),
+        bottomNavigationBar: Selector<CartProvider, int>(
+          selector: (_, cart) => cart.itemCount,
+          builder: (context, cartCount, child) {
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF11213B).withValues(alpha: 0.08),
+                    blurRadius: 22,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: SafeArea(
-            top: false,
-            child: NavigationBar(
-              selectedIndex: _index,
-              onDestinationSelected: (value) {
-                if (_index == value) return;
-                setState(() => _index = value);
-              },
-              height: 76,
-              elevation: 0,
-              backgroundColor: Colors.white,
-              indicatorColor: AppColors.primary.withValues(alpha: 0.10),
-              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              destinations: [
-                const NavigationDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home_rounded),
-                  label: 'الرئيسية',
+              child: SafeArea(
+                top: false,
+                child: NavigationBar(
+                  selectedIndex: _index,
+                  onDestinationSelected: (value) {
+                    if (_index == value) return;
+                    setState(() => _index = value);
+                  },
+                  height: 76,
+                  elevation: 0,
+                  backgroundColor: Colors.white,
+                  indicatorColor: AppColors.primary.withValues(alpha: 0.10),
+                  labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                  destinations: [
+                    const NavigationDestination(
+                      icon: Icon(Icons.home_outlined),
+                      selectedIcon: Icon(Icons.home_rounded),
+                      label: 'الرئيسية',
+                    ),
+                    const NavigationDestination(
+                      icon: Icon(Icons.receipt_long_outlined),
+                      selectedIcon: Icon(Icons.receipt_long_rounded),
+                      label: 'طلباتي',
+                    ),
+                    NavigationDestination(
+                      icon: Badge.count(
+                        count: cartCount,
+                        isLabelVisible: cartCount > 0,
+                        backgroundColor: AppColors.primary,
+                        child: const Icon(Icons.shopping_cart_outlined),
+                      ),
+                      selectedIcon: Badge.count(
+                        count: cartCount,
+                        isLabelVisible: cartCount > 0,
+                        backgroundColor: AppColors.primary,
+                        child: const Icon(Icons.shopping_cart_rounded),
+                      ),
+                      label: 'السلة',
+                    ),
+                    const NavigationDestination(
+                      icon: Icon(Icons.person_outline_rounded),
+                      selectedIcon: Icon(Icons.person_rounded),
+                      label: 'حسابي',
+                    ),
+                  ],
                 ),
-                const NavigationDestination(
-                  icon: Icon(Icons.receipt_long_outlined),
-                  selectedIcon: Icon(Icons.receipt_long_rounded),
-                  label: 'طلباتي',
-                ),
-                NavigationDestination(
-                  icon: Badge.count(
-                    count: cartCount,
-                    isLabelVisible: cartCount > 0,
-                    backgroundColor: AppColors.primary,
-                    child: const Icon(Icons.shopping_cart_outlined),
-                  ),
-                  selectedIcon: Badge.count(
-                    count: cartCount,
-                    isLabelVisible: cartCount > 0,
-                    backgroundColor: AppColors.primary,
-                    child: const Icon(Icons.shopping_cart_rounded),
-                  ),
-                  label: 'السلة',
-                ),
-                const NavigationDestination(
-                  icon: Icon(Icons.person_outline_rounded),
-                  selectedIcon: Icon(Icons.person_rounded),
-                  label: 'حسابي',
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
