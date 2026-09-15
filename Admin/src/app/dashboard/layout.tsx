@@ -9,11 +9,13 @@ const navItems = [
   { href: "/dashboard", label: "الطلبات" },
   { href: "/dashboard/products", label: "المنتجات" },
   { href: "/dashboard/offers", label: "العروض" },
+  { href: "/dashboard/ads", label: "إعلانات الشركات" },
   { href: "/dashboard/loyalty", label: "المكافآت" },
   { href: "/dashboard/categories", label: "التصنيفات" },
   { href: "/dashboard/support", label: "طلبات التواصل" },
   { href: "/dashboard/riders", label: "المندوبون" },
-  { href: "/dashboard/delivery", label: "التوصيل" },
+  { href: "/dashboard/delivery", label: "متابعة التوصيل" },
+  { href: "/dashboard/delivery-zones", label: "نطاق التوصيل" },
   { href: "/dashboard/settings", label: "إعدادات الدفع" },
 ];
 
