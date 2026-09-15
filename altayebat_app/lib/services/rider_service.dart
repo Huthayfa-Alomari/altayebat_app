@@ -25,10 +25,7 @@ class RiderService {
 
   static Future<String> requestOtp(String phone) async {
     final normalized = normalizeJordanPhone(phone);
-    await _client.auth.signInWithOtp(
-      phone: normalized,
-      shouldCreateUser: true,
-    );
+    await _client.auth.signInWithOtp(phone: normalized, shouldCreateUser: true);
     return normalized;
   }
 
@@ -159,10 +156,7 @@ class RiderService {
     if (clean.isEmpty || !hasPhoneSession) return;
     await _client.rpc(
       'register_rider_push_token',
-      params: {
-        'p_token': clean,
-        'p_platform': platform.trim().toLowerCase(),
-      },
+      params: {'p_token': clean, 'p_platform': platform.trim().toLowerCase()},
     );
   }
 
