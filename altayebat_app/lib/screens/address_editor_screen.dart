@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/customer_address.dart';
 import '../models/picked_location.dart';
+import '../services/address_write_service.dart';
 import '../services/supabase_service.dart';
 import 'location_picker_screen.dart';
 
@@ -28,6 +29,10 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
   late final TextEditingController _street;
   late final TextEditingController _building;
   late final TextEditingController _floor;
+  late final TextEditingController _apartment;
+  late final TextEditingController _landmark;
+  late final TextEditingController _recipientName;
+  late final TextEditingController _recipientPhone;
   late final TextEditingController _notes;
 
   PickedLocation? _location;
@@ -49,6 +54,10 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
     _street = TextEditingController(text: address?.street ?? '');
     _building = TextEditingController(text: address?.building ?? '');
     _floor = TextEditingController(text: address?.floor ?? '');
+    _apartment = TextEditingController(text: address?.apartment ?? '');
+    _landmark = TextEditingController(text: address?.landmark ?? '');
+    _recipientName = TextEditingController(text: address?.recipientName ?? '');
+    _recipientPhone = TextEditingController(text: address?.recipientPhone ?? '');
     _notes = TextEditingController(text: address?.notes ?? '');
 
     if (address?.latitude != null && address?.longitude != null) {
@@ -58,6 +67,7 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
         accuracyMeters: address.accuracyMeters,
         source: address.locationSource ?? 'map',
       );
+      WidgetsBinding.instance.addPostFrameCallback((_) => _checkCoverage());
     }
   }
 
@@ -69,6 +79,10 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
     _street.dispose();
     _building.dispose();
     _floor.dispose();
+    _apartment.dispose();
+    _landmark.dispose();
+    _recipientName.dispose();
+    _recipientPhone.dispose();
     _notes.dispose();
     super.dispose();
   }
@@ -97,7 +111,7 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
 
   Future<void> _checkCoverage() async {
     final location = _location;
-    if (location == null) return;
+    if (location == null || _checkingCoverage) return;
 
     setState(() {
       _checkingCoverage = true;
@@ -127,13 +141,23 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
 
     if (_location == null) {
       await _pickLocation();
-      if (!mounted) return;
-      if (_location == null) {
-        setState(() {
-          _error = 'حدد موقع التوصيل على الخريطة حتى يصل المندوب بدقة.';
-        });
+      if (!mounted || _location == null) {
+        if (mounted) {
+          setState(() {
+            _error = 'حدد موقع التوصيل على الخريطة حتى يصل المندوب بدقة.';
+          });
+        }
         return;
       }
+    }
+
+    if (_coverage == null) await _checkCoverage();
+    if (!mounted) return;
+    if (_coverage?['serviceable'] != true) {
+      setState(() {
+        _error = 'هذا الموقع خارج نطاق التوصيل الحالي. حرّك العلامة إلى عنوان داخل النطاق.';
+      });
+      return;
     }
 
     setState(() {
@@ -146,13 +170,17 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
       late CustomerAddress saved;
 
       if (current == null) {
-        saved = await SupabaseService.createAddress(
+        saved = await AddressWriteService.create(
           label: _label.text,
           city: _city.text,
           area: _area.text,
           street: _street.text,
           building: _building.text,
           floor: _floor.text,
+          apartment: _apartment.text,
+          landmark: _landmark.text,
+          recipientName: _recipientName.text,
+          recipientPhone: _recipientPhone.text,
           notes: _notes.text,
           latitude: _location?.latitude,
           longitude: _location?.longitude,
@@ -161,7 +189,7 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
           isDefault: widget.makeDefault,
         );
       } else {
-        saved = await SupabaseService.updateAddress(
+        saved = await AddressWriteService.update(
           addressId: current.id,
           label: _label.text,
           city: _city.text,
@@ -169,6 +197,10 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
           street: _street.text,
           building: _building.text,
           floor: _floor.text,
+          apartment: _apartment.text,
+          landmark: _landmark.text,
+          recipientName: _recipientName.text,
+          recipientPhone: _recipientPhone.text,
           notes: _notes.text,
           latitude: _location?.latitude,
           longitude: _location?.longitude,
@@ -196,6 +228,7 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
     final theme = Theme.of(context);
     final serviceable = _coverage?['serviceable'] == true;
     final deliveryFee = _coverage?['delivery_fee'];
+    final distanceKm = _coverage?['distance_km'];
 
     return Scaffold(
       appBar: AppBar(
@@ -238,6 +271,7 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
                     _CoverageMessage(
                       serviceable: serviceable,
                       deliveryFee: deliveryFee,
+                      distanceKm: distanceKm,
                     ),
                   ],
                 ],
@@ -293,16 +327,17 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
               elevation: 0,
               clipBehavior: Clip.antiAlias,
               child: ExpansionTile(
+                initiallyExpanded: true,
                 leading: Icon(
-                  Icons.add_circle_outline_rounded,
+                  Icons.home_work_outlined,
                   color: theme.colorScheme.primary,
                 ),
                 title: const Text(
-                  'تفاصيل إضافية',
+                  'تفاصيل البيت والمستلم',
                   style: TextStyle(fontWeight: FontWeight.w800),
                 ),
                 subtitle: const Text(
-                  'اختياري — شارع، بناية، طابق أو ملاحظة للسائق',
+                  'تساعد المندوب يصل للباب بدون اتصالات إضافية',
                   style: TextStyle(fontSize: 12),
                 ),
                 childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
@@ -311,7 +346,7 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
                     controller: _street,
                     textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
-                      labelText: 'الشارع (اختياري)',
+                      labelText: 'اسم الشارع',
                       prefixIcon: Icon(Icons.signpost_outlined),
                     ),
                   ),
@@ -322,9 +357,7 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
                         child: TextFormField(
                           controller: _building,
                           textInputAction: TextInputAction.next,
-                          decoration: const InputDecoration(
-                            labelText: 'البناية',
-                          ),
+                          decoration: const InputDecoration(labelText: 'رقم البناية'),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -332,21 +365,59 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
                         child: TextFormField(
                           controller: _floor,
                           textInputAction: TextInputAction.next,
-                          decoration: const InputDecoration(
-                            labelText: 'الطابق',
-                          ),
+                          decoration: const InputDecoration(labelText: 'الطابق'),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
+                    controller: _apartment,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'رقم الشقة (اختياري)',
+                      prefixIcon: Icon(Icons.door_front_door_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _landmark,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'أقرب معلم',
+                      hintText: 'مثال: مقابل صيدلية أو بجانب مدرسة',
+                      prefixIcon: Icon(Icons.place_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _recipientName,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'اسم المستلم (اختياري)',
+                      prefixIcon: Icon(Icons.person_outline_rounded),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _recipientPhone,
+                    keyboardType: TextInputType.phone,
+                    textDirection: TextDirection.ltr,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'رقم هاتف المستلم (اختياري)',
+                      hintText: '07XXXXXXXX',
+                      prefixIcon: Icon(Icons.phone_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
                     controller: _notes,
                     minLines: 2,
-                    maxLines: 3,
+                    maxLines: 4,
                     decoration: const InputDecoration(
-                      labelText: 'ملاحظة للسائق (اختياري)',
-                      hintText: 'مثال: بجانب الصيدلية',
+                      labelText: 'تعليمات إضافية للمندوب',
+                      hintText: 'مثال: الجرس لا يعمل، اتصل عند الوصول',
                     ),
                   ),
                 ],
@@ -461,10 +532,12 @@ class _StepCard extends StatelessWidget {
 class _CoverageMessage extends StatelessWidget {
   final bool serviceable;
   final dynamic deliveryFee;
+  final dynamic distanceKm;
 
   const _CoverageMessage({
     required this.serviceable,
     required this.deliveryFee,
+    required this.distanceKm,
   });
 
   @override
@@ -475,6 +548,7 @@ class _CoverageMessage extends StatelessWidget {
     final foreground = serviceable
         ? const Color(0xFF166534)
         : const Color(0xFF9F1239);
+    final distance = distanceKm == null ? '' : ' • ${distanceKm.toString()} كم';
 
     return Container(
       padding: const EdgeInsets.all(11),
@@ -494,8 +568,8 @@ class _CoverageMessage extends StatelessWidget {
           Expanded(
             child: Text(
               serviceable
-                  ? 'التوصيل متاح${deliveryFee == null ? '' : ' — الرسوم $deliveryFee د.أ'}'
-                  : 'الموقع خارج مناطق التوصيل الحالية',
+                  ? 'التوصيل متاح$distance${deliveryFee == null ? '' : ' • الرسوم $deliveryFee د.أ'}'
+                  : 'الموقع خارج نطاق التوصيل الحالي',
               style: TextStyle(color: foreground, fontWeight: FontWeight.w700),
             ),
           ),
