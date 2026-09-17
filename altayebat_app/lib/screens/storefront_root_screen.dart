@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/cart_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/social_contact_strip.dart';
 import '../widgets/sponsored_ad_strip.dart';
 import 'account_screen.dart';
 import 'ai_shopping_assistant_screen.dart';
@@ -45,7 +46,10 @@ class _StorefrontRootScreenState extends State<StorefrontRootScreen> {
                 ],
               ),
             ),
-            if (_index == 0) const SponsoredAdStrip(),
+            if (_index == 0) ...[
+              const SponsoredAdStrip(),
+              const SocialContactStrip(),
+            ],
           ],
         ),
         bottomNavigationBar: Selector<CartProvider, int>(
