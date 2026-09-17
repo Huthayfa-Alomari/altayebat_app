@@ -2,9 +2,11 @@ name: Release Candidate APK
 
 on:
   push:
-    branches: [chatgpt-weighted-sunmi]
+    branches: [main, chatgpt-weighted-sunmi]
     paths:
-      - .github/workflows/release-candidate-apk.yml
+      - "altayebat_app/**"
+      - ".github/workflows/release-candidate-apk.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
