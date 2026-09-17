@@ -6,6 +6,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/app_config.dart';
 
 class StorePublicSettings {
+  final String storeName;
+  final String logoUrl;
+  final String primaryColor;
   final String facebookUrl;
   final String instagramUrl;
   final String tiktokUrl;
@@ -47,6 +50,9 @@ class StorePublicSettings {
   final String shareMessage;
 
   const StorePublicSettings({
+    required this.storeName,
+    required this.logoUrl,
+    required this.primaryColor,
     required this.facebookUrl,
     required this.instagramUrl,
     required this.tiktokUrl,
@@ -89,6 +95,9 @@ class StorePublicSettings {
   });
 
   factory StorePublicSettings.defaults() => const StorePublicSettings(
+        storeName: 'أسواق الطيبات',
+        logoUrl: '',
+        primaryColor: '#E31E24',
         facebookUrl: '',
         instagramUrl: '',
         tiktokUrl: '',
@@ -141,6 +150,9 @@ class StorePublicSettings {
         map[key] is bool ? map[key] as bool : fallback;
 
     return StorePublicSettings(
+      storeName: text('store_name', defaults.storeName),
+      logoUrl: text('logo_url', defaults.logoUrl),
+      primaryColor: text('primary_color', defaults.primaryColor),
       facebookUrl: text('facebook_url', defaults.facebookUrl),
       instagramUrl: text('instagram_url', defaults.instagramUrl),
       tiktokUrl: text('tiktok_url', defaults.tiktokUrl),
@@ -217,6 +229,9 @@ class StorePublicSettings {
   }
 
   Map<String, dynamic> toMap() => {
+        'store_name': storeName,
+        'logo_url': logoUrl,
+        'primary_color': primaryColor,
         'facebook_url': facebookUrl,
         'instagram_url': instagramUrl,
         'tiktok_url': tiktokUrl,
@@ -283,13 +298,12 @@ class StoreSettingsService {
     }
 
     try {
-      final row = await Supabase.instance.client
-          .from('store_public_settings')
-          .select()
-          .eq('store_id', AppConfig.storeId)
-          .maybeSingle();
+      final row = await Supabase.instance.client.rpc(
+        'get_storefront_public_config',
+        params: {'p_store_id': AppConfig.storeId},
+      );
 
-      if (row != null) {
+      if (row is Map) {
         final settings = StorePublicSettings.fromMap(
           Map<String, dynamic>.from(row),
         );
