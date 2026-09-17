@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/customer_address.dart';
+import '../services/store_settings_service.dart';
 import '../services/supabase_service.dart';
 import 'address_editor_screen.dart';
 import 'order_tracking_screen.dart';
@@ -32,6 +33,8 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
   Map<String, dynamic>? _quote;
   Map<String, dynamic> _paymentConfig = const {};
   bool _cardPaymentReady = false;
+  StorePublicSettings _settings = StorePublicSettings.defaults();
+  DateTime? _scheduledFor;
 
   String _paymentMethod = 'cash';
   String _substitutePolicy = 'call_me';
@@ -66,12 +69,14 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
         SupabaseService.fetchAddresses(),
         SupabaseService.getStorePaymentConfig(),
         SupabaseService.isCardPaymentConfigured(),
+        StoreSettingsService.load(forceRefresh: true),
       ]);
 
       final openState = results[0] as Map<String, dynamic>;
       final addresses = results[1] as List<CustomerAddress>;
       final paymentConfig = results[2] as Map<String, dynamic>;
       final cardPaymentReady = results[3] as bool;
+      final settings = results[4] as StorePublicSettings;
 
       CustomerAddress? selected;
       if (addresses.isNotEmpty) {
@@ -88,6 +93,10 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
         _selectedAddress = selected;
         _paymentConfig = paymentConfig;
         _cardPaymentReady = cardPaymentReady;
+        _settings = settings;
+        if (settings.maintenancePayments && _paymentMethod != 'cash') {
+          _paymentMethod = 'cash';
+        }
       });
 
       if (selected != null) {
@@ -244,8 +253,17 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
       return;
     }
 
-    if (_openState?['open'] != true) {
-      setState(() => _error = 'المتجر لا يستقبل طلبات الآن');
+    if (_openState?['open'] != true && _scheduledFor == null) {
+      setState(
+        () => _error = _openState?['allow_scheduled_orders_when_closed'] == true
+            ? 'المتجر مغلق الآن. اختر موعدًا للطلب أولًا.'
+            : 'المتجر لا يستقبل طلبات الآن',
+      );
+      return;
+    }
+
+    if (_settings.maintenancePayments && _paymentMethod != 'cash') {
+      setState(() => _error = 'الدفع الإلكتروني تحت الصيانة حاليًا');
       return;
     }
 
@@ -278,6 +296,7 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
         paymentMethod: _paymentMethod,
         customerNote: _note.text,
         substitutePolicy: _substitutePolicy,
+        scheduledFor: _scheduledFor,
       );
 
       String? paymentWarning;
@@ -346,6 +365,112 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
     }
   }
 
+  Future<void> _pickSchedule() async {
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: now.add(const Duration(days: 1)),
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 7)),
+      helpText: 'اختر يوم الطلب',
+    );
+    if (date == null || !mounted) return;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(
+        now.add(const Duration(hours: 1)),
+      ),
+      helpText: 'اختر وقت الطلب',
+    );
+    if (time == null || !mounted) return;
+
+    final selected = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+    if (selected.isBefore(now.add(const Duration(minutes: 30)))) {
+      setState(() => _error = 'اختر موعدًا بعد 30 دقيقة على الأقل.');
+      return;
+    }
+
+    setState(() {
+      _scheduledFor = selected;
+      _error = null;
+    });
+  }
+
+  String _formatSchedule(DateTime value) {
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '${value.year}/${value.month}/${value.day} • $hour:$minute';
+  }
+
+  Widget _scheduleCard() {
+    final allowed =
+        _openState?['allow_scheduled_orders_when_closed'] == true;
+    if (!allowed) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.event_available_outlined),
+              SizedBox(width: 8),
+              Text(
+                'جدولة الطلب',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'يمكنك اختيار موعد خلال 7 أيام. الخادم سيتأكد أن الموعد ضمن ساعات العمل.',
+            style: TextStyle(fontSize: 11.5, color: Color(0xFF6B7280)),
+          ),
+          const SizedBox(height: 12),
+          if (_scheduledFor == null)
+            OutlinedButton.icon(
+              onPressed: _pickSchedule,
+              icon: const Icon(Icons.schedule_rounded),
+              label: const Text('اختيار موعد'),
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _formatSchedule(_scheduledFor!),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _pickSchedule,
+                  child: const Text('تغيير'),
+                ),
+                IconButton(
+                  tooltip: 'إلغاء الجدولة',
+                  onPressed: () => setState(() => _scheduledFor = null),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
   String _message(Object error) => error
       .toString()
       .replaceFirst('Bad state: ', '')
@@ -389,7 +514,12 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
         : const <String, dynamic>{};
 
     final canPlaceOrder =
-        !_placing && !_loading && !_quoting && open && serviceable && meetsMin;
+        !_placing &&
+        !_loading &&
+        !_quoting &&
+        (open || _scheduledFor != null) &&
+        serviceable &&
+        meetsMin;
 
     return Scaffold(
       appBar: AppBar(title: const Text('إتمام الطلب')),
@@ -402,9 +532,12 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 170),
                 children: [
                   if (!open) ...[
-                    const _StatusBox(
+                    _StatusBox(
                       success: false,
-                      text: 'المتجر لا يستقبل طلبات الآن.',
+                      text: _openState?['allow_scheduled_orders_when_closed'] ==
+                              true
+                          ? 'المتجر مغلق الآن، ويمكنك جدولة الطلب لموعد ضمن ساعات العمل.'
+                          : 'المتجر لا يستقبل طلبات الآن.',
                     ),
                     const SizedBox(height: 10),
                   ],
@@ -420,6 +553,9 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
                           ),
                   ),
                   const SizedBox(height: 10),
+                  _scheduleCard(),
+                  if (_openState?['allow_scheduled_orders_when_closed'] == true)
+                    const SizedBox(height: 10),
                   _Section(
                     step: '2',
                     title: 'طريقة الدفع',
@@ -440,7 +576,8 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
                           icon: Icons.account_balance_outlined,
                           title: 'CliQ',
                           subtitle: _cliqSubtitle(),
-                          enabled: _hasCliqConfig,
+                          enabled:
+                              _hasCliqConfig && !_settings.maintenancePayments,
                           onChanged: (value) =>
                               setState(() => _paymentMethod = value),
                         ),
@@ -452,7 +589,8 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
                           subtitle: _cardPaymentReady
                               ? 'Visa / Mastercard عبر PayTabs'
                               : 'غير مفعّل حاليًا',
-                          enabled: _cardPaymentReady,
+                          enabled:
+                              _cardPaymentReady && !_settings.maintenancePayments,
                           onChanged: (value) =>
                               setState(() => _paymentMethod = value),
                         ),
