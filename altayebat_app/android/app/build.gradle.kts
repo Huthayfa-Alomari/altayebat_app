@@ -28,7 +28,9 @@ if (isReleaseBuild && !hasReleaseSigning) {
 
 android {
     namespace = "com.altayebat.app"
-    compileSdk = flutter.compileSdkVersion
+    // Google Play requires Android 16 / API 36 for new apps and updates
+    // submitted on or after 2026-08-31. Pin it explicitly for release safety.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -39,7 +41,7 @@ android {
     defaultConfig {
         applicationId = "com.altayebat.app"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
