@@ -48,19 +48,6 @@ class _StorefrontRootScreenState extends State<StorefrontRootScreen> {
             if (_index == 0) const SponsoredAdStrip(),
           ],
         ),
-        floatingActionButton: _index == 0
-            ? FloatingActionButton.extended(
-                onPressed: _openAiAssistant,
-                backgroundColor: AppColors.navy,
-                foregroundColor: Colors.white,
-                icon: const Icon(Icons.auto_awesome_rounded),
-                label: const Text(
-                  'اسأل الذكاء',
-                  style: TextStyle(fontWeight: FontWeight.w900),
-                ),
-              )
-            : null,
-        floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
         bottomNavigationBar: Selector<CartProvider, int>(
           selector: (_, cart) => cart.itemCount,
           builder: (context, cartCount, child) {
@@ -80,6 +67,10 @@ class _StorefrontRootScreenState extends State<StorefrontRootScreen> {
                 child: NavigationBar(
                   selectedIndex: _index,
                   onDestinationSelected: (value) {
+                    if (value == 4) {
+                      _openAiAssistant();
+                      return;
+                    }
                     if (_index == value) return;
                     setState(() => _index = value);
                   },
@@ -118,6 +109,11 @@ class _StorefrontRootScreenState extends State<StorefrontRootScreen> {
                       icon: Icon(Icons.person_outline_rounded),
                       selectedIcon: Icon(Icons.person_rounded),
                       label: 'حسابي',
+                    ),
+                    const NavigationDestination(
+                      icon: Icon(Icons.auto_awesome_outlined),
+                      selectedIcon: Icon(Icons.auto_awesome_rounded),
+                      label: 'المساعد',
                     ),
                   ],
                 ),
