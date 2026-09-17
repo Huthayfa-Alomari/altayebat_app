@@ -16,7 +16,7 @@ const navItems = [
   { href: "/dashboard/riders", label: "المندوبون" },
   { href: "/dashboard/delivery", label: "متابعة التوصيل" },
   { href: "/dashboard/delivery-zones", label: "نطاق التوصيل" },
-  { href: "/dashboard/settings", label: "إعدادات الدفع" },
+  { href: "/dashboard/settings", label: "إعدادات المتجر" },
 ];
 
 export default async function DashboardLayout({
