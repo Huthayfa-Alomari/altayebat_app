@@ -10,8 +10,23 @@ verify_jwt = false
 [functions.payment-return]
 verify_jwt = false
 
+[functions.driver-open]
+verify_jwt = false
+
 [functions.send-customer-push]
 verify_jwt = true
 
 [functions.send-rider-push]
+verify_jwt = true
+
+[functions.reverse-geocode]
+verify_jwt = true
+
+[functions.route-eta]
+verify_jwt = true
+
+[functions.smart-shopping-assistant]
+verify_jwt = true
+
+[functions.smart-shopping-health]
 verify_jwt = true
