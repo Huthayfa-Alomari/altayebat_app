@@ -33,6 +33,40 @@ class _HomeScreenState extends State<HomeScreen> {
   StorePublicSettings get _settings =>
       widget.settings ?? StorePublicSettings.defaults();
 
+  Color get _brandColor {
+    final hex = _settings.primaryColor.replaceAll('#', '').trim();
+    if (hex.length != 6) return AppColors.primary;
+    final value = int.tryParse(hex, radix: 16);
+    if (value == null) return AppColors.primary;
+    return Color(0xFF000000 | value);
+  }
+
+  Widget _brandMark() {
+    final logo = _settings.logoUrl.trim();
+    if (logo.isEmpty) {
+      return Icon(
+        Icons.storefront_rounded,
+        color: _brandColor,
+        size: 30,
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Image.network(
+        logo,
+        width: 34,
+        height: 34,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Icon(
+          Icons.storefront_rounded,
+          color: _brandColor,
+          size: 30,
+        ),
+      ),
+    );
+  }
+
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   Timer? _searchDebounce;
@@ -432,19 +466,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.storefront_rounded,
-                          color: AppColors.primary,
-                          size: 30,
-                        ),
-                        SizedBox(width: 7),
+                        _brandMark(),
+                        const SizedBox(width: 7),
                         Flexible(
                           child: Text(
-                            'أسواق الطيبات',
+                            _settings.storeName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: AppColors.primary,
+                              color: _brandColor,
                               fontSize: 21,
                               fontWeight: FontWeight.w900,
                             ),
