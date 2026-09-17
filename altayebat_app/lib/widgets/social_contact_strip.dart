@@ -93,7 +93,7 @@ class SocialContactStrip extends StatelessWidget {
             children: [
               Expanded(
                 child: _SocialButton(
-                  icon: Icons.facebook_rounded,
+                  icon: Icons.facebook,
                   label: 'فيسبوك',
                   foregroundColor: const Color(0xFF1877F2),
                   backgroundColor: const Color(0xFFEFF5FF),
