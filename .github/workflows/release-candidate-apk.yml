@@ -1,4 +1,4 @@
-name: Release Candidate APK
+name: Release Candidate Android
 
 on:
   push:
@@ -31,57 +31,88 @@ jobs:
       - name: Resolve Flutter dependencies
         run: flutter pub get
 
-      - name: Generate temporary release-candidate signing key
+      - name: Configure Android signing
         shell: bash
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          STORE_PASSWORD="$(openssl rand -hex 24)"
-          KEY_PASSWORD="$STORE_PASSWORD"
-          KEY_ALIAS="altayebat-release-candidate"
 
-          keytool -genkeypair -v \
-            -keystore android/app/altayebat-release-candidate.jks \
-            -storepass "$STORE_PASSWORD" \
-            -keypass "$KEY_PASSWORD" \
-            -alias "$KEY_ALIAS" \
-            -keyalg RSA \
-            -keysize 4096 \
-            -validity 3650 \
-            -dname "CN=Altayebat Release Candidate, OU=Mobile, O=Altayebat, L=Zarqa, ST=Zarqa, C=JO"
+          if [[ -n "${RELEASE_KEYSTORE_BASE64:-}" && -n "${RELEASE_STORE_PASSWORD:-}" && -n "${RELEASE_KEY_ALIAS:-}" && -n "${RELEASE_KEY_PASSWORD:-}" ]]; then
+            echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > android/app/altayebat-release.jks
+            cat > android/key.properties <<EOF
+          storePassword=$RELEASE_STORE_PASSWORD
+          keyPassword=$RELEASE_KEY_PASSWORD
+          keyAlias=$RELEASE_KEY_ALIAS
+          storeFile=altayebat-release.jks
+          EOF
+            echo "SIGNING_MODE=production" >> "$GITHUB_ENV"
+          else
+            STORE_PASSWORD="$(openssl rand -hex 24)"
+            KEY_PASSWORD="$STORE_PASSWORD"
+            KEY_ALIAS="altayebat-release-candidate"
 
-          cat > android/key.properties <<EOF
+            keytool -genkeypair -v \
+              -keystore android/app/altayebat-release-candidate.jks \
+              -storepass "$STORE_PASSWORD" \
+              -keypass "$KEY_PASSWORD" \
+              -alias "$KEY_ALIAS" \
+              -keyalg RSA \
+              -keysize 4096 \
+              -validity 3650 \
+              -dname "CN=Altayebat Release Candidate, OU=Mobile, O=Altayebat, L=Zarqa, ST=Zarqa, C=JO"
+
+            cat > android/key.properties <<EOF
           storePassword=$STORE_PASSWORD
           keyPassword=$KEY_PASSWORD
           keyAlias=$KEY_ALIAS
           storeFile=altayebat-release-candidate.jks
           EOF
+            echo "SIGNING_MODE=temporary-rc" >> "$GITHUB_ENV"
+          fi
 
       - name: Build optimized release APK
         run: flutter build apk --release
 
-      - name: Verify APK signature
+      - name: Build Play Store AAB
+        run: flutter build appbundle --release
+
+      - name: Verify Android release outputs
         shell: bash
         run: |
           set -euo pipefail
           APK="build/app/outputs/flutter-apk/app-release.apk"
+          AAB="build/app/outputs/bundle/release/app-release.aab"
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -n "$APKSIGNER"
+          test -f "$APK"
+          test -f "$AAB"
           "$APKSIGNER" verify --verbose --print-certs "$APK"
+          jarsigner -verify "$AAB"
           sha256sum "$APK" | tee build/app/outputs/flutter-apk/app-release.apk.sha256
+          sha256sum "$AAB" | tee build/app/outputs/bundle/release/app-release.aab.sha256
+          echo "Signing mode: $SIGNING_MODE"
 
-      - name: Rename release candidate
+      - name: Rename release candidate outputs
         shell: bash
         run: |
           set -euo pipefail
           cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/Altayebat-0.2.0-rc.apk
           cp build/app/outputs/flutter-apk/app-release.apk.sha256 build/app/outputs/flutter-apk/Altayebat-0.2.0-rc.apk.sha256
+          cp build/app/outputs/bundle/release/app-release.aab build/app/outputs/bundle/release/Altayebat-0.2.0-rc.aab
+          cp build/app/outputs/bundle/release/app-release.aab.sha256 build/app/outputs/bundle/release/Altayebat-0.2.0-rc.aab.sha256
 
-      - name: Upload release candidate APK
+      - name: Upload release candidate Android artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: Altayebat-0.2.0-release-candidate
+          name: Altayebat-0.2.0-release-candidate-android
           path: |
             altayebat_app/build/app/outputs/flutter-apk/Altayebat-0.2.0-rc.apk
             altayebat_app/build/app/outputs/flutter-apk/Altayebat-0.2.0-rc.apk.sha256
+            altayebat_app/build/app/outputs/bundle/release/Altayebat-0.2.0-rc.aab
+            altayebat_app/build/app/outputs/bundle/release/Altayebat-0.2.0-rc.aab.sha256
           if-no-files-found: error
           retention-days: 7
