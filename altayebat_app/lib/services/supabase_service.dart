@@ -324,6 +324,7 @@ class SupabaseService {
     required String paymentMethod,
     String? customerNote,
     String substitutePolicy = 'call_me',
+    DateTime? scheduledFor,
   }) async {
     const allowedPaymentMethods = {'cash', 'cliq', 'card'};
     if (!allowedPaymentMethods.contains(paymentMethod)) {
@@ -335,7 +336,7 @@ class SupabaseService {
 
     try {
       final result = await _client.rpc(
-        'create_order_checkout_v2',
+        'create_order_checkout_v3',
         params: {
           'p_store_id': AppConfig.storeId,
           'p_items': normalizedItems,
@@ -343,6 +344,7 @@ class SupabaseService {
           'p_payment_method': paymentMethod,
           'p_customer_note': _nullIfBlank(customerNote),
           'p_substitute_policy': substitutePolicy,
+          'p_scheduled_for': scheduledFor?.toUtc().toIso8601String(),
         },
       );
 
@@ -378,9 +380,20 @@ class SupabaseService {
     if (message.contains('OUTSIDE_DELIVERY_ZONE')) {
       throw StateError('العنوان خارج مناطق التوصيل الحالية');
     }
+    if (message.contains('SCHEDULED_ORDERS_DISABLED')) {
+      throw StateError('جدولة الطلبات غير مفعّلة حاليًا');
+    }
+    if (message.contains('INVALID_SCHEDULE_TIME')) {
+      throw StateError('اختر موعدًا بين 30 دقيقة و7 أيام من الآن');
+    }
+    if (message.contains('SCHEDULE_OUTSIDE_STORE_HOURS')) {
+      throw StateError('الموعد المختار خارج ساعات عمل المتجر');
+    }
     if (message.contains('STORE_CLOSED') ||
         message.contains('STORE_UNAVAILABLE') ||
-        message.contains('ORDERS_PAUSED')) {
+        message.contains('ORDERS_PAUSED') ||
+        message.contains('CHECKOUT_MAINTENANCE') ||
+        message.contains('DELIVERY_MAINTENANCE')) {
       throw StateError('المتجر لا يستقبل طلبات الآن');
     }
     if (message.contains('CUSTOMER_PROFILE_REQUIRED')) {
