@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../services/store_settings_service.dart';
 import '../theme/app_theme.dart';
 import 'customer_auth_screen.dart';
+import 'loyalty_screen.dart';
 import 'notifications_screen.dart';
 import 'order_history_screen.dart';
+import 'referral_screen.dart';
 import 'rider_mode_screen.dart';
 
 class AccountScreen extends StatefulWidget {
@@ -18,6 +21,7 @@ class _AccountScreenState extends State<AccountScreen> {
   String? _name;
   String? _phone;
   bool _loading = true;
+  StorePublicSettings _settings = StorePublicSettings.defaults();
 
   @override
   void initState() {
@@ -27,19 +31,22 @@ class _AccountScreenState extends State<AccountScreen> {
 
   Future<void> _loadProfile() async {
     final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) {
-      if (mounted) setState(() => _loading = false);
-      return;
-    }
 
     try {
-      final row = await Supabase.instance.client
-          .from('customers')
-          .select('name,phone')
-          .eq('id', user.id)
-          .maybeSingle();
+      final settings = await StoreSettingsService.load(forceRefresh: true);
+      Map<String, dynamic>? row;
+      if (user != null) {
+        final data = await Supabase.instance.client
+            .from('customers')
+            .select('name,phone')
+            .eq('id', user.id)
+            .maybeSingle();
+        if (data != null) row = Map<String, dynamic>.from(data);
+      }
+
       if (!mounted) return;
       setState(() {
+        _settings = settings;
         _name = (row?['name'] as String?)?.trim();
         _phone = (row?['phone'] as String?)?.trim();
         _loading = false;
@@ -81,6 +88,24 @@ class _AccountScreenState extends State<AccountScreen> {
                 MaterialPageRoute(builder: (_) => const NotificationsScreen()),
               ),
             ),
+            if (_settings.featureLoyalty)
+              _AccountTile(
+                icon: Icons.workspace_premium_outlined,
+                title: 'مكافآتي',
+                subtitle: 'تابع السلال والمكافآت المتاحة',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LoyaltyScreen()),
+                ),
+              ),
+            if (_settings.featureReferral)
+              _AccountTile(
+                icon: Icons.card_giftcard_rounded,
+                title: 'ادعُ صديقك',
+                subtitle: 'شارك كودك واكسبوا المكافآت',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ReferralScreen()),
+                ),
+              ),
             _AccountTile(
               icon: Icons.delivery_dining_rounded,
               title: 'وضع المندوب',
