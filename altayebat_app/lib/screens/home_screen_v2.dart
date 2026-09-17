@@ -9,7 +9,9 @@ import '../models/store_offer.dart';
 import '../providers/cart_provider.dart';
 import '../services/catalog_service.dart';
 import '../services/growth_service.dart';
+import '../services/store_settings_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/call_fab.dart';
 import '../widgets/product_card.dart';
 import 'account_screen.dart';
 import 'cart_screen.dart';
@@ -17,7 +19,9 @@ import 'notifications_screen.dart';
 import 'order_history_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final StorePublicSettings? settings;
+
+  const HomeScreen({super.key, this.settings});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -25,6 +29,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   static const int _pageSize = CatalogService.defaultPageSize;
+
+  StorePublicSettings get _settings =>
+      widget.settings ?? StorePublicSettings.defaults();
 
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -305,6 +312,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+      floatingActionButton: _settings.featureCall ? const CallFab() : null,
     );
   }
 
@@ -317,8 +325,9 @@ class _HomeScreenState extends State<HomeScreen> {
       if (showDiscovery) SliverToBoxAdapter(child: _heroBanner()),
       if (showDiscovery && _categories.isNotEmpty)
         SliverToBoxAdapter(child: _categoriesStrip()),
-      if (showDiscovery) SliverToBoxAdapter(child: _reorderCard()),
-      if (showDiscovery && _offers.isNotEmpty)
+      if (showDiscovery && _settings.featureReorder)
+        SliverToBoxAdapter(child: _reorderCard()),
+      if (showDiscovery && _settings.featureOffers && _offers.isNotEmpty)
         SliverToBoxAdapter(child: _offersStrip()),
       SliverToBoxAdapter(child: _resultsHeader()),
       if (_loadingProducts)
@@ -416,7 +425,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Column(
                   children: [
                     Row(
@@ -445,7 +454,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     SizedBox(height: 2),
                     Text(
-                      'كل احتياجات البيت بمكان واحد',
+                      _settings.welcomeText,
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -599,7 +608,9 @@ class _HomeScreenState extends State<HomeScreen> {
         .where((product) => product.imageUrl?.trim().isNotEmpty == true)
         .take(3)
         .toList(growable: false);
-    final offer = _offers.isEmpty ? null : _offers.first;
+    final offer = !_settings.featureOffers || _offers.isEmpty
+        ? null
+        : _offers.first;
     final textScale = MediaQuery.textScalerOf(
       context,
     ).scale(1).clamp(1.0, 1.35);
