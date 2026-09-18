@@ -20,8 +20,10 @@ class SocialContactStrip extends StatelessWidget {
       entityType: 'social',
       entityId: provider,
     );
+
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (opened || !context.mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('تعذر فتح الرابط. حاول مرة ثانية.')),
     );
@@ -51,6 +53,7 @@ class SocialContactStrip extends StatelessWidget {
     }) {
       final uri = _webUri(value);
       if (!enabled || uri == null) return;
+
       actions.add(
         _SocialButton(
           icon: icon,
@@ -71,6 +74,7 @@ class SocialContactStrip extends StatelessWidget {
       background: const Color(0xFFEFF5FF),
       provider: 'facebook',
     );
+
     add(
       enabled: settings.instagramEnabled,
       value: settings.instagramUrl,
@@ -85,19 +89,25 @@ class SocialContactStrip extends StatelessWidget {
       RegExp(r'[^0-9]'),
       '',
     );
+
     if (settings.featureWhatsapp &&
         settings.whatsappEnabled &&
         whatsappPhone.isNotEmpty) {
       final whatsappUri = Uri.https('wa.me', '/$whatsappPhone', {
         'text': settings.whatsappDefaultMessage,
       });
+
       actions.add(
         _SocialButton(
           icon: Icons.chat_rounded,
           label: 'واتساب',
           foregroundColor: const Color(0xFF128C7E),
           backgroundColor: const Color(0xFFECFBF5),
-          onTap: () => _open(context, uri: whatsappUri, provider: 'whatsapp'),
+          onTap: () => _open(
+            context,
+            uri: whatsappUri,
+            provider: 'whatsapp',
+          ),
         ),
       );
     }
@@ -111,6 +121,7 @@ class SocialContactStrip extends StatelessWidget {
       background: const Color(0xFFF3F3F3),
       provider: 'tiktok',
     );
+
     add(
       enabled: settings.googleMapsEnabled && settings.googleMapsUrl.isNotEmpty,
       value: settings.googleMapsUrl,
@@ -120,11 +131,12 @@ class SocialContactStrip extends StatelessWidget {
       background: const Color(0xFFECF8EF),
       provider: 'google_maps',
     );
+
     add(
       enabled: settings.websiteEnabled && settings.websiteUrl.isNotEmpty,
       value: settings.websiteUrl,
       icon: Icons.language_rounded,
-      label: 'الموقع الإلكتروني',
+      label: 'الموقع',
       foreground: AppColors.navy,
       background: AppColors.skySoft,
       provider: 'website',
@@ -132,52 +144,13 @@ class SocialContactStrip extends StatelessWidget {
 
     if (actions.isEmpty) return const SizedBox.shrink();
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFECEBE7)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 12,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Row(
-            children: [
-              Icon(
-                Icons.connect_without_contact_rounded,
-                size: 18,
-                color: AppColors.primary,
-              ),
-              SizedBox(width: 7),
-              Text(
-                'تابعنا وتواصل معنا',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 9),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: actions
-                .map((action) => SizedBox(width: 96, child: action))
-                .toList(growable: false),
-          ),
-        ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 12,
+        runSpacing: 10,
+        children: actions,
       ),
     );
   }
@@ -200,30 +173,27 @@ class _SocialButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: backgroundColor,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: foregroundColor, size: 21),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: foregroundColor,
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w800,
-                ),
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        color: backgroundColor,
+        shape: const CircleBorder(),
+        elevation: 0,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: Tooltip(
+              message: label,
+              child: Icon(
+                icon,
+                color: foregroundColor,
+                size: 23,
               ),
-            ],
+            ),
           ),
         ),
       ),
