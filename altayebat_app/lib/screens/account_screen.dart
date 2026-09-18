@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../services/analytics_service.dart';
+import '../services/customer_support_service.dart';
 import '../services/store_settings_service.dart';
 import '../theme/app_theme.dart';
 import 'customer_auth_screen.dart';
@@ -9,6 +12,7 @@ import 'notifications_screen.dart';
 import 'order_history_screen.dart';
 import 'referral_screen.dart';
 import 'rider_mode_screen.dart';
+import 'support_screen.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -59,6 +63,50 @@ class _AccountScreenState extends State<AccountScreen> {
   bool get _hasProfile =>
       (_name?.isNotEmpty ?? false) && (_phone?.isNotEmpty ?? false);
 
+  Future<void> _openSupport() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SupportScreen()),
+    );
+  }
+
+  Future<void> _openExternal(String url, String source) async {
+    final opened = await CustomerSupportService.openWeb(
+      url,
+      source: source,
+    );
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر فتح الرابط.')),
+      );
+    }
+  }
+
+  Future<void> _shareApp() async {
+    final link = _settings.playStoreUrl.isNotEmpty
+        ? _settings.playStoreUrl
+        : _settings.appStoreUrl;
+    final text = link.isEmpty
+        ? _settings.shareMessage
+        : '${_settings.shareMessage}\n$link';
+
+    await AnalyticsService.track(
+      'app_share',
+      entityType: 'app',
+      entityId: 'whatsapp',
+    );
+
+    final opened = await launchUrl(
+      Uri.https('wa.me', '/', {'text': text}),
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر فتح المشاركة.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -105,6 +153,35 @@ class _AccountScreenState extends State<AccountScreen> {
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const ReferralScreen()),
                 ),
+              ),
+            _AccountTile(
+              icon: Icons.support_agent_rounded,
+              title: 'خدمة العملاء',
+              subtitle: 'مشكلة طلب، توصيل، دفع أو استفسار',
+              onTap: _openSupport,
+            ),
+            _AccountTile(
+              icon: Icons.share_rounded,
+              title: 'شارك التطبيق',
+              subtitle: 'شارك أسواق الطيبات مع أصدقائك',
+              onTap: _shareApp,
+            ),
+            if (_settings.privacyPolicyUrl.isNotEmpty)
+              _AccountTile(
+                icon: Icons.privacy_tip_outlined,
+                title: 'سياسة الخصوصية',
+                subtitle: 'كيف نتعامل مع بياناتك',
+                onTap: () => _openExternal(
+                  _settings.privacyPolicyUrl,
+                  'privacy_policy',
+                ),
+              ),
+            if (_settings.termsUrl.isNotEmpty)
+              _AccountTile(
+                icon: Icons.gavel_outlined,
+                title: 'الشروط والأحكام',
+                subtitle: 'شروط استخدام التطبيق والطلبات',
+                onTap: () => _openExternal(_settings.termsUrl, 'terms'),
               ),
             _AccountTile(
               icon: Icons.delivery_dining_rounded,
@@ -182,7 +259,7 @@ class _AccountScreenState extends State<AccountScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _hasProfile ? _name! : 'أهلًا بك في أسواق الطيبات',
+                        _hasProfile ? _name! : 'أهلًا بك في ${_settings.storeName}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
