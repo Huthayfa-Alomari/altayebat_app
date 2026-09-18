@@ -163,6 +163,16 @@ class _AccountScreenState extends State<AccountScreen> {
               subtitle: 'شارك أسواق الطيبات مع أصدقائك',
               onTap: _shareApp,
             ),
+            if (_settings.websiteUrl.isNotEmpty)
+              _AccountTile(
+                icon: Icons.language_rounded,
+                title: 'الموقع الإلكتروني',
+                subtitle: 'افتح موقع المتجر',
+                onTap: () => _openExternal(
+                  _settings.websiteUrl,
+                  'website',
+                ),
+              ),
             if (_settings.privacyPolicyUrl.isNotEmpty)
               _AccountTile(
                 icon: Icons.privacy_tip_outlined,
