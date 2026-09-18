@@ -103,7 +103,7 @@ class SocialContactStrip extends StatelessWidget {
     }
 
     add(
-      enabled: settings.tiktokUrl.isNotEmpty,
+      enabled: settings.tiktokEnabled && settings.tiktokUrl.isNotEmpty,
       value: settings.tiktokUrl,
       icon: Icons.music_note_rounded,
       label: 'TikTok',
@@ -112,13 +112,23 @@ class SocialContactStrip extends StatelessWidget {
       provider: 'tiktok',
     );
     add(
-      enabled: settings.googleMapsUrl.isNotEmpty,
+      enabled:
+          settings.googleMapsEnabled && settings.googleMapsUrl.isNotEmpty,
       value: settings.googleMapsUrl,
       icon: Icons.location_on_rounded,
       label: 'الموقع',
       foreground: const Color(0xFF0B8043),
       background: const Color(0xFFECF8EF),
       provider: 'google_maps',
+    );
+    add(
+      enabled: settings.websiteEnabled && settings.websiteUrl.isNotEmpty,
+      value: settings.websiteUrl,
+      icon: Icons.language_rounded,
+      label: 'الموقع الإلكتروني',
+      foreground: AppColors.navy,
+      background: AppColors.skySoft,
+      provider: 'website',
     );
 
     if (actions.isEmpty) return const SizedBox.shrink();
