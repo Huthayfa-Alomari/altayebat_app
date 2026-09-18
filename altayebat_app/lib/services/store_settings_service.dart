@@ -14,6 +14,9 @@ class StorePublicSettings {
   final String tiktokUrl;
   final String websiteUrl;
   final String googleMapsUrl;
+  final bool tiktokEnabled;
+  final bool websiteEnabled;
+  final bool googleMapsEnabled;
   final bool facebookEnabled;
   final bool instagramEnabled;
   final String whatsappNumber;
@@ -58,6 +61,9 @@ class StorePublicSettings {
     required this.tiktokUrl,
     required this.websiteUrl,
     required this.googleMapsUrl,
+    required this.tiktokEnabled,
+    required this.websiteEnabled,
+    required this.googleMapsEnabled,
     required this.facebookEnabled,
     required this.instagramEnabled,
     required this.whatsappNumber,
@@ -157,6 +163,12 @@ class StorePublicSettings {
       tiktokUrl: text('tiktok_url', defaults.tiktokUrl),
       websiteUrl: text('website_url', defaults.websiteUrl),
       googleMapsUrl: text('google_maps_url', defaults.googleMapsUrl),
+      tiktokEnabled: flag('tiktok_enabled', defaults.tiktokEnabled),
+      websiteEnabled: flag('website_enabled', defaults.websiteEnabled),
+      googleMapsEnabled: flag(
+        'google_maps_enabled',
+        defaults.googleMapsEnabled,
+      ),
       facebookEnabled: flag('facebook_enabled', defaults.facebookEnabled),
       instagramEnabled: flag('instagram_enabled', defaults.instagramEnabled),
       whatsappNumber: text('whatsapp_number', defaults.whatsappNumber),
