@@ -5,13 +5,15 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: main
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: 3.47.4
@@ -23,13 +25,15 @@ jobs:
       - name: Format Dart
         working-directory: altayebat_app
         run: dart format lib test
-      - name: Export formatted Flutter source
-        uses: actions/upload-artifact@v7
-        with:
-          name: dart-formatted-source
-          path: |
-            altayebat_app/lib
-            altayebat_app/test
-            altayebat_app/pubspec.lock
-          if-no-files-found: error
-          retention-days: 1
+      - name: Commit canonical formatting
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add altayebat_app/lib altayebat_app/test altayebat_app/pubspec.lock
+          git commit -m "style: apply canonical Dart formatting"
+          git push origin HEAD:main
