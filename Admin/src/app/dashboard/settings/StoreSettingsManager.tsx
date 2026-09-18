@@ -886,6 +886,9 @@ export default function StoreSettingsManager({
           <Metric label="WhatsApp" value={social.whatsapp_clicks} />
           <Metric label="TikTok" value={social.tiktok_clicks} />
           <Metric label="Maps" value={social.maps_clicks} />
+          <Metric label="Website" value={social.website_clicks} />
+          <Metric label="دعم العملاء" value={social.support_clicks} />
+          <Metric label="مشاركة التطبيق" value={social.app_shares} />
         </div>
         <div className="flex flex-wrap gap-2">
           {[
