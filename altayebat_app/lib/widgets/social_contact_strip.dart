@@ -103,11 +103,7 @@ class SocialContactStrip extends StatelessWidget {
           label: 'واتساب',
           foregroundColor: const Color(0xFF128C7E),
           backgroundColor: const Color(0xFFECFBF5),
-          onTap: () => _open(
-            context,
-            uri: whatsappUri,
-            provider: 'whatsapp',
-          ),
+          onTap: () => _open(context, uri: whatsappUri, provider: 'whatsapp'),
         ),
       );
     }
@@ -188,11 +184,7 @@ class _SocialButton extends StatelessWidget {
             height: 48,
             child: Tooltip(
               message: label,
-              child: Icon(
-                icon,
-                color: foregroundColor,
-                size: 23,
-              ),
+              child: Icon(icon, color: foregroundColor, size: 23),
             ),
           ),
         ),
