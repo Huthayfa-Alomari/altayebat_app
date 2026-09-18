@@ -239,21 +239,6 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     }
   }
 
-  Future<void> _callStore() async {
-    final phone = _storePhoneDigits;
-    if (phone.isEmpty) {
-      _show('رقم المول غير مضاف بعد');
-      return;
-    }
-
-    final uri = Uri.parse('tel:+$phone');
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-
-    if (!opened && mounted) {
-      _show('تعذر فتح الاتصال');
-    }
-  }
-
   Future<void> _openSupport() async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => SupportScreen(orderId: widget.orderId)),
