@@ -24,6 +24,9 @@ type PublicSettings = {
   tiktok_url: string;
   website_url: string;
   google_maps_url: string;
+  tiktok_enabled: boolean;
+  website_enabled: boolean;
+  google_maps_enabled: boolean;
   facebook_enabled: boolean;
   instagram_enabled: boolean;
   whatsapp_number: string;
@@ -103,6 +106,9 @@ const defaultPublic: PublicSettings = {
   tiktok_url: "",
   website_url: "",
   google_maps_url: "",
+  tiktok_enabled: true,
+  website_enabled: true,
+  google_maps_enabled: true,
   facebook_enabled: true,
   instagram_enabled: true,
   whatsapp_number: "",
@@ -258,6 +264,9 @@ export default function StoreSettingsManager({
         tiktok_url: textValue(rawPublic.tiktok_url),
         website_url: textValue(rawPublic.website_url),
         google_maps_url: textValue(rawPublic.google_maps_url),
+        tiktok_enabled: booleanValue(rawPublic.tiktok_enabled, true),
+        website_enabled: booleanValue(rawPublic.website_enabled, true),
+        google_maps_enabled: booleanValue(rawPublic.google_maps_enabled, true),
         facebook_enabled: booleanValue(rawPublic.facebook_enabled, true),
         instagram_enabled: booleanValue(rawPublic.instagram_enabled, true),
         whatsapp_number: textValue(rawPublic.whatsapp_number),
@@ -808,39 +817,39 @@ export default function StoreSettingsManager({
               setPublicSettings({ ...publicSettings, instagram_enabled: value })
             }
           />
-          <Field label="TikTok">
-            <input
-              dir="ltr"
-              value={publicSettings.tiktok_url}
-              onChange={(e) =>
-                setPublicSettings({ ...publicSettings, tiktok_url: e.target.value })
-              }
-              className="input text-left"
-              placeholder="https://..."
-            />
-          </Field>
-          <Field label="الموقع الإلكتروني">
-            <input
-              dir="ltr"
-              value={publicSettings.website_url}
-              onChange={(e) =>
-                setPublicSettings({ ...publicSettings, website_url: e.target.value })
-              }
-              className="input text-left"
-              placeholder="https://..."
-            />
-          </Field>
-          <Field label="Google Maps">
-            <input
-              dir="ltr"
-              value={publicSettings.google_maps_url}
-              onChange={(e) =>
-                setPublicSettings({ ...publicSettings, google_maps_url: e.target.value })
-              }
-              className="input text-left"
-              placeholder="https://maps.google.com/..."
-            />
-          </Field>
+          <SocialField
+            label="TikTok"
+            value={publicSettings.tiktok_url}
+            enabled={publicSettings.tiktok_enabled}
+            onValue={(value) =>
+              setPublicSettings({ ...publicSettings, tiktok_url: value })
+            }
+            onEnabled={(value) =>
+              setPublicSettings({ ...publicSettings, tiktok_enabled: value })
+            }
+          />
+          <SocialField
+            label="الموقع الإلكتروني"
+            value={publicSettings.website_url}
+            enabled={publicSettings.website_enabled}
+            onValue={(value) =>
+              setPublicSettings({ ...publicSettings, website_url: value })
+            }
+            onEnabled={(value) =>
+              setPublicSettings({ ...publicSettings, website_enabled: value })
+            }
+          />
+          <SocialField
+            label="Google Maps"
+            value={publicSettings.google_maps_url}
+            enabled={publicSettings.google_maps_enabled}
+            onValue={(value) =>
+              setPublicSettings({ ...publicSettings, google_maps_url: value })
+            }
+            onEnabled={(value) =>
+              setPublicSettings({ ...publicSettings, google_maps_enabled: value })
+            }
+          />
           <Field label="رقم الهاتف">
             <input
               dir="ltr"
