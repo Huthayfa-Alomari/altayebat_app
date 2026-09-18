@@ -6,8 +6,10 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../services/store_settings_service.dart';
 import '../services/supabase_service.dart';
 import 'order_receipt_screen.dart';
+import 'support_screen.dart';
 
 class OrderTrackingScreen extends StatefulWidget {
   final String orderId;
@@ -27,6 +29,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   Map<String, dynamic> _order = const {};
   Map<String, dynamic>? _driverLocation;
   Map<String, dynamic> _paymentConfig = const {};
+  StorePublicSettings _settings = StorePublicSettings.defaults();
 
   bool _loading = true;
   bool _actionBusy = false;
@@ -60,15 +63,17 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
   Future<void> _loadInitial() async {
     try {
-      final results = await Future.wait([
+      final results = await Future.wait<dynamic>([
         SupabaseService.fetchOrder(widget.orderId),
         SupabaseService.getStorePaymentConfig(),
+        StoreSettingsService.load(),
       ]);
 
       if (!mounted) return;
       setState(() {
-        _order = results[0];
-        _paymentConfig = results[1];
+        _order = Map<String, dynamic>.from(results[0] as Map);
+        _paymentConfig = Map<String, dynamic>.from(results[1] as Map);
+        _settings = results[2] as StorePublicSettings;
         _error = null;
       });
     } catch (error) {
@@ -249,6 +254,14 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     }
   }
 
+  Future<void> _openSupport() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SupportScreen(orderId: widget.orderId),
+      ),
+    );
+  }
+
   void _show(String text) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
@@ -279,7 +292,13 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       _paymentConfig['cliq_recipient_name']?.toString().trim() ?? '';
 
   String get _storePhoneDigits {
-    final raw = _paymentConfig['phone']?.toString() ?? '';
+    final support = _settings.supportWhatsappNumber.trim();
+    final whatsapp = _settings.whatsappNumber.trim();
+    final raw = support.isNotEmpty
+        ? support
+        : whatsapp.isNotEmpty
+        ? whatsapp
+        : _paymentConfig['phone']?.toString() ?? '';
     var digits = raw.replaceAll(RegExp(r'\D'), '');
     if (digits.startsWith('00')) digits = digits.substring(2);
     if (digits.startsWith('0') && digits.length >= 9) {
@@ -370,13 +389,11 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('تتبع الطلب'), centerTitle: true),
-      floatingActionButton: _storePhoneDigits.isEmpty
-          ? null
-          : FloatingActionButton.small(
-              onPressed: _callStore,
-              tooltip: 'اتصال بالمول',
-              child: const Icon(Icons.headset_mic_outlined),
-            ),
+      floatingActionButton: FloatingActionButton.small(
+        onPressed: _openSupport,
+        tooltip: 'خدمة العملاء',
+        child: const Icon(Icons.support_agent_rounded),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -424,20 +441,39 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                   ],
                   if (_order.isNotEmpty) ...[
                     const SizedBox(height: 14),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  OrderReceiptScreen(orderId: widget.orderId),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.receipt_long_outlined),
-                        label: const Text('عرض الإيصال'),
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => OrderReceiptScreen(
+                                    orderId: widget.orderId,
+                                  ),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.receipt_long_outlined),
+                            label: const Text('عرض الإيصال'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: FilledButton.tonalIcon(
+                            onPressed: _openSupport,
+                            icon: const Icon(Icons.support_agent_rounded),
+                            label: const Text('مساعدة'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if ((_order['scheduled_for']?.toString().isNotEmpty ?? false)) ...[
+                    const SizedBox(height: 14),
+                    _MessageBox(
+                      text: 'هذا الطلب مجدول لموعد محدد من قبلك.',
+                      error: false,
                     ),
                   ],
                   if (_error != null) ...[
