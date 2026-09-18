@@ -1,0 +1,35 @@
+name: Dart Format Export
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.4
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
+        working-directory: altayebat_app
+        run: flutter pub get
+      - name: Format Dart
+        working-directory: altayebat_app
+        run: dart format lib test
+      - name: Export formatted Flutter source
+        uses: actions/upload-artifact@v7
+        with:
+          name: dart-formatted-source
+          path: |
+            altayebat_app/lib
+            altayebat_app/test
+            altayebat_app/pubspec.lock
+          if-no-files-found: error
+          retention-days: 1
