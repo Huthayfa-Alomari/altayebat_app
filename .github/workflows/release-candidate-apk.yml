@@ -2,7 +2,7 @@ name: Release Candidate Android
 
 on:
   push:
-    branches: [main, chatgpt-weighted-sunmi]
+    branches: [main]
     paths:
       - "altayebat_app/**"
       - ".github/workflows/release-candidate-apk.yml"
@@ -13,8 +13,9 @@ permissions:
 
 jobs:
   build-release-candidate:
-    name: Build signed Android release candidate
+    name: Validate and build Android release
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     defaults:
       run:
         working-directory: altayebat_app
@@ -30,6 +31,15 @@ jobs:
 
       - name: Resolve Flutter dependencies
         run: flutter pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Analyze Flutter
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        run: flutter test
 
       - name: Configure Android signing
         shell: bash
@@ -55,15 +65,7 @@ jobs:
             KEY_PASSWORD="$STORE_PASSWORD"
             KEY_ALIAS="altayebat-release-candidate"
 
-            keytool -genkeypair -v \
-              -keystore android/app/altayebat-release-candidate.jks \
-              -storepass "$STORE_PASSWORD" \
-              -keypass "$KEY_PASSWORD" \
-              -alias "$KEY_ALIAS" \
-              -keyalg RSA \
-              -keysize 4096 \
-              -validity 3650 \
-              -dname "CN=Altayebat Release Candidate, OU=Mobile, O=Altayebat, L=Zarqa, ST=Zarqa, C=JO"
+            keytool -genkeypair -v               -keystore android/app/altayebat-release-candidate.jks               -storepass "$STORE_PASSWORD"               -keypass "$KEY_PASSWORD"               -alias "$KEY_ALIAS"               -keyalg RSA               -keysize 4096               -validity 3650               -dname "CN=Altayebat Release Candidate, OU=Mobile, O=Altayebat, L=Zarqa, ST=Zarqa, C=JO"
 
             cat > android/key.properties <<EOF
           storePassword=$STORE_PASSWORD
@@ -94,9 +96,11 @@ jobs:
           jarsigner -verify "$AAB"
           sha256sum "$APK" | tee build/app/outputs/flutter-apk/app-release.apk.sha256
           sha256sum "$AAB" | tee build/app/outputs/bundle/release/app-release.aab.sha256
+          printf '%s\n' "$SIGNING_MODE" > build/SIGNING_MODE.txt
+          printf '%s\n' "$GITHUB_SHA" > build/SOURCE_COMMIT.txt
           echo "Signing mode: $SIGNING_MODE"
 
-      - name: Rename release candidate outputs
+      - name: Rename release outputs
         shell: bash
         run: |
           set -euo pipefail
@@ -105,7 +109,7 @@ jobs:
           cp build/app/outputs/bundle/release/app-release.aab build/app/outputs/bundle/release/Altayebat-0.2.0-rc.aab
           cp build/app/outputs/bundle/release/app-release.aab.sha256 build/app/outputs/bundle/release/Altayebat-0.2.0-rc.aab.sha256
 
-      - name: Upload release candidate Android artifacts
+      - name: Upload Android release artifacts
         uses: actions/upload-artifact@v7
         with:
           name: Altayebat-0.2.0-release-candidate-android
@@ -114,5 +118,7 @@ jobs:
             altayebat_app/build/app/outputs/flutter-apk/Altayebat-0.2.0-rc.apk.sha256
             altayebat_app/build/app/outputs/bundle/release/Altayebat-0.2.0-rc.aab
             altayebat_app/build/app/outputs/bundle/release/Altayebat-0.2.0-rc.aab.sha256
+            altayebat_app/build/SIGNING_MODE.txt
+            altayebat_app/build/SOURCE_COMMIT.txt
           if-no-files-found: error
           retention-days: 7

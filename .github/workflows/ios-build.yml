@@ -1,23 +1,24 @@
-name: iOS No-Mac Build
+name: iOS Build
 
 on:
   workflow_dispatch:
   push:
-    branches: [chatgpt-weighted-sunmi]
+    branches: [main]
     paths:
       - ".github/workflows/ios-build.yml"
       - "altayebat_app/lib/**"
       - "altayebat_app/pubspec.yaml"
       - "altayebat_app/pubspec.lock"
+      - "altayebat_app/ios/**"
 
 permissions:
   contents: read
 
 jobs:
   ios:
-    name: Build unsigned iOS app on macOS
+    name: Validate and build unsigned iOS release
     runs-on: macos-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: altayebat_app
@@ -39,16 +40,13 @@ jobs:
       - name: Generate iOS platform
         run: |
           if [ ! -d ios ]; then
-            flutter create \
-              --platforms=ios \
-              --org com.altayebat \
-              --project-name altayebat_app \
-              .
+            flutter create               --platforms=ios               --org com.altayebat               --project-name altayebat_app               .
           fi
 
-      - name: Configure bundle id and iOS permissions
+      - name: Configure iOS project
         shell: bash
         run: |
+          set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
           import re
@@ -65,17 +63,19 @@ jobs:
               'PRODUCT_BUNDLE_IDENTIFIER = com.altayebat.app.RunnerTests;',
               text,
           )
+          text = re.sub(
+              r'IPHONEOS_DEPLOYMENT_TARGET = [^;]+;',
+              'IPHONEOS_DEPLOYMENT_TARGET = 13.0;',
+              text,
+          )
           p.write_text(text)
           PY
 
           PLIST="ios/Runner/Info.plist"
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName أسواق الطيبات" "$PLIST" || true
-          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string نستخدم الكاميرا لمسح باركود المنتجات" "$PLIST" || \
-            /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription نستخدم الكاميرا لمسح باركود المنتجات" "$PLIST"
-          /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string نستخدم موقعك لخدمات التوصيل وتتبع الطلب" "$PLIST" || \
-            /usr/libexec/PlistBuddy -c "Set :NSLocationWhenInUseUsageDescription نستخدم موقعك لخدمات التوصيل وتتبع الطلب" "$PLIST"
-          /usr/libexec/PlistBuddy -c "Add :NSLocationAlwaysAndWhenInUseUsageDescription string يحتاج وضع المندوب للموقع أثناء تنفيذ التوصيل" "$PLIST" || \
-            /usr/libexec/PlistBuddy -c "Set :NSLocationAlwaysAndWhenInUseUsageDescription يحتاج وضع المندوب للموقع أثناء تنفيذ التوصيل" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string نستخدم الكاميرا لمسح باركود المنتجات" "$PLIST" ||             /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription نستخدم الكاميرا لمسح باركود المنتجات" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string نستخدم موقعك لخدمات التوصيل وتتبع الطلب" "$PLIST" ||             /usr/libexec/PlistBuddy -c "Set :NSLocationWhenInUseUsageDescription نستخدم موقعك لخدمات التوصيل وتتبع الطلب" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :NSLocationAlwaysAndWhenInUseUsageDescription string يحتاج وضع المندوب للموقع أثناء تنفيذ التوصيل" "$PLIST" ||             /usr/libexec/PlistBuddy -c "Set :NSLocationAlwaysAndWhenInUseUsageDescription يحتاج وضع المندوب للموقع أثناء تنفيذ التوصيل" "$PLIST"
           /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" "$PLIST" || true
           /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$PLIST"
           /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" "$PLIST"
@@ -84,30 +84,63 @@ jobs:
       - name: Resolve Flutter dependencies
         run: flutter pub get
 
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Analyze Flutter
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        run: flutter test
+
       - name: Build unsigned iOS release
         run: flutter build ios --release --no-codesign
 
-      - name: Package unsigned app and generated iOS scaffold
+      - name: Verify iOS output
+        shell: bash
         run: |
-          ditto -c -k --sequesterRsrc --keepParent \
-            build/ios/iphoneos/Runner.app \
-            build/Altayebat-iOS-unsigned.zip
-          ditto -c -k --sequesterRsrc --keepParent \
-            ios \
-            build/Altayebat-iOS-scaffold.zip
+          set -euo pipefail
+          APP="build/ios/iphoneos/Runner.app"
+          test -d "$APP"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP/Info.plist"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Info.plist"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP/Info.plist"
 
-      - name: Upload unsigned iOS app
+      - name: Package unsigned IPA, app and Xcode scaffold
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/unsigned-ipa/Payload
+          cp -R build/ios/iphoneos/Runner.app build/unsigned-ipa/Payload/Runner.app
+          (
+            cd build/unsigned-ipa
+            zip -qry ../Altayebat-0.2.0-unsigned.ipa Payload
+          )
+          ditto -c -k --sequesterRsrc --keepParent             build/ios/iphoneos/Runner.app             build/Altayebat-0.2.0-iOS-Runner-app.zip
+          ditto -c -k --sequesterRsrc --keepParent             ios             build/Altayebat-0.2.0-iOS-Xcode-scaffold.zip
+          shasum -a 256 build/Altayebat-0.2.0-unsigned.ipa > build/Altayebat-0.2.0-unsigned.ipa.sha256
+          shasum -a 256 build/Altayebat-0.2.0-iOS-Runner-app.zip > build/Altayebat-0.2.0-iOS-Runner-app.zip.sha256
+          printf '%s\n' "UNSIGNED - Apple certificate and provisioning profile required for TestFlight/App Store installation." > build/IOS_SIGNING_STATUS.txt
+          printf '%s\n' "$GITHUB_SHA" > build/IOS_SOURCE_COMMIT.txt
+
+      - name: Upload unsigned iOS release
         uses: actions/upload-artifact@v7
         with:
-          name: altayebat-ios-unsigned-app
-          path: altayebat_app/build/Altayebat-iOS-unsigned.zip
+          name: Altayebat-0.2.0-iOS-unsigned
+          path: |
+            altayebat_app/build/Altayebat-0.2.0-unsigned.ipa
+            altayebat_app/build/Altayebat-0.2.0-unsigned.ipa.sha256
+            altayebat_app/build/Altayebat-0.2.0-iOS-Runner-app.zip
+            altayebat_app/build/Altayebat-0.2.0-iOS-Runner-app.zip.sha256
+            altayebat_app/build/IOS_SIGNING_STATUS.txt
+            altayebat_app/build/IOS_SOURCE_COMMIT.txt
           if-no-files-found: error
           retention-days: 7
 
-      - name: Upload generated iOS scaffold
+      - name: Upload generated Xcode scaffold
         uses: actions/upload-artifact@v7
         with:
-          name: altayebat-ios-scaffold
-          path: altayebat_app/build/Altayebat-iOS-scaffold.zip
+          name: Altayebat-0.2.0-iOS-Xcode-scaffold
+          path: altayebat_app/build/Altayebat-0.2.0-iOS-Xcode-scaffold.zip
           if-no-files-found: error
           retention-days: 7
