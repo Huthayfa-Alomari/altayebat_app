@@ -77,15 +77,11 @@ class _ReferralScreenState extends State<ReferralScreen> {
     try {
       await Supabase.instance.client.rpc(
         'apply_referral_code',
-        params: {
-          'p_store_id': AppConfig.storeId,
-          'p_code': code,
-        },
+        params: {'p_store_id': AppConfig.storeId, 'p_code': code},
       );
       if (!mounted) return;
       setState(
-        () => _success =
-            'تم قبول كود الدعوة. تُضاف المكافأة بعد أول طلب مؤهل.',
+        () => _success = 'تم قبول كود الدعوة. تُضاف المكافأة بعد أول طلب مؤهل.',
       );
       await _load();
     } on PostgrestException catch (error) {
@@ -126,9 +122,9 @@ class _ReferralScreenState extends State<ReferralScreen> {
     if (_code.isEmpty) return;
     await Clipboard.setData(ClipboardData(text: _code));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('تم نسخ كود الدعوة.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('تم نسخ كود الدعوة.')));
   }
 
   Future<void> _shareWhatsApp() async {
@@ -261,8 +257,9 @@ class _ReferralScreenState extends State<ReferralScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: FilledButton.icon(
-                  onPressed:
-                      _enabled && _code.isNotEmpty ? _shareWhatsApp : null,
+                  onPressed: _enabled && _code.isNotEmpty
+                      ? _shareWhatsApp
+                      : null,
                   icon: const Icon(Icons.share_rounded),
                   label: const Text('مشاركة'),
                 ),
@@ -277,15 +274,10 @@ class _ReferralScreenState extends State<ReferralScreen> {
   Widget _stats() {
     return Row(
       children: [
-        Expanded(
-          child: _stat('الدعوات', _intValue(_state?['invites_count'])),
-        ),
+        Expanded(child: _stat('الدعوات', _intValue(_state?['invites_count']))),
         const SizedBox(width: 10),
         Expanded(
-          child: _stat(
-            'مكتملة',
-            _intValue(_state?['rewarded_invites_count']),
-          ),
+          child: _stat('مكتملة', _intValue(_state?['rewarded_invites_count'])),
         ),
       ],
     );
@@ -303,10 +295,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
         children: [
           Text(
             '$value',
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-            ),
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
           ),
           Text(
             label,
@@ -338,10 +327,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
           const SizedBox(height: 5),
           const Text(
             'أضفه قبل أول طلب مكتمل حتى تستفيد من المكافأة.',
-            style: TextStyle(
-              fontSize: 11.5,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -374,10 +360,8 @@ class _ReferralScreenState extends State<ReferralScreen> {
   Widget _terms() {
     final minOrder = _state?['min_first_order_total']?.toString() ?? '0';
     final terms = _state?['terms_text']?.toString() ?? '';
-    final referrerRewards =
-        _state?['referrer_reward_count']?.toString() ?? '0';
-    final referredRewards =
-        _state?['referred_reward_count']?.toString() ?? '0';
+    final referrerRewards = _state?['referrer_reward_count']?.toString() ?? '0';
+    final referredRewards = _state?['referred_reward_count']?.toString() ?? '0';
 
     return Container(
       padding: const EdgeInsets.all(15),
@@ -403,17 +387,13 @@ class _ReferralScreenState extends State<ReferralScreen> {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: success
-            ? const Color(0xFFEAF8EF)
-            : const Color(0xFFFFF3F3),
+        color: success ? const Color(0xFFEAF8EF) : const Color(0xFFFFF3F3),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
         text,
         style: TextStyle(
-          color: success
-              ? const Color(0xFF176B37)
-              : AppColors.primaryDark,
+          color: success ? const Color(0xFF176B37) : AppColors.primaryDark,
           fontWeight: FontWeight.w700,
           fontSize: 11.5,
         ),

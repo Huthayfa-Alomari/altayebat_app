@@ -68,10 +68,7 @@ class CustomerSupportService {
     );
   }
 
-  static Future<bool> openWeb(
-    String rawUrl, {
-    required String source,
-  }) async {
+  static Future<bool> openWeb(String rawUrl, {required String source}) async {
     final uri = Uri.tryParse(rawUrl.trim());
     if (uri == null || !uri.hasScheme || uri.host.isEmpty) return false;
 

@@ -256,9 +256,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
   Future<void> _openSupport() async {
     await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => SupportScreen(orderId: widget.orderId),
-      ),
+      MaterialPageRoute(builder: (_) => SupportScreen(orderId: widget.orderId)),
     );
   }
 
@@ -469,7 +467,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                       ],
                     ),
                   ],
-                  if ((_order['scheduled_for']?.toString().isNotEmpty ?? false)) ...[
+                  if ((_order['scheduled_for']?.toString().isNotEmpty ??
+                      false)) ...[
                     const SizedBox(height: 14),
                     _MessageBox(
                       text: 'هذا الطلب مجدول لموعد محدد من قبلك.',

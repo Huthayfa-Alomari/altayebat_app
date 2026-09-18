@@ -64,20 +64,17 @@ class _AccountScreenState extends State<AccountScreen> {
       (_name?.isNotEmpty ?? false) && (_phone?.isNotEmpty ?? false);
 
   Future<void> _openSupport() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SupportScreen()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SupportScreen()));
   }
 
   Future<void> _openExternal(String url, String source) async {
-    final opened = await CustomerSupportService.openWeb(
-      url,
-      source: source,
-    );
+    final opened = await CustomerSupportService.openWeb(url, source: source);
     if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر فتح الرابط.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تعذر فتح الرابط.')));
     }
   }
 
@@ -101,9 +98,9 @@ class _AccountScreenState extends State<AccountScreen> {
     );
 
     if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر فتح المشاركة.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تعذر فتح المشاركة.')));
     }
   }
 
@@ -171,10 +168,8 @@ class _AccountScreenState extends State<AccountScreen> {
                 icon: Icons.privacy_tip_outlined,
                 title: 'سياسة الخصوصية',
                 subtitle: 'كيف نتعامل مع بياناتك',
-                onTap: () => _openExternal(
-                  _settings.privacyPolicyUrl,
-                  'privacy_policy',
-                ),
+                onTap: () =>
+                    _openExternal(_settings.privacyPolicyUrl, 'privacy_policy'),
               ),
             if (_settings.termsUrl.isNotEmpty)
               _AccountTile(
@@ -259,7 +254,9 @@ class _AccountScreenState extends State<AccountScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _hasProfile ? _name! : 'أهلًا بك في ${_settings.storeName}',
+                        _hasProfile
+                            ? _name!
+                            : 'أهلًا بك في ${_settings.storeName}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(

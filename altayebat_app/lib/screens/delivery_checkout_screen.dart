@@ -378,9 +378,7 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
 
     final time = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.fromDateTime(
-        now.add(const Duration(hours: 1)),
-      ),
+      initialTime: TimeOfDay.fromDateTime(now.add(const Duration(hours: 1))),
       helpText: 'اختر وقت الطلب',
     );
     if (time == null || !mounted) return;
@@ -410,8 +408,7 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
   }
 
   Widget _scheduleCard() {
-    final allowed =
-        _openState?['allow_scheduled_orders_when_closed'] == true;
+    final allowed = _openState?['allow_scheduled_orders_when_closed'] == true;
     if (!allowed) return const SizedBox.shrink();
 
     return Container(
@@ -534,7 +531,8 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
                   if (!open) ...[
                     _StatusBox(
                       success: false,
-                      text: _openState?['allow_scheduled_orders_when_closed'] ==
+                      text:
+                          _openState?['allow_scheduled_orders_when_closed'] ==
                               true
                           ? 'المتجر مغلق الآن، ويمكنك جدولة الطلب لموعد ضمن ساعات العمل.'
                           : 'المتجر لا يستقبل طلبات الآن.',
@@ -590,7 +588,8 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
                               ? 'Visa / Mastercard عبر PayTabs'
                               : 'غير مفعّل حاليًا',
                           enabled:
-                              _cardPaymentReady && !_settings.maintenancePayments,
+                              _cardPaymentReady &&
+                              !_settings.maintenancePayments,
                           onChanged: (value) =>
                               setState(() => _paymentMethod = value),
                         ),

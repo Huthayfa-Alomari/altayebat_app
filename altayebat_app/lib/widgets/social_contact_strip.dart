@@ -81,8 +81,10 @@ class SocialContactStrip extends StatelessWidget {
       provider: 'instagram',
     );
 
-    final whatsappPhone =
-        settings.whatsappNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    final whatsappPhone = settings.whatsappNumber.replaceAll(
+      RegExp(r'[^0-9]'),
+      '',
+    );
     if (settings.featureWhatsapp &&
         settings.whatsappEnabled &&
         whatsappPhone.isNotEmpty) {
@@ -95,11 +97,7 @@ class SocialContactStrip extends StatelessWidget {
           label: 'واتساب',
           foregroundColor: const Color(0xFF128C7E),
           backgroundColor: const Color(0xFFECFBF5),
-          onTap: () => _open(
-            context,
-            uri: whatsappUri,
-            provider: 'whatsapp',
-          ),
+          onTap: () => _open(context, uri: whatsappUri, provider: 'whatsapp'),
         ),
       );
     }

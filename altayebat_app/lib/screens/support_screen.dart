@@ -65,9 +65,9 @@ class _SupportScreenState extends State<SupportScreen> {
   }
 
   void _show(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -187,10 +187,7 @@ class _SupportAction extends StatelessWidget {
           backgroundColor: AppColors.primary.withValues(alpha: 0.08),
           child: Icon(icon, color: AppColors.primary),
         ),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w900),
-        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.chevron_left_rounded),
       ),

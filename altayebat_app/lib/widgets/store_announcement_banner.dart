@@ -20,20 +20,16 @@ class StoreAnnouncementBanner extends StatelessWidget {
 
     final (background, foreground, icon) = switch (settings.announcementStyle) {
       'sale' => (
-          AppColors.primary.withValues(alpha: 0.08),
-          AppColors.primaryDark,
-          Icons.local_offer_outlined,
-        ),
+        AppColors.primary.withValues(alpha: 0.08),
+        AppColors.primaryDark,
+        Icons.local_offer_outlined,
+      ),
       'warning' => (
-          const Color(0xFFFFF4E5),
-          const Color(0xFF8A4B08),
-          Icons.warning_amber_rounded,
-        ),
-      _ => (
-          AppColors.skySoft,
-          AppColors.skyBlueDark,
-          Icons.campaign_outlined,
-        ),
+        const Color(0xFFFFF4E5),
+        const Color(0xFF8A4B08),
+        Icons.warning_amber_rounded,
+      ),
+      _ => (AppColors.skySoft, AppColors.skyBlueDark, Icons.campaign_outlined),
     };
 
     return Container(

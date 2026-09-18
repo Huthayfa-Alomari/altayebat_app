@@ -44,11 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _brandMark() {
     final logo = _settings.logoUrl.trim();
     if (logo.isEmpty) {
-      return Icon(
-        Icons.storefront_rounded,
-        color: _brandColor,
-        size: 30,
-      );
+      return Icon(Icons.storefront_rounded, color: _brandColor, size: 30);
     }
 
     return ClipRRect(
@@ -58,11 +54,8 @@ class _HomeScreenState extends State<HomeScreen> {
         width: 34,
         height: 34,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Icon(
-          Icons.storefront_rounded,
-          color: _brandColor,
-          size: 30,
-        ),
+        errorBuilder: (_, __, ___) =>
+            Icon(Icons.storefront_rounded, color: _brandColor, size: 30),
       ),
     );
   }
