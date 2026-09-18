@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
 import '../services/store_settings_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/social_contact_strip.dart';
 import '../widgets/sponsored_ad_strip.dart';
 import '../widgets/store_announcement_banner.dart';
 import 'account_screen.dart';
@@ -85,7 +84,6 @@ class _StorefrontRootScreenState extends State<StorefrontRootScreen>
                   _settings.statusMessage.isNotEmpty)
                 _StoreStatusStrip(settings: _settings),
               if (_settings.featureAds) const SponsoredAdStrip(),
-              SocialContactStrip(settings: _settings),
             ],
           ],
         ),
