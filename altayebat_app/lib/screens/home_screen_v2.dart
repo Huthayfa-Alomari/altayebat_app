@@ -13,6 +13,7 @@ import '../services/store_settings_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/call_fab.dart';
 import '../widgets/product_card.dart';
+import '../widgets/social_contact_strip.dart';
 import 'account_screen.dart';
 import 'cart_screen.dart';
 import 'notifications_screen.dart';
@@ -393,6 +394,8 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
       if (showDiscovery) SliverToBoxAdapter(child: _householdBanner()),
+      if (showDiscovery)
+        SliverToBoxAdapter(child: SocialContactStrip(settings: _settings)),
       SliverToBoxAdapter(child: _pagingFooter()),
       const SliverToBoxAdapter(child: SizedBox(height: 18)),
     ];
