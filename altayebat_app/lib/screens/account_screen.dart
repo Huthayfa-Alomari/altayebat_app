@@ -168,10 +168,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 icon: Icons.language_rounded,
                 title: 'الموقع الإلكتروني',
                 subtitle: 'افتح موقع المتجر',
-                onTap: () => _openExternal(
-                  _settings.websiteUrl,
-                  'website',
-                ),
+                onTap: () => _openExternal(_settings.websiteUrl, 'website'),
               ),
             if (_settings.privacyPolicyUrl.isNotEmpty)
               _AccountTile(

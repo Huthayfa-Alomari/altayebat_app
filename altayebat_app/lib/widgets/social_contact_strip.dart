@@ -112,8 +112,7 @@ class SocialContactStrip extends StatelessWidget {
       provider: 'tiktok',
     );
     add(
-      enabled:
-          settings.googleMapsEnabled && settings.googleMapsUrl.isNotEmpty,
+      enabled: settings.googleMapsEnabled && settings.googleMapsUrl.isNotEmpty,
       value: settings.googleMapsUrl,
       icon: Icons.location_on_rounded,
       label: 'الموقع',
