@@ -426,7 +426,7 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
                           : _resendOtp,
                       child: Text(
                         _resendSeconds > 0
-                            ? 'إعادة الإرسال بعد ${_resendSeconds}ث'
+                            ? 'إعادة الإرسال بعد $_resendSecondsث'
                             : 'إرسال الرمز مرة ثانية',
                       ),
                     ),
