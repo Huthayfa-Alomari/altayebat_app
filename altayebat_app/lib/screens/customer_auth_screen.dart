@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -25,6 +27,8 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
   bool _loadingProfile = true;
   bool _profileComplete = false;
   bool _otpSent = false;
+  int _resendSeconds = 0;
+  Timer? _resendTimer;
   String _pendingName = '';
   String _pendingPhone = '';
   String? _error;
@@ -73,6 +77,7 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
 
   @override
   void dispose() {
+    _resendTimer?.cancel();
     _nameController.dispose();
     _phoneController.dispose();
     _otpController.dispose();
@@ -110,6 +115,7 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
         _saving = false;
         _otpSent = true;
       });
+      _startResendCooldown();
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -172,8 +178,27 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
     }
   }
 
+  void _startResendCooldown([int seconds = 60]) {
+    _resendTimer?.cancel();
+    if (!mounted) return;
+    setState(() => _resendSeconds = seconds);
+
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_resendSeconds <= 1) {
+        timer.cancel();
+        setState(() => _resendSeconds = 0);
+        return;
+      }
+      setState(() => _resendSeconds -= 1);
+    });
+  }
+
   Future<void> _resendOtp() async {
-    if (_saving || _pendingPhone.isEmpty) return;
+    if (_saving || _pendingPhone.isEmpty || _resendSeconds > 0) return;
     setState(() {
       _saving = true;
       _error = null;
@@ -185,6 +210,7 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
       );
       if (!mounted) return;
       setState(() => _saving = false);
+      _startResendCooldown();
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('تم إرسال رمز جديد')));
@@ -359,6 +385,7 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
                   textAlign: TextAlign.center,
                   textDirection: TextDirection.ltr,
                   keyboardType: TextInputType.number,
+                  autofillHints: const [AutofillHints.oneTimeCode],
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
                     LengthLimitingTextInputFormatter(6),
@@ -394,8 +421,14 @@ class _CustomerAuthScreenState extends State<CustomerAuthScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     TextButton(
-                      onPressed: _saving ? null : _resendOtp,
-                      child: const Text('إرسال الرمز مرة ثانية'),
+                      onPressed: _saving || _resendSeconds > 0
+                          ? null
+                          : _resendOtp,
+                      child: Text(
+                        _resendSeconds > 0
+                            ? 'إعادة الإرسال بعد ${_resendSeconds}ث'
+                            : 'إرسال الرمز مرة ثانية',
+                      ),
                     ),
                     TextButton(
                       onPressed: _saving ? null : _changeNumber,
