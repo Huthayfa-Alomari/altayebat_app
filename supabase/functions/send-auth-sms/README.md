@@ -19,7 +19,7 @@ This function only sends the OTP through the configured SMS provider.
 
 ## Required Edge Function secrets
 
-- `SEND_SMS_HOOK_SECRET` — the secret generated for the Supabase Authentication > Hooks > Send SMS hook.
+- `SEND_SMS_HOOK_SECRET` — the secret generated for the Supabase Authentication > Hooks > Send SMS hook. Multiple secrets can be separated with `|` during rotation.
 - `SMS_PROVIDER_URL` — provider REST endpoint.
 
 ## Recommended secrets
@@ -62,6 +62,7 @@ Use `SMS_PROVIDER_HEADERS_JSON`, for example:
 
 - `SMS_PROVIDER_BODY_FORMAT=json` (default)
 - `SMS_PROVIDER_BODY_FORMAT=form`
+- `SMS_PROVIDER_BODY_FORMAT=query` for providers that expect query-string parameters
 
 ## Activation
 
