@@ -83,8 +83,9 @@ function buildProviderPayload(context: RenderContext): Record<string, unknown> {
   };
 }
 
-function buildProviderHeaders(contentType: string): Headers {
-  const headers = new Headers({ "content-type": contentType });
+function buildProviderHeaders(contentType?: string): Headers {
+  const headers = new Headers();
+  if (contentType) headers.set("content-type", contentType);
 
   const rawHeaders = Deno.env.get("SMS_PROVIDER_HEADERS_JSON")?.trim();
   if (rawHeaders) {
@@ -125,21 +126,28 @@ Deno.serve(async (req: Request) => {
   let phoneForLog = "unknown";
 
   try {
-    const hookSecret = requireEnv("SEND_SMS_HOOK_SECRET").replace(
-      /^v1,whsec_/,
-      "",
-    );
+    const hookSecrets = requireEnv("SEND_SMS_HOOK_SECRET")
+      .split("|")
+      .map((secret) => secret.trim().replace(/^v1,whsec_/, ""))
+      .filter(Boolean);
 
     const rawBody = await req.text();
-    const webhook = new Webhook(hookSecret);
+    const requestHeaders = Object.fromEntries(req.headers.entries());
 
-    let event: HookEvent;
-    try {
-      event = webhook.verify(
-        rawBody,
-        Object.fromEntries(req.headers.entries()),
-      ) as HookEvent;
-    } catch {
+    let event: HookEvent | null = null;
+    for (const hookSecret of hookSecrets) {
+      try {
+        event = new Webhook(hookSecret).verify(
+          rawBody,
+          requestHeaders,
+        ) as HookEvent;
+        break;
+      } catch {
+        // Try the next secret to support safe hook-secret rotation.
+      }
+    }
+
+    if (!event) {
       return json({ error: "Invalid webhook signature" }, 401);
     }
 
@@ -185,17 +193,31 @@ Deno.serve(async (req: Request) => {
     const method = Deno.env.get("SMS_PROVIDER_METHOD")?.trim().toUpperCase() || "POST";
 
     const contentType =
-      bodyFormat === "form"
-        ? "application/x-www-form-urlencoded"
-        : "application/json";
+      bodyFormat === "query"
+        ? undefined
+        : bodyFormat === "form"
+          ? "application/x-www-form-urlencoded"
+          : "application/json";
 
     const headers = buildProviderHeaders(contentType);
-    const body =
-      bodyFormat === "form"
-        ? formBody(payload).toString()
-        : JSON.stringify(payload);
 
-    const response = await fetch(providerUrl, {
+    let requestUrl = providerUrl;
+    let body: BodyInit | undefined;
+
+    if (bodyFormat === "query") {
+      const url = new URL(providerUrl);
+      const params = formBody(payload);
+      for (const [key, value] of params.entries()) {
+        url.searchParams.set(key, value);
+      }
+      requestUrl = url.toString();
+    } else if (bodyFormat === "form") {
+      body = formBody(payload).toString();
+    } else {
+      body = JSON.stringify(payload);
+    }
+
+    const response = await fetch(requestUrl, {
       method,
       headers,
       body,
