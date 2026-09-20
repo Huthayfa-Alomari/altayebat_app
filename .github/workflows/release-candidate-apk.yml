@@ -60,6 +60,7 @@ jobs:
           storeFile=altayebat-release.jks
           EOF
             echo "SIGNING_MODE=production" >> "$GITHUB_ENV"
+            echo "CAN_BUILD_PLAY_AAB=true" >> "$GITHUB_ENV"
           else
             STORE_PASSWORD="$(openssl rand -hex 24)"
             KEY_PASSWORD="$STORE_PASSWORD"
@@ -74,12 +75,14 @@ jobs:
           storeFile=altayebat-release-candidate.jks
           EOF
             echo "SIGNING_MODE=temporary-rc" >> "$GITHUB_ENV"
+            echo "CAN_BUILD_PLAY_AAB=false" >> "$GITHUB_ENV"
           fi
 
       - name: Build optimized release APK
         run: flutter build apk --release
 
       - name: Build Play Store AAB
+        if: env.CAN_BUILD_PLAY_AAB == 'true'
         run: flutter build appbundle --release
 
       - name: Verify Android release outputs
@@ -87,15 +90,18 @@ jobs:
         run: |
           set -euo pipefail
           APK="build/app/outputs/flutter-apk/app-release.apk"
-          AAB="build/app/outputs/bundle/release/app-release.aab"
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -n "$APKSIGNER"
           test -f "$APK"
-          test -f "$AAB"
           "$APKSIGNER" verify --verbose --print-certs "$APK"
-          jarsigner -verify "$AAB"
           sha256sum "$APK" | tee build/app/outputs/flutter-apk/app-release.apk.sha256
-          sha256sum "$AAB" | tee build/app/outputs/bundle/release/app-release.aab.sha256
+
+          if [[ "$CAN_BUILD_PLAY_AAB" == "true" ]]; then
+            AAB="build/app/outputs/bundle/release/app-release.aab"
+            test -f "$AAB"
+            jarsigner -verify "$AAB"
+            sha256sum "$AAB" | tee build/app/outputs/bundle/release/app-release.aab.sha256
+          fi
           printf '%s\n' "$SIGNING_MODE" > build/SIGNING_MODE.txt
           printf '%s\n' "$GITHUB_SHA" > build/SOURCE_COMMIT.txt
           echo "Signing mode: $SIGNING_MODE"
@@ -106,8 +112,10 @@ jobs:
           set -euo pipefail
           cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/Altayebat-0.2.0-rc.apk
           cp build/app/outputs/flutter-apk/app-release.apk.sha256 build/app/outputs/flutter-apk/Altayebat-0.2.0-rc.apk.sha256
-          cp build/app/outputs/bundle/release/app-release.aab build/app/outputs/bundle/release/Altayebat-0.2.0-rc.aab
-          cp build/app/outputs/bundle/release/app-release.aab.sha256 build/app/outputs/bundle/release/Altayebat-0.2.0-rc.aab.sha256
+          if [[ "$CAN_BUILD_PLAY_AAB" == "true" ]]; then
+            cp build/app/outputs/bundle/release/app-release.aab build/app/outputs/bundle/release/Altayebat-0.2.0-play.aab
+            cp build/app/outputs/bundle/release/app-release.aab.sha256 build/app/outputs/bundle/release/Altayebat-0.2.0-play.aab.sha256
+          fi
 
       - name: Upload Android release artifacts
         uses: actions/upload-artifact@v7
@@ -116,8 +124,6 @@ jobs:
           path: |
             altayebat_app/build/app/outputs/flutter-apk/Altayebat-0.2.0-rc.apk
             altayebat_app/build/app/outputs/flutter-apk/Altayebat-0.2.0-rc.apk.sha256
-            altayebat_app/build/app/outputs/bundle/release/Altayebat-0.2.0-rc.aab
-            altayebat_app/build/app/outputs/bundle/release/Altayebat-0.2.0-rc.aab.sha256
             altayebat_app/build/SIGNING_MODE.txt
             altayebat_app/build/SOURCE_COMMIT.txt
           if-no-files-found: error
