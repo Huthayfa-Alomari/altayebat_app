@@ -16,11 +16,13 @@ class AppConfig {
     defaultValue: '61e6f35d-7004-4a33-948c-b297ba446678',
   );
 
-  // Firebase client configuration is safe to ship in the app. Server-side
-  // credentials (service account/private key) remain in Supabase secrets only.
+  // Firebase client configuration is public at runtime, but the API key is
+  // injected at build time so it can be rotated/restricted without embedding a
+  // credential-like literal in the public Git repository.
+  // Server-side credentials (service account/private key) remain in Supabase
+  // secrets only.
   static const String firebaseApiKey = String.fromEnvironment(
     'FIREBASE_API_KEY',
-    defaultValue: 'AIzaSyAPOX8BX3FOPaZ4oaYzpRC54-QGkz2SrsA',
   );
   static const String firebaseProjectId = String.fromEnvironment(
     'FIREBASE_PROJECT_ID',
