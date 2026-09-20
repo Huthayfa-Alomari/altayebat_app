@@ -11,6 +11,10 @@ type Item = {
   quantity?: number;
   unit_price?: number | string;
   subtotal?: number | string;
+  sale_type?: string | null;
+  base_unit?: string | null;
+  inventory_scale?: number | string | null;
+  display_unit_price?: number | string | null;
 };
 
 type Invoice = {
@@ -50,6 +54,35 @@ function num(v: unknown) {
 
 function money(v: unknown) {
   return `${num(v).toFixed(2)} د.أ`;
+}
+
+function quantityLabel(item: Item) {
+  const quantity = num(item.quantity);
+  if ((item.sale_type || "piece") === "piece") {
+    return `${quantity.toLocaleString("ar-JO")} قطعة`;
+  }
+
+  const scale = Math.max(1, num(item.inventory_scale) || 1000);
+  const isWeight = item.sale_type === "weight";
+  if (quantity < scale) {
+    return `${quantity.toLocaleString("ar-JO")} ${isWeight ? "غ" : "مل"}`;
+  }
+
+  return `${(quantity / scale).toLocaleString("ar-JO", {
+    maximumFractionDigits: 3,
+  })} ${isWeight ? "كغ" : "لتر"}`;
+}
+
+function unitPriceLabel(item: Item) {
+  if ((item.sale_type || "piece") === "piece") return money(item.unit_price);
+
+  const scale = Math.max(1, num(item.inventory_scale) || 1000);
+  const displayPrice =
+    item.display_unit_price === null || item.display_unit_price === undefined
+      ? num(item.unit_price) * scale
+      : num(item.display_unit_price);
+
+  return `${money(displayPrice)} / ${item.sale_type === "weight" ? "كغ" : "لتر"}`;
 }
 
 function dateTime(value?: string | null) {
@@ -171,7 +204,7 @@ export default function InvoiceDetailsPage() {
     "—";
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4" dir="rtl">
+    <div className="mx-auto max-w-4xl space-y-4 print:max-w-none print:space-y-0" dir="rtl">
       <div className="print:hidden flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-xl font-bold">الإيصال الإلكتروني</h1>
@@ -223,7 +256,7 @@ export default function InvoiceDetailsPage() {
         </div>
       )}
 
-      <article className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm print:border-0 print:shadow-none">
+      <article className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none">
         <div className="flex flex-col gap-5 border-b border-gray-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xl font-black text-gray-900">{invoice.store_name || "أسواق الطيبات"}</p>
@@ -260,8 +293,8 @@ export default function InvoiceDetailsPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto py-5">
-          <table className="w-full min-w-[620px] text-right text-sm">
+        <div className="overflow-x-auto py-5 print:overflow-visible">
+          <table className="w-full min-w-[620px] text-right text-sm print:min-w-0">
             <thead className="bg-gray-50 text-xs text-gray-500">
               <tr>
                 <th className="px-3 py-2.5">الصنف</th>
@@ -274,8 +307,8 @@ export default function InvoiceDetailsPage() {
               {(invoice.items || []).map((item, idx) => (
                 <tr key={item.id || `${item.product_id}-${idx}`} className="border-b border-gray-100">
                   <td className="px-3 py-3 font-medium">{item.name || "منتج"}</td>
-                  <td className="px-3 py-3">{item.quantity ?? 0}</td>
-                  <td className="px-3 py-3">{money(item.unit_price)}</td>
+                  <td className="px-3 py-3">{quantityLabel(item)}</td>
+                  <td className="px-3 py-3">{unitPriceLabel(item)}</td>
                   <td className="px-3 py-3 font-semibold">{money(item.subtotal)}</td>
                 </tr>
               ))}
