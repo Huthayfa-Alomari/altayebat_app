@@ -27,9 +27,9 @@ export default async function DashboardLayout({
   const { storeName } = await requireAdminStore();
 
   return (
-    <div className="min-h-screen bg-gray-50 lg:flex">
+    <div className="min-h-screen bg-gray-50 print:block print:bg-white lg:flex">
       <OrderDeviceNotifier />
-      <aside className="border-b border-gray-200 bg-white p-4 lg:min-h-screen lg:w-56 lg:shrink-0 lg:border-b-0 lg:border-l">
+      <aside className="border-b border-gray-200 bg-white p-4 print:hidden lg:min-h-screen lg:w-56 lg:shrink-0 lg:border-b-0 lg:border-l">
         <div className="flex items-center justify-between gap-4 lg:block">
           <p className="truncate text-sm font-medium text-brand lg:mb-6">
             {storeName}
@@ -55,7 +55,7 @@ export default async function DashboardLayout({
           <LogoutButton />
         </div>
       </aside>
-      <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
+      <main className="min-w-0 flex-1 p-4 print:p-0 sm:p-6">{children}</main>
     </div>
   );
 }
