@@ -255,31 +255,46 @@ export default function OrderDeviceNotifier() {
 
   return (
     <>
-      <div className="fixed bottom-4 left-4 z-[90] flex items-center gap-2 rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
-        <span
-          className={`h-2.5 w-2.5 rounded-full ${
-            realtimeConnected ? "bg-green-500" : "bg-amber-500"
-          }`}
-          title={realtimeConnected ? "الاتصال المباشر يعمل" : "جاري الاتصال"}
-        />
-
-        <button
-          type="button"
-          onClick={() => void activateAlerts()}
-          className={`rounded-lg px-3 py-2 text-xs font-semibold ${
-            enabled
-              ? "bg-green-50 text-green-700"
-              : "bg-red-600 text-white hover:bg-red-700"
+      <div className="fixed bottom-4 left-4 z-[90] print:hidden">
+        <div
+          className={`flex items-center gap-2 border border-gray-200 bg-white shadow-lg ${
+            enabled ? "rounded-full p-1.5" : "rounded-xl p-2"
           }`}
         >
-          {enabled ? "🔔 إشعارات الطلبات مفعّلة" : "🔔 تفعيل إشعارات الطلبات"}
-        </button>
+          <span
+            className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+              realtimeConnected ? "bg-green-500" : "bg-amber-500"
+            }`}
+            title={realtimeConnected ? "الاتصال المباشر يعمل" : "جاري الاتصال"}
+          />
 
-        {permission === "denied" && (
-          <span className="max-w-44 text-[11px] text-red-600">
-            اسمح بالإشعارات من إعدادات المتصفح.
-          </span>
-        )}
+          <button
+            type="button"
+            onClick={() => void activateAlerts()}
+            aria-pressed={enabled}
+            title={enabled ? "إشعارات الطلبات مفعّلة" : "تفعيل إشعارات الطلبات"}
+            className={`font-semibold transition ${
+              enabled
+                ? "grid h-9 w-9 place-items-center rounded-full bg-green-50 text-base text-green-700 hover:bg-green-100"
+                : "rounded-lg bg-red-600 px-3 py-2 text-xs text-white hover:bg-red-700"
+            }`}
+          >
+            {enabled ? (
+              <>
+                <span aria-hidden="true">🔔</span>
+                <span className="sr-only">إشعارات الطلبات مفعّلة</span>
+              </>
+            ) : (
+              "تفعيل إشعارات الطلبات"
+            )}
+          </button>
+
+          {permission === "denied" && (
+            <span className="max-w-44 text-[11px] text-red-600">
+              اسمح بالإشعارات من إعدادات المتصفح.
+            </span>
+          )}
+        </div>
       </div>
 
       {alert && (
