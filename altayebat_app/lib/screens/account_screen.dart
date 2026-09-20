@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../config/app_config.dart';
 import '../services/analytics_service.dart';
 import '../services/customer_support_service.dart';
 import '../services/store_settings_service.dart';
@@ -75,6 +76,58 @@ class _AccountScreenState extends State<AccountScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('تعذر فتح الرابط.')));
+    }
+  }
+
+  Future<void> _requestAccountDeletion() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('سجّل الدخول أولًا لطلب حذف الحساب.')),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('طلب حذف الحساب'),
+        content: const Text(
+          'سنراجع الطلب ونتحقق من الهوية قبل حذف البيانات. قد نحتفظ بسجلات الطلبات أو الفواتير التي يلزم الاحتفاظ بها قانونيًا أو محاسبيًا. هل تريد إرسال الطلب؟',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('إرسال الطلب'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await Supabase.instance.client.rpc(
+        'request_account_deletion',
+        params: {'p_store_id': AppConfig.storeId},
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم تسجيل طلب حذف الحساب. سنتحقق منه ونعالجه.'),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تعذر إرسال طلب الحذف الآن. تواصل مع خدمة العملاء.'),
+        ),
+      );
     }
   }
 
@@ -184,6 +237,13 @@ class _AccountScreenState extends State<AccountScreen> {
                 title: 'الشروط والأحكام',
                 subtitle: 'شروط استخدام التطبيق والطلبات',
                 onTap: () => _openExternal(_settings.termsUrl, 'terms'),
+              ),
+            if (Supabase.instance.client.auth.currentUser != null)
+              _AccountTile(
+                icon: Icons.delete_outline_rounded,
+                title: 'حذف الحساب وبياناتي',
+                subtitle: 'إرسال طلب موثّق لحذف الحساب والبيانات المرتبطة',
+                onTap: _requestAccountDeletion,
               ),
             _AccountTile(
               icon: Icons.delivery_dining_rounded,
