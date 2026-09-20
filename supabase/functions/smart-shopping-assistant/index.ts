@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.112.4";
 
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type"};
-function json(body:unknown,status=200){return Response.json(body,{status,headers:{...cors,"content-type":"application/json"}})}
+function json(body:unknown,status=200,extraHeaders:Record<string,string>={}){return Response.json(body,{status,headers:{...cors,"content-type":"application/json",...extraHeaders}})}
 function cleanTokens(text:string){return [...new Set(text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu," ").split(/\s+/).filter((x)=>x.length>=2))].slice(0,20)}
 function normalizeDigits(text:string){const ar="٠١٢٣٤٥٦٧٨٩",fa="۰۱۲۳۴۵۶۷۸۹";return text.replace(/[٠-٩]/g,(d)=>String(ar.indexOf(d))).replace(/[۰-۹]/g,(d)=>String(fa.indexOf(d)))}
 function budgetFrom(text:string){
@@ -50,8 +50,22 @@ Deno.serve(async(req:Request)=>{
     const {data:store}=await admin.from("stores").select("id,name,is_active").eq("id",storeId).maybeSingle();
     if(!store?.is_active) return json({error:"Store unavailable"},409);
 
-    const {data:reqRow,error:reqErr}=await admin.from("ai_basket_requests").insert({store_id:storeId,customer_id:user.id,prompt,status:"processing",started_at:new Date().toISOString()}).select("id").single();
-    if(reqErr) throw reqErr;
+    const {data:reqId,error:reqErr}=await admin.rpc("begin_ai_basket_request",{
+      p_store_id:storeId,
+      p_customer_id:user.id,
+      p_prompt:prompt,
+    });
+    if(reqErr){
+      const message=String(reqErr.message||"");
+      if(message.includes("AI_RATE_LIMIT_MINUTE")){
+        return json({error:"Too many AI requests",code:"AI_RATE_LIMIT_MINUTE",retry_after_seconds:60},429,{"Retry-After":"60"});
+      }
+      if(message.includes("AI_RATE_LIMIT_HOUR")){
+        return json({error:"Hourly AI request limit reached",code:"AI_RATE_LIMIT_HOUR",retry_after_seconds:3600},429,{"Retry-After":"3600"});
+      }
+      throw reqErr;
+    }
+    const reqRow={id:String(reqId)};
 
     const {data:products,error:pErr}=await admin.from("products").select("id,name,description,price,image_url,stock_qty,is_available,category_id,sale_type,base_unit,inventory_scale,price_per_unit,min_qty,qty_step,allow_amount_purchase").eq("store_id",storeId).eq("is_available",true).gt("stock_qty",0).order("name").limit(180);
     if(pErr) throw pErr;
