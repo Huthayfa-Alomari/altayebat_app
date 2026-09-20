@@ -31,6 +31,27 @@ function stepFor(item: Item) {
   return item.sale_type_snapshot === "piece" ? 1 : 50;
 }
 
+function errorText(cause: unknown) {
+  if (cause instanceof Error) return cause.message;
+  if (typeof cause === "string") return cause;
+
+  if (cause && typeof cause === "object") {
+    const value = cause as Record<string, unknown>;
+    const parts = [value.message, value.details, value.hint]
+      .filter((part): part is string => typeof part === "string" && part.trim().length > 0);
+
+    if (parts.length) return [...new Set(parts)].join(" — ");
+
+    try {
+      return JSON.stringify(cause);
+    } catch {
+      return "تعذر تحديث الطلب.";
+    }
+  }
+
+  return "تعذر تحديث الطلب.";
+}
+
 export default function OrderItemsEditor({
   orderId,
   items,
@@ -132,13 +153,21 @@ export default function OrderItemsEditor({
       );
       router.refresh();
     } catch (cause) {
-      const text = cause instanceof Error ? cause.message : String(cause);
+      const text = errorText(cause);
       if (text.includes("ORDER_LOCKED_FOR_ADJUSTMENT")) {
         setError("لا يمكن تعديل الطلب بعد خروجه للتوصيل أو بعد التسليم.");
       } else if (text.includes("INSUFFICIENT_STOCK_FOR_ADJUSTMENT")) {
         setError("الكمية الجديدة أكبر من المخزون المتوفر.");
       } else if (text.includes("EMPTY_ORDER_AFTER_ADJUSTMENT")) {
         setError("لا يمكن حذف كل الأصناف؛ ألغِ الطلب بدلًا من ذلك.");
+      } else if (text.includes("PAID_ORDER_INCREASE_NOT_ALLOWED")) {
+        setError("لا يمكن زيادة قيمة طلب مدفوع. خفّض الكمية فقط أو أنشئ طلبًا إضافيًا.");
+      } else if (text.includes("MIN_QTY_FOR_ADJUSTMENT")) {
+        setError("الكمية الجديدة أقل من الحد الأدنى المسموح لهذا المنتج.");
+      } else if (text.includes("INVALID_QTY_STEP_FOR_ADJUSTMENT")) {
+        setError("الكمية الجديدة لا تطابق خطوة البيع المسموحة لهذا المنتج.");
+      } else if (text.includes("FORBIDDEN")) {
+        setError("ليس لديك صلاحية تعديل هذا الطلب.");
       } else {
         setError(text);
       }
