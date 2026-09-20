@@ -141,7 +141,6 @@ begin
 
   elsif v_action = 'start' then
     if v_order.status::text = 'out_for_delivery' then
-      -- Idempotent refresh/retry.
       null;
     elsif v_order.status::text <> 'preparing' then
       raise exception 'ORDER_NOT_READY_FOR_DELIVERY' using errcode = '22023';

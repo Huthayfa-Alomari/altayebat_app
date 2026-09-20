@@ -1,7 +1,3 @@
--- Extend the existing end-offer action so it also cancels a scheduled offer.
-
-begin;
-
 create or replace function public.admin_end_product_offer(p_offer_id uuid)
 returns void
 language plpgsql
@@ -46,5 +42,3 @@ $$;
 
 revoke all on function public.admin_end_product_offer(uuid) from public, anon;
 grant execute on function public.admin_end_product_offer(uuid) to authenticated;
-
-commit;

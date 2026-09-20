@@ -22,8 +22,10 @@ create index if not exists app_events_entity_idx
   on public.app_events(store_id, entity_type, entity_id, event_name, created_at desc);
 
 alter table public.app_events enable row level security;
+
 revoke all on table public.app_events from public, anon;
-grant insert, select on table public.app_events to authenticated;
+grant insert on table public.app_events to authenticated;
+grant select on table public.app_events to authenticated;
 
 drop policy if exists "Customers insert own app events" on public.app_events;
 create policy "Customers insert own app events"

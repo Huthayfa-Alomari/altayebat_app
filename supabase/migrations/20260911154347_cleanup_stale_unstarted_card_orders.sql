@@ -1,7 +1,3 @@
--- Automatically release inventory reserved by abandoned card checkouts that
--- never received a PayTabs transaction reference.
--- Applied to production as migration 20260911154347.
-
 create or replace function private.cleanup_stale_unstarted_card_orders(
   p_stale_after interval default interval '30 minutes',
   p_batch_size integer default 50
@@ -74,8 +70,6 @@ $$;
 revoke all on function private.cleanup_stale_unstarted_card_orders(interval, integer)
   from public;
 
--- Reuse the existing payment operations job (every 10 minutes) rather than
--- creating another cron worker.
 create or replace function private.run_ops_payments()
 returns void
 language plpgsql

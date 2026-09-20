@@ -1,11 +1,4 @@
--- Final low-risk production readiness performance cleanup.
--- 1) Cover the drivers.approved_by foreign key.
--- 2) Avoid per-row auth.uid() re-evaluation in the app_events INSERT RLS policy.
-
-begin;
-
-create index if not exists drivers_approved_by_idx
-  on public.drivers(approved_by);
+create index if not exists drivers_approved_by_idx on public.drivers(approved_by);
 
 drop policy if exists "Customers insert own app events" on public.app_events;
 create policy "Customers insert own app events"
@@ -21,5 +14,3 @@ with check (
       and s.is_active = true
   )
 );
-
-commit;

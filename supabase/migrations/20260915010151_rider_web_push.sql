@@ -21,8 +21,6 @@ create index if not exists rider_push_tokens_store_idx
 
 alter table public.rider_push_tokens enable row level security;
 
--- No direct Data API access is required. Registration/removal goes through
--- SECURITY DEFINER RPCs and dispatch happens through the service role.
 revoke all on public.rider_push_tokens from anon, authenticated;
 grant select, insert, update, delete on public.rider_push_tokens to service_role;
 
@@ -44,11 +42,9 @@ begin
   if v_uid is null then
     raise exception 'AUTH_REQUIRED' using errcode = '42501';
   end if;
-
   if length(v_token) < 20 or length(v_token) > 4096 then
     raise exception 'INVALID_PUSH_TOKEN' using errcode = '22023';
   end if;
-
   if v_platform not in ('web', 'android', 'ios') then
     raise exception 'INVALID_PUSH_PLATFORM' using errcode = '22023';
   end if;

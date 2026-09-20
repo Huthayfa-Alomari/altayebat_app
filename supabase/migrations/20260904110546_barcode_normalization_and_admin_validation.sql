@@ -1,6 +1,4 @@
--- Applied live to Altayebat-MultiStore on 2026-09-04.
--- Barcode normalization + exact customer lookup + admin duplicate validation.
--- Does not touch checkout, payments, PayTabs, stock deduction, or callbacks.
+-- Normalize and harden supermarket barcodes without changing checkout/PayTabs flows.
 
 update public.products
 set barcode = nullif(btrim(barcode), '')
@@ -22,6 +20,8 @@ create trigger trg_products_normalize_barcode
 before insert or update of barcode on public.products
 for each row execute function private.normalize_product_barcode();
 
+-- Existing unique index already protected store_id + barcode. Recreate after normalization
+-- so its contract is explicit and stable for repository migrations.
 drop index if exists public.uq_products_store_barcode;
 create unique index uq_products_store_barcode
 on public.products(store_id, barcode)
@@ -95,9 +95,7 @@ begin
     );
   end if;
 
-  return jsonb_build_object(
-    'valid',true,'available',true,'reason','AVAILABLE','barcode',v_barcode
-  );
+  return jsonb_build_object('valid',true,'available',true,'reason','AVAILABLE','barcode',v_barcode);
 end;
 $$;
 

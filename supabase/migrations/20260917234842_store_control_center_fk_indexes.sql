@@ -11,4 +11,3 @@
       on public.referrals(referrer_customer_id, store_id);
     create index if not exists store_public_settings_updated_by_idx
       on public.store_public_settings(updated_by) where updated_by is not null;
-  

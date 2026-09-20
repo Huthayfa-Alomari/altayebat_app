@@ -1,5 +1,3 @@
--- Keep rider presence aligned with delivery assignments immediately.
-
 create or replace function private.sync_rider_presence_from_order()
 returns trigger
 language plpgsql

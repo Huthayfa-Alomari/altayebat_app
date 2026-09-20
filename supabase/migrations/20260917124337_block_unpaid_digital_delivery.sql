@@ -1,8 +1,3 @@
--- Prevent store admins from dispatching/delivering unpaid digital-payment orders.
--- Rider flows already enforce this rule; this closes the equivalent admin RPC path.
-
-begin;
-
 create or replace function private.admin_update_order_status_impl(
   p_order_id uuid,
   p_store_id uuid,
@@ -58,9 +53,6 @@ begin
     raise exception 'Order status is terminal' using errcode = '22023';
   end if;
 
-  -- Card and CliQ orders must be positively confirmed before leaving the store.
-  -- Check both dispatch and delivery so legacy/inconsistent records cannot bypass
-  -- the guard by already being in out_for_delivery.
   if p_new_status in ('out_for_delivery', 'delivered')
      and v_order.payment_method in ('card', 'cliq')
      and coalesce(v_order.payment_status, '') <> 'paid' then
@@ -109,5 +101,3 @@ revoke execute on function private.admin_update_order_status_impl(uuid, uuid, te
   from public, anon;
 grant execute on function private.admin_update_order_status_impl(uuid, uuid, text)
   to authenticated, service_role;
-
-commit;

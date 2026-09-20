@@ -1,10 +1,3 @@
--- Make automatic loyalty reward redemption safe for order inserts/cancellations.
--- The previous BEFORE INSERT function cannot write an event referencing the new
--- order until the order row exists, so we mark the order in BEFORE INSERT and
--- write the audit event in AFTER INSERT. Cancelled orders restore the reward.
-
-begin;
-
 alter table public.orders
   add column if not exists loyalty_reward_applied boolean not null default false,
   add column if not exists loyalty_savings numeric(12,3) not null default 0;
@@ -176,5 +169,3 @@ revoke all on function private.trg_log_loyalty_redemption()
   from public, anon, authenticated;
 revoke all on function private.trg_restore_cancelled_loyalty_reward()
   from public, anon, authenticated;
-
-commit;
