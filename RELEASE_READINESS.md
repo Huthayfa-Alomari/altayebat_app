@@ -1,11 +1,13 @@
 # Altayebat Release Readiness
 
-Updated: 2026-09-17
+Updated: 2026-09-20
 
-## Production code status
+## Production code and database status
 
-- [x] `main` contains the current customer, admin, rider, offers, loyalty, delivery, payment and AI work.
-- [x] AI shopping assistant is exposed from the customer app main navigation.
+- [x] Core Supabase schema is reproducible from Git. The baseline migration `20260822012530_initial_schema.sql` defines the original stores, categories, products, customers, addresses, drivers, orders, order_items, driver_locations, store_admins and call_requests tables.
+- [x] Production migration drift is synchronized back into `supabase/migrations/`, including the GTIN bulk-import and account-deletion workflow migrations created on 2026-09-20.
+- [x] Obsolete tracked backup/archive files and one-off driver patch packages are removed from source control. Root ZIP files and backup/patch scratch directories are ignored.
+- [x] Smart Shopping Assistant is authenticated and rate-limited atomically in PostgreSQL before any OpenRouter/Groq request: 6 requests/minute and 60 requests/hour per customer. Limit responses use HTTP 429 and `Retry-After`.
 - [x] AI assistant uses authenticated Supabase Edge Function access and only recommends live catalog products.
 - [x] OpenRouter is the primary AI provider, Groq is the fallback, and deterministic catalog fallback remains available.
 - [x] AI budget parsing distinguishes party-size numbers from budget/currency amounts and supports Arabic-Indic digits.
@@ -14,28 +16,36 @@ Updated: 2026-09-17
 - [x] Order status mutations flow through the hardened RPC state machine.
 - [x] Offer campaigns, scheduled cancellation, loyalty rewards and free-delivery reward safety are present in production.
 - [x] Delivery radius/address snapshot and rider workflow are present in production.
-- [x] Performance cleanup applied for driver approval lookup and app-event RLS auth evaluation.
-- [x] Android compile/target SDK is pinned to API 36 for current Google Play submission requirements.
-- [x] CI quality checks cover Flutter format/analyze/test, customer Android builds, SUNMI builds, and admin typecheck/build/audit.
-- [x] Release workflow builds and verifies APK and Play Store AAB artifacts.
+- [x] Android compile/target SDK is pinned to API 36.
+- [x] Android release builds fail closed when permanent signing material is missing.
+- [x] A dedicated `Android Play Release` workflow requires permanent upload-key secrets, runs quality checks, builds the AAB, and verifies its signature with `jarsigner`.
+- [x] Public privacy-policy and account-deletion routes exist in the web application: `/privacy` and `/account-deletion`.
+- [x] Google Play Data Safety mapping is documented in `docs/GOOGLE_PLAY_DATA_SAFETY.md`.
+- [x] Admin GTIN/EAN CSV import is implemented with EAN-8 / UPC-A / EAN-13 / GTIN-14 checksum validation, duplicate checks, dry-run validation and fail-closed atomic application.
+- [x] Performance cleanup removes the duplicate AI customer/time index and adds the missing account-deletion customer FK index.
 
 ## External / operator-owned launch requirements
 
-- [ ] Configure a permanent Android production signing key / Play App Signing credentials in GitHub Actions. Do **not** publish a build signed by the temporary release-candidate key.
+These items require private credentials, a third-party console action, or real source-of-truth product data. They must not be fabricated or committed to Git.
+
+- [ ] Generate or select the permanent Google Play upload key, then configure these GitHub Actions secrets:
   - `ANDROID_RELEASE_KEYSTORE_BASE64`
   - `ANDROID_RELEASE_STORE_PASSWORD`
   - `ANDROID_RELEASE_KEY_ALIAS`
   - `ANDROID_RELEASE_KEY_PASSWORD`
-- [ ] Publish a public privacy-policy URL and complete Google Play Data Safety declarations for the app's customer/order/location/notification data usage.
-- [ ] Run one real in-app AI request after installing the latest app and verify `ai_basket_requests.result.provider` is `openrouter:<model>` to prove the newly configured OpenRouter secret works upstream.
-- [ ] Import real GTIN/EAN barcodes from packaging, supplier feeds, or the POS. Never fabricate barcodes. The scanner cannot provide useful product lookup until real barcode data exists.
+  - Procedure: `docs/ANDROID_PLAY_SIGNING.md`
+- [ ] Enable/confirm Play App Signing and run the `Android Play Release` workflow successfully with the permanent upload key.
+- [ ] Verify the deployed public URLs for `/privacy` and `/account-deletion`, then enter them in Google Play Console.
+- [ ] Complete the Google Play Data Safety form using `docs/GOOGLE_PLAY_DATA_SAFETY.md`, re-checking the answers against the exact production build.
+- [ ] Import real GTIN/EAN values from packaging, supplier feeds, or the POS. Production currently has 683 products and 0 populated product barcodes. Never fabricate or infer GTIN values.
+- [ ] Run one real in-app AI request after installing the latest release candidate and verify `ai_basket_requests.result.provider` is `openrouter:<model>` to prove the configured OpenRouter secret works upstream.
 - [ ] Review/replace reused catalog images and fill optional content gaps (descriptions / English names) as merchandising polish.
 - [ ] Confirm delivery zones and active rider capacity match the actual launch coverage.
 
 ## Known historical data note
 
-A historical card order was found with `status = delivered` while `payment_status = pending`. Current admin and rider paths now block that state from being created. The historical row was deliberately left unchanged because payment history must not be rewritten without gateway evidence.
+A historical card order was found with `status = delivered` while `payment_status = pending`. Current admin and rider paths block that state from being created. The historical row remains unchanged because payment history must not be rewritten without gateway evidence.
 
 ## Release rule
 
-A release candidate generated with the workflow fallback key is for installation/testing only. Store publication requires the permanent production signing credentials above.
+Never publish a debug-signed or temporary-key AAB. Store publication requires the permanent upload key and a successful `Android Play Release` workflow. Real GTIN values must come from an authoritative product source.

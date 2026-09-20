@@ -16,3 +16,7 @@ altayebat_app/android/build/
 # Never commit generated/archive bundles at repository root.
 /*.zip
 /_*backup*/
+
+# Generic local backup scratch directory.
+/_backup/
+/_patches/
