@@ -29,7 +29,7 @@ jobs:
 
           failed=0
           for pattern in "${patterns[@]}"; do
-            if git grep -nE "$pattern" -- altayebat_app/lib Admin/src supabase/functions; then
+            if git grep -nE -e "$pattern" -- altayebat_app/lib Admin/src supabase/functions; then
               failed=1
             fi
           done
