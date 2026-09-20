@@ -81,6 +81,18 @@ class SmartShoppingService {
       body: {'store_id': AppConfig.storeId, 'prompt': normalized},
     );
 
+    if (response.status == 429) {
+      final data = response.data;
+      if (data is Map && data['code'] == 'AI_RATE_LIMIT_HOUR') {
+        throw StateError(
+          'وصلت للحد المؤقت للمساعد الذكي. جرّب لاحقًا خلال الساعة.',
+        );
+      }
+      throw StateError(
+        'أرسلت طلبات كثيرة بسرعة. انتظر دقيقة ثم جرّب مرة ثانية.',
+      );
+    }
+
     if (response.status < 200 || response.status >= 300) {
       throw StateError('تعذر تجهيز الاقتراحات الآن. حاول مرة ثانية.');
     }
