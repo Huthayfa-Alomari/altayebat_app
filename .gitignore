@@ -12,3 +12,7 @@
 /catalog_*.jpg
 
 altayebat_app/android/build/
+
+# Never commit generated/archive bundles at repository root.
+/*.zip
+/_*backup*/
