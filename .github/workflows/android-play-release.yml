@@ -1,0 +1,82 @@
+name: Android Play Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-play-aab:
+    name: Build permanently signed Play AAB
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: altayebat_app
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.4"
+          channel: stable
+          cache: true
+
+      - name: Require permanent upload-key secrets
+        shell: bash
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "${RELEASE_KEYSTORE_BASE64:-}" || { echo "Missing ANDROID_RELEASE_KEYSTORE_BASE64"; exit 1; }
+          test -n "${RELEASE_STORE_PASSWORD:-}" || { echo "Missing ANDROID_RELEASE_STORE_PASSWORD"; exit 1; }
+          test -n "${RELEASE_KEY_ALIAS:-}" || { echo "Missing ANDROID_RELEASE_KEY_ALIAS"; exit 1; }
+          test -n "${RELEASE_KEY_PASSWORD:-}" || { echo "Missing ANDROID_RELEASE_KEY_PASSWORD"; exit 1; }
+
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > android/app/altayebat-release.jks
+          cat > android/key.properties <<EOF
+          storePassword=$RELEASE_STORE_PASSWORD
+          keyPassword=$RELEASE_KEY_PASSWORD
+          keyAlias=$RELEASE_KEY_ALIAS
+          storeFile=altayebat-release.jks
+          EOF
+
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+
+      - name: Verify source quality
+        run: |
+          dart format --output=none --set-exit-if-changed lib test
+          flutter analyze
+          flutter test
+
+      - name: Build Play Store AAB
+        run: flutter build appbundle --release
+
+      - name: Verify signed AAB
+        shell: bash
+        run: |
+          set -euo pipefail
+          AAB="build/app/outputs/bundle/release/app-release.aab"
+          test -f "$AAB"
+          jarsigner -verify "$AAB"
+          sha256sum "$AAB" | tee "$AAB.sha256"
+          cp "$AAB" build/app/outputs/bundle/release/Altayebat-0.2.0-play.aab
+          cp "$AAB.sha256" build/app/outputs/bundle/release/Altayebat-0.2.0-play.aab.sha256
+          printf '%s\n' "$GITHUB_SHA" > build/SOURCE_COMMIT.txt
+
+      - name: Upload Play artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: Altayebat-0.2.0-play-aab
+          path: |
+            altayebat_app/build/app/outputs/bundle/release/Altayebat-0.2.0-play.aab
+            altayebat_app/build/app/outputs/bundle/release/Altayebat-0.2.0-play.aab.sha256
+            altayebat_app/build/SOURCE_COMMIT.txt
+          if-no-files-found: error
+          retention-days: 14
