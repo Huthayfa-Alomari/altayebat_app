@@ -3,6 +3,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BarcodeField } from "@/components/products/barcode-field";
+import { BarcodeBulkImport } from "@/components/products/barcode-bulk-import";
 import { validateAdminBarcode } from "@/lib/barcode";
 import { createClient } from "@/lib/supabase/client";
 
@@ -11,6 +12,8 @@ type SaleType = "piece" | "weight" | "volume";
 type Product = {
   id: string;
   name: string;
+  sku: string | null;
+  barcode: string | null;
   price: number;
   price_per_unit: number | null;
   stock_qty: number;
@@ -546,6 +549,16 @@ export default function ProductsManager({
 
   return (
     <div className="space-y-6">
+      <BarcodeBulkImport
+        storeId={storeId}
+        products={initialProducts.map((product) => ({
+          id: product.id,
+          name: product.name,
+          sku: product.sku,
+          barcode: product.barcode,
+        }))}
+      />
+
       <form
         id="quick-barcode-form"
         onSubmit={handleQuickBarcodeSearch}
