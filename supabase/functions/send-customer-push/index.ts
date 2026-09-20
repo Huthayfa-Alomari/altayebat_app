@@ -97,7 +97,8 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
 
       const inboxData = stringData(inboxRow?.data);
-      const isAdjustment = inboxData.kind === "order_adjusted";
+      const adjustmentKinds = new Set(["order_adjusted", "order_adjustment"]);
+      const isAdjustment = adjustmentKinds.has(inboxData.kind);
 
       target = {
         title: isAdjustment ? String(inboxRow?.title || "تم تعديل طلبك") : statusText[0],
@@ -106,9 +107,9 @@ Deno.serve(async (req: Request) => {
         customerId: order.customer_id,
         data: isAdjustment
           ? {
+              ...inboxData,
               kind: "order_adjusted",
               order_id: order.id,
-              ...inboxData,
               ...(inboxRow?.id ? { notification_id: inboxRow.id } : {}),
             }
           : {
