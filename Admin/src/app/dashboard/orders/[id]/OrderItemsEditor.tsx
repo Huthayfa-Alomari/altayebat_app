@@ -71,6 +71,7 @@ export default function OrderItemsEditor({
   const [reason, setReason] = useState("تعديل بسبب عدم توفر صنف أو كمية في المول");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<"success" | "warning">("success");
   const [error, setError] = useState<string | null>(null);
 
   const changed = items.some((item) => {
@@ -127,6 +128,7 @@ export default function OrderItemsEditor({
 
     setBusy(true);
     setMessage(null);
+    setMessageTone("success");
     setError(null);
     try {
       const { data, error: rpcError } = await supabase.rpc("admin_adjust_order_items", {
@@ -136,20 +138,45 @@ export default function OrderItemsEditor({
       });
       if (rpcError) throw rpcError;
 
+      let pushState: "sent" | "no_tokens" | "failed" = "failed";
       try {
-        await supabase.functions.invoke("send-customer-push", {
-          body: { order_id: orderId },
-        });
+        const { data: pushData, error: pushError } = await supabase.functions.invoke(
+          "send-customer-push",
+          { body: { order_id: orderId } },
+        );
+
+        if (!pushError && pushData && typeof pushData === "object") {
+          const payload = pushData as {
+            sent?: number;
+            failed?: number;
+            reason?: string;
+          };
+          if (Number(payload.sent || 0) > 0) {
+            pushState = "sent";
+          } else if (payload.reason === "no_tokens") {
+            pushState = "no_tokens";
+          }
+        }
       } catch {
-        // The durable in-app notification already exists; push is best effort.
+        pushState = "failed";
       }
 
       const result = (data || {}) as { new_total?: number; refund_amount?: number };
       const refund = Number(result.refund_amount || 0);
+      const totalText = Number(result.new_total || 0).toFixed(2);
+
+      const deliveryText =
+        pushState === "sent"
+          ? " وتم إرسال إشعار فوري للزبون."
+          : pushState === "no_tokens"
+            ? " وتم حفظ إشعار داخل التطبيق، لكن لا يوجد جهاز مسجل حاليًا لاستقبال Push."
+            : " وتم حفظ إشعار داخل التطبيق، لكن تعذر تأكيد إرسال Push الآن.";
+
+      setMessageTone(pushState === "sent" ? "success" : "warning");
       setMessage(
         refund > 0
-          ? `تم تحديث الطلب وإبلاغ الزبون. المجموع الجديد ${Number(result.new_total || 0).toFixed(2)} د.أ. يلزم مراجعة رد ${refund.toFixed(2)} د.أ للبطاقة.`
-          : `تم تحديث الطلب وإبلاغ الزبون. المجموع الجديد ${Number(result.new_total || 0).toFixed(2)} د.أ.`,
+          ? `تم تحديث الطلب. المجموع الجديد ${totalText} د.أ. يلزم مراجعة رد ${refund.toFixed(2)} د.أ للبطاقة.${deliveryText}`
+          : `تم تحديث الطلب. المجموع الجديد ${totalText} د.أ.${deliveryText}`,
       );
       router.refresh();
     } catch (cause) {
@@ -266,7 +293,17 @@ export default function OrderItemsEditor({
       </label>
 
       {error ? <div className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
-      {message ? <div className="mt-3 rounded-xl bg-green-50 p-3 text-sm text-green-700">{message}</div> : null}
+      {message ? (
+        <div
+          className={`mt-3 rounded-xl p-3 text-sm ${
+            messageTone === "success"
+              ? "bg-green-50 text-green-700"
+              : "bg-amber-50 text-amber-800"
+          }`}
+        >
+          {message}
+        </div>
+      ) : null}
 
       <div className="mt-4 flex justify-end">
         <button
