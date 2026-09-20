@@ -23,11 +23,13 @@ Updated: 2026-09-20
 - [x] Google Play Data Safety mapping is documented in `docs/GOOGLE_PLAY_DATA_SAFETY.md`.
 - [x] Admin GTIN/EAN CSV import is implemented with EAN-8 / UPC-A / EAN-13 / GTIN-14 checksum validation, duplicate checks, dry-run validation and fail-closed atomic application.
 - [x] Performance cleanup removes the duplicate AI customer/time index and adds the missing account-deletion customer FK index.
+- [x] No Firebase/Google API key literal is embedded in Flutter source; release builds receive `FIREBASE_API_KEY` through build-time configuration, and CI rejects credential-like literals in application source.
 
 ## External / operator-owned launch requirements
 
 These items require private credentials, a third-party console action, or real source-of-truth product data. They must not be fabricated or committed to Git.
 
+- [ ] Revoke/rotate the previously exposed Firebase/Google client API key in Google Cloud/Firebase, restrict the replacement key to the intended application/API surface, and add the replacement as GitHub Actions secret `FIREBASE_API_KEY`.
 - [ ] Generate or select the permanent Google Play upload key, then configure these GitHub Actions secrets:
   - `ANDROID_RELEASE_KEYSTORE_BASE64`
   - `ANDROID_RELEASE_STORE_PASSWORD`

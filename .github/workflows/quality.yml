@@ -2,7 +2,7 @@ name: Quality Checks
 
 on:
   push:
-    branches: [main, chatgpt-production-upgrade, chatgpt-weighted-sunmi]
+    branches: [main, chatgpt-production-upgrade]
   pull_request:
     branches: [main]
 
@@ -10,6 +10,35 @@ permissions:
   contents: read
 
 jobs:
+  security:
+    name: Reject embedded credential literals
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Scan client/server source for high-risk credential literals
+        shell: bash
+        run: |
+          set -euo pipefail
+          patterns=(
+            'AIza[0-9A-Za-z_-]{30,}'
+            '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'
+            'sb_secret_[0-9A-Za-z._-]{16,}'
+            'ghp_[0-9A-Za-z]{20,}'
+            'github_pat_[0-9A-Za-z_]{20,}'
+          )
+
+          failed=0
+          for pattern in "${patterns[@]}"; do
+            if git grep -nE -e "$pattern" -- altayebat_app/lib Admin/src supabase/functions; then
+              failed=1
+            fi
+          done
+
+          if [ "$failed" -ne 0 ]; then
+            echo "::error::Credential-like literal detected in source. Inject it via environment/secrets instead."
+            exit 1
+          fi
+
   flutter:
     name: Flutter analyze, test and Android builds
     runs-on: ubuntu-latest

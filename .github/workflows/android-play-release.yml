@@ -31,12 +31,14 @@ jobs:
           RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
         run: |
           set -euo pipefail
           test -n "${RELEASE_KEYSTORE_BASE64:-}" || { echo "Missing ANDROID_RELEASE_KEYSTORE_BASE64"; exit 1; }
           test -n "${RELEASE_STORE_PASSWORD:-}" || { echo "Missing ANDROID_RELEASE_STORE_PASSWORD"; exit 1; }
           test -n "${RELEASE_KEY_ALIAS:-}" || { echo "Missing ANDROID_RELEASE_KEY_ALIAS"; exit 1; }
           test -n "${RELEASE_KEY_PASSWORD:-}" || { echo "Missing ANDROID_RELEASE_KEY_PASSWORD"; exit 1; }
+          test -n "${FIREBASE_API_KEY:-}" || { echo "Missing FIREBASE_API_KEY"; exit 1; }
 
           echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > android/app/altayebat-release.jks
           cat > android/key.properties <<EOF
@@ -56,7 +58,9 @@ jobs:
           flutter test
 
       - name: Build Play Store AAB
-        run: flutter build appbundle --release
+        env:
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+        run: flutter build appbundle --release --dart-define=FIREBASE_API_KEY="$FIREBASE_API_KEY"
 
       - name: Verify signed AAB
         shell: bash

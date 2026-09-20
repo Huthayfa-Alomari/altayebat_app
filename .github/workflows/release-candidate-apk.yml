@@ -79,11 +79,15 @@ jobs:
           fi
 
       - name: Build optimized release APK
-        run: flutter build apk --release
+        env:
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+        run: flutter build apk --release --dart-define=FIREBASE_API_KEY="$FIREBASE_API_KEY"
 
       - name: Build Play Store AAB
         if: env.CAN_BUILD_PLAY_AAB == 'true'
-        run: flutter build appbundle --release
+        env:
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+        run: flutter build appbundle --release --dart-define=FIREBASE_API_KEY="$FIREBASE_API_KEY"
 
       - name: Verify Android release outputs
         shell: bash
