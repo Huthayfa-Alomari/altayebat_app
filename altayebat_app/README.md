@@ -16,7 +16,8 @@
 flutter run \
   --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
   --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_YOUR_KEY \
-  --dart-define=STORE_ID=YOUR_STORE_UUID
+  --dart-define=STORE_ID=YOUR_STORE_UUID \
+  --dart-define=FIREBASE_API_KEY=YOUR_RESTRICTED_FIREBASE_CLIENT_KEY
 ```
 
 يمكن بناء Android بنفس القيم:
@@ -25,10 +26,17 @@ flutter run \
 flutter build appbundle --release \
   --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
   --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_YOUR_KEY \
-  --dart-define=STORE_ID=YOUR_STORE_UUID
+  --dart-define=STORE_ID=YOUR_STORE_UUID \
+  --dart-define=FIREBASE_API_KEY=YOUR_RESTRICTED_FIREBASE_CLIENT_KEY
 ```
 
 > لا تضع `service_role` أو أي Secret Key داخل تطبيق Flutter. المفتاح المسموح للعميل هو Supabase Publishable Key فقط، والحماية الفعلية تتم عبر RLS وسياسات قاعدة البيانات.
+
+### Firebase client configuration
+
+لا يوجد Firebase API key ثابت داخل Git. مرّر `FIREBASE_API_KEY` عبر `--dart-define` محليًا، وعبر GitHub Actions secret باسم `FIREBASE_API_KEY` في نسخ Release.
+
+مفتاح Firebase الخاص بالعميل يظهر داخل التطبيق النهائي بطبيعته، لذلك الحماية الأساسية هي **التقييد والقدرة على التدوير**: استخدم مفتاحًا مخصصًا للتطبيق، قيّده في Google Cloud/Firebase قدر الإمكان، ولا تستخدم أي service-account credential أو private key داخل Flutter.
 
 ## قاعدة البيانات
 
