@@ -649,11 +649,7 @@ class _HomeScreenState extends State<HomeScreen> {
           gradient: const LinearGradient(
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
-            colors: [
-              Color(0xFFFFEEF1),
-              Colors.white,
-              Color(0xFFEAF5FF),
-            ],
+            colors: [Color(0xFFFFEEF1), Colors.white, Color(0xFFEAF5FF)],
           ),
           border: Border.all(color: const Color(0xFFE8EEF5)),
           boxShadow: [
@@ -827,10 +823,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: const Text(
                     'عرض الكل',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                    ),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
                   ),
                 ),
               ],
@@ -892,7 +885,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 color: selected
                                     ? const Color(0xFFFFF2F4)
                                     : AppColors.skySoft,
-                                child: category?.imageUrl?.trim().isNotEmpty ==
+                                child:
+                                    category?.imageUrl?.trim().isNotEmpty ==
                                         true
                                     ? Image.network(
                                         category!.imageUrl!,
