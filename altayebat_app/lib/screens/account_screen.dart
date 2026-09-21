@@ -346,9 +346,7 @@ class _AccountScreenState extends State<AccountScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _hasProfile
-                            ? _name!
-                            : 'أنت تتصفح كضيف',
+                        _hasProfile ? _name! : 'أنت تتصفح كضيف',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
