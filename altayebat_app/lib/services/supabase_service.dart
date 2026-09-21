@@ -518,10 +518,7 @@ class SupabaseService {
     try {
       final response = await _client.functions.invoke(
         'create-card-payment',
-        body: {
-          'order_id': orderId,
-          'payment_method': preferredMethod,
-        },
+        body: {'order_id': orderId, 'payment_method': preferredMethod},
       );
 
       final data = response.data;
