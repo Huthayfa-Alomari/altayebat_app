@@ -157,7 +157,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           onPressed: _loading ? null : _signIn,
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size.fromHeight(54),
-                            side: const BorderSide(color: AppColors.skyBlueDark),
+                            side: const BorderSide(
+                              color: AppColors.skyBlueDark,
+                            ),
                             foregroundColor: AppColors.skyBlueDark,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(15),
