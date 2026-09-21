@@ -439,8 +439,9 @@ class _AccountTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent =
-        icon.codePoint.isEven ? AppColors.primary : AppColors.skyBlueDark;
+    final accent = icon.codePoint.isEven
+        ? AppColors.primary
+        : AppColors.skyBlueDark;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
