@@ -373,7 +373,7 @@ class _HomeScreenState extends State<HomeScreen> {
         SliverLayoutBuilder(
           builder: (context, constraints) {
             final columns = constraints.crossAxisExtent >= 600 ? 3 : 2;
-            final baseHeight = columns == 3 ? 292.0 : 278.0;
+            final baseHeight = columns == 3 ? 276.0 : 264.0;
             final adaptiveHeight = baseHeight + ((textScale - 1) * 76);
 
             return SliverPadding(
@@ -639,156 +639,153 @@ class _HomeScreenState extends State<HomeScreen> {
     final offer = !_settings.featureOffers || _offers.isEmpty
         ? null
         : _offers.first;
-    final textScale = MediaQuery.textScalerOf(
-      context,
-    ).scale(1).clamp(1.0, 1.35);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 355;
-          final visualWidth = compact ? 126.0 : 146.0;
-          final baseHeight = compact ? 238.0 : 226.0;
-          final heroHeight = baseHeight + ((textScale - 1) * 58);
-
-          return SizedBox(
-            height: heroHeight,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: const LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [
-                    Color(0xFFFFEEF1),
-                    Color(0xFFFFFFFF),
-                    Color(0xFFE6F4FF),
-                  ],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.skyBlue.withValues(alpha: 0.10),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      left: -38,
-                      top: -42,
-                      child: Container(
-                        width: 145,
-                        height: 145,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.48),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      right: -34,
-                      bottom: -50,
-                      child: Container(
-                        width: 170,
-                        height: 170,
-                        decoration: BoxDecoration(
-                          color: AppColors.skyBlue.withValues(alpha: 0.11),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      right: 10,
-                      top: 18,
-                      bottom: 18,
-                      width: visualWidth,
-                      child: _HeroProductCluster(products: heroProducts),
-                    ),
-                    Positioned(
-                      left: 17,
-                      top: 17,
-                      bottom: 17,
-                      right: visualWidth + 21,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (offer != null) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 9,
-                                vertical: 5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.94),
-                                borderRadius: BorderRadius.circular(99),
-                              ),
-                              child: Text(
-                                'وفر ${offer.discountPercent}% اليوم',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: AppColors.primary,
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 7),
-                          ],
-                          Text(
-                            'كل ما تحتاجه\nلبيتك في مكان واحد',
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: AppColors.navy,
-                              fontSize: compact ? 19.5 : 21,
-                              height: 1.14,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 7),
-                          const Text(
-                            'أسعار واضحة • منتجات مختارة • طلب أسهل',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 11.5,
-                              height: 1.35,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 11),
-                          SizedBox(
-                            height: 48,
-                            child: FilledButton.icon(
-                              onPressed: _shopNow,
-                              icon: const Icon(
-                                Icons.arrow_back_ios_new_rounded,
-                                size: 14,
-                              ),
-                              label: const Text(
-                                'تسوق الآن',
-                                maxLines: 1,
-                                style: TextStyle(fontWeight: FontWeight.w900),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      child: Container(
+        height: 184,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [
+              Color(0xFFFFEEF1),
+              Colors.white,
+              Color(0xFFEAF5FF),
+            ],
+          ),
+          border: Border.all(color: const Color(0xFFE8EEF5)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.navy.withValues(alpha: 0.07),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
             ),
-          );
-        },
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Stack(
+            children: [
+              PositionedDirectional(
+                end: -34,
+                top: -36,
+                child: Container(
+                  width: 126,
+                  height: 126,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.07),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              PositionedDirectional(
+                start: -44,
+                bottom: -52,
+                child: Container(
+                  width: 156,
+                  height: 156,
+                  decoration: BoxDecoration(
+                    color: AppColors.skyBlue.withValues(alpha: 0.10),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              PositionedDirectional(
+                start: 12,
+                top: 18,
+                bottom: 18,
+                width: 132,
+                child: _HeroProductCluster(products: heroProducts),
+              ),
+              PositionedDirectional(
+                end: 16,
+                top: 15,
+                bottom: 15,
+                start: 154,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.92),
+                        borderRadius: BorderRadius.circular(99),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                        ),
+                      ),
+                      child: Text(
+                        offer == null
+                            ? 'تسوق أسرع من الطيبات'
+                            : 'وفر ${offer.discountPercent}% اليوم',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    const Text(
+                      'كل احتياجات البيت\nمرتبة وأسهل للوصول',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppColors.navy,
+                        fontSize: 19,
+                        height: 1.15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'أقسام واضحة • عروض يومية • طلب سريع',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 40,
+                      child: FilledButton.icon(
+                        onPressed: _shopNow,
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                        ),
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          size: 12,
+                        ),
+                        label: const Text(
+                          'تسوق الآن',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -796,42 +793,57 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _categoriesStrip() {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(0, 9, 0, 12),
+      padding: const EdgeInsets.fromLTRB(0, 12, 0, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 14),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Row(
               children: [
-                Text(
+                Container(
+                  width: 4,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
                   'الأقسام',
                   style: TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: 17,
+                    fontSize: 18,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                Spacer(),
-                Text(
-                  'اسحب للمزيد',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
+                const Spacer(),
+                TextButton(
+                  onPressed: () => _selectCategory(null),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.skyBlueDark,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                  child: const Text(
+                    'عرض الكل',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 9),
+          const SizedBox(height: 6),
           SizedBox(
-            height: 92,
+            height: 106,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               scrollDirection: Axis.horizontal,
               itemCount: _categories.length + 1,
-              separatorBuilder: (_, __) => const SizedBox(width: 4),
+              separatorBuilder: (_, __) => const SizedBox(width: 7),
               itemBuilder: (context, index) {
                 final category = index == 0 ? null : _categories[index - 1];
                 final selected = category == null
@@ -840,54 +852,89 @@ class _HomeScreenState extends State<HomeScreen> {
                 final name = category?.name ?? 'الكل';
 
                 return SizedBox(
-                  width: 75,
+                  width: 78,
                   child: Semantics(
                     button: true,
                     selected: selected,
                     label: name,
                     child: InkWell(
                       onTap: () => _selectCategory(category?.id),
-                      borderRadius: BorderRadius.circular(18),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 3),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _categoryMedia(
-                              category: category,
-                              name: name,
-                              size: 52,
-                              selected: selected,
-                              compact: true,
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              name,
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
                                 color: selected
                                     ? AppColors.primary
-                                    : AppColors.textPrimary,
-                                fontSize: 10.7,
-                                fontWeight: selected
-                                    ? FontWeight.w900
-                                    : FontWeight.w700,
+                                    : AppColors.skyBlue.withValues(alpha: 0.18),
+                                width: selected ? 2 : 1,
+                              ),
+                              boxShadow: selected
+                                  ? [
+                                      BoxShadow(
+                                        color: AppColors.primary.withValues(
+                                          alpha: 0.12,
+                                        ),
+                                        blurRadius: 12,
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: ClipOval(
+                              child: Container(
+                                width: 64,
+                                height: 64,
+                                color: selected
+                                    ? const Color(0xFFFFF2F4)
+                                    : AppColors.skySoft,
+                                child: category?.imageUrl?.trim().isNotEmpty ==
+                                        true
+                                    ? Image.network(
+                                        category!.imageUrl!,
+                                        fit: BoxFit.cover,
+                                        gaplessPlayback: true,
+                                        filterQuality: FilterQuality.medium,
+                                        errorBuilder: (_, __, ___) => Icon(
+                                          _categoryIcon(name),
+                                          color: selected
+                                              ? AppColors.primary
+                                              : AppColors.navy,
+                                          size: 30,
+                                        ),
+                                      )
+                                    : Icon(
+                                        _categoryIcon(name),
+                                        color: selected
+                                            ? AppColors.primary
+                                            : AppColors.navy,
+                                        size: 30,
+                                      ),
                               ),
                             ),
-                            const SizedBox(height: 3),
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
-                              width: selected ? 22 : 0,
-                              height: 3,
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                borderRadius: BorderRadius.circular(99),
-                              ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            name,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: selected
+                                  ? AppColors.primary
+                                  : AppColors.textPrimary,
+                              fontSize: 10.5,
+                              height: 1.1,
+                              fontWeight: selected
+                                  ? FontWeight.w900
+                                  : FontWeight.w700,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -901,25 +948,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _categoryShowcase() {
-    const cardColors = [
-      Color(0xFFF4F5F7),
-      Color(0xFFFFF1F3),
-      Color(0xFFEAF6FF),
-      Color(0xFFF1F8EE),
-      Color(0xFFFFF6E7),
-      Color(0xFFF4EEFF),
-    ];
-
-    final visibleCategories = _categories.take(12).toList(growable: false);
+    final visibleCategories = _categories.take(14).toList(growable: false);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 2, 0, 18),
+      padding: const EdgeInsets.fromLTRB(0, 4, 0, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 const Expanded(
                   child: Column(
@@ -929,15 +968,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         'تسوق حسب القسم',
                         style: TextStyle(
                           color: AppColors.textPrimary,
-                          fontSize: 20,
+                          fontSize: 19,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      SizedBox(height: 2),
+                      SizedBox(height: 3),
                       Text(
-                        'صور متحركة وبطاقات واضحة للوصول أسرع للمنتجات',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        'مرر بين الأقسام واختر مباشرة',
                         style: TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 10.5,
@@ -947,89 +984,106 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
-                TextButton(
-                  onPressed: () => _selectCategory(null),
-                  child: const Text(
-                    'عرض الكل',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w900,
-                    ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.skySoft,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.swipe_rounded,
+                        color: AppColors.skyBlueDark,
+                        size: 15,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'اسحب',
+                        style: TextStyle(
+                          color: AppColors.skyBlueDark,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 11),
           SizedBox(
-            height: 176,
-            child: ListView.separated(
+            height: 224,
+            child: GridView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               scrollDirection: Axis.horizontal,
               itemCount: visibleCategories.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisExtent: 118,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+              ),
               itemBuilder: (context, index) {
                 final category = visibleCategories[index];
                 final selected = category.id == _selectedCategoryId;
+                final redTint = index.isEven;
 
-                return SizedBox(
-                  width: 142,
-                  child: Material(
-                    color: cardColors[index % cardColors.length],
-                    borderRadius: BorderRadius.circular(20),
-                    child: InkWell(
-                      onTap: () => _selectCategory(category.id),
-                      borderRadius: BorderRadius.circular(20),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 190),
-                        padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: selected
-                                ? AppColors.primary
-                                : AppColors.border.withValues(alpha: 0.35),
-                            width: selected ? 1.5 : 0.8,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(
-                                0xFF17365B,
-                              ).withValues(alpha: selected ? 0.10 : 0.035),
-                              blurRadius: selected ? 15 : 8,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
+                return Material(
+                  color: redTint
+                      ? const Color(0xFFFFF5F6)
+                      : const Color(0xFFF2F8FF),
+                  borderRadius: BorderRadius.circular(18),
+                  child: InkWell(
+                    onTap: () => _selectCategory(category.id),
+                    borderRadius: BorderRadius.circular(18),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.fromLTRB(9, 8, 9, 8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: selected
+                              ? AppColors.primary
+                              : redTint
+                              ? AppColors.primary.withValues(alpha: 0.08)
+                              : AppColors.skyBlue.withValues(alpha: 0.10),
+                          width: selected ? 1.5 : 1,
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              category.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: selected
-                                    ? AppColors.primaryDark
-                                    : AppColors.textPrimary,
-                                fontSize: 13.2,
-                                height: 1.16,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            const Spacer(),
-                            Align(
-                              alignment: AlignmentDirectional.bottomCenter,
+                      ),
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: Center(
                               child: _categoryMedia(
                                 category: category,
                                 name: category.name,
-                                size: 102,
+                                size: 64,
                                 selected: selected,
                                 compact: false,
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            category.name,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: selected
+                                  ? AppColors.primary
+                                  : AppColors.textPrimary,
+                              fontSize: 10.7,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
