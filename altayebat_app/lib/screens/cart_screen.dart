@@ -161,11 +161,11 @@ class CartScreen extends StatelessWidget {
     );
   }
 
-  Future<bool> _hasCompleteCustomerProfile() async {
+  Future<bool> _hasVerifiedCustomerProfile() async {
     if (!SupabaseService.isSignedIn) return false;
 
     final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return false;
+    if (user == null || user.isAnonymous) return false;
 
     try {
       final row = await Supabase.instance.client
@@ -183,7 +183,7 @@ class CartScreen extends StatelessWidget {
   }
 
   Future<void> _checkout(BuildContext context, CartProvider cart) async {
-    final hasProfile = await _hasCompleteCustomerProfile();
+    final hasProfile = await _hasVerifiedCustomerProfile();
     if (!context.mounted) return;
 
     if (!hasProfile) {
@@ -195,12 +195,12 @@ class CartScreen extends StatelessWidget {
 
       if (authenticated != true || !context.mounted) return;
 
-      final profileNowComplete = await _hasCompleteCustomerProfile();
+      final profileNowComplete = await _hasVerifiedCustomerProfile();
       if (!context.mounted) return;
       if (!profileNowComplete) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('احفظ اسمك ورقم الموبايل قبل إتمام الطلب.'),
+            content: Text('أكد رقم الموبايل بالـ OTP قبل إتمام الطلب.'),
           ),
         );
         return;
