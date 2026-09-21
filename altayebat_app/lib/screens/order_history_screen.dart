@@ -231,8 +231,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                             .toUpperCase();
                         final busy = _busyOrderId == id;
 
-                        final status =
-                            order['status']?.toString() ?? '';
+                        final status = order['status']?.toString() ?? '';
                         final statusColor = _statusColor(status);
 
                         return Container(
