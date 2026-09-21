@@ -47,13 +47,7 @@ export default function ImageEnrichmentManager({ storeId }: { storeId: string })
   const supabaseRef = useRef(createClient());
 
   const count = useCallback(
-    async (
-      configure: (
-        query: ReturnType<
-          ReturnType<typeof createClient>["from"]
-        > extends never ? never : any
-      ) => any,
-    ) => {
+    async (configure: (query: any) => any) => {
       const base = supabaseRef.current
         .from("products")
         .select("id", { count: "exact", head: true })
