@@ -510,6 +510,12 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
         ? Map<String, dynamic>.from(quote!['service'] as Map)
         : const <String, dynamic>{};
 
+    final electronicPaymentSubtitle = _cardPaymentReady
+        ? Theme.of(context).platform == TargetPlatform.iOS
+              ? 'Visa / Mastercard + Apple Pay إذا كان مفعّلًا في PayTabs'
+              : 'Visa / Mastercard والمحافظ المفعّلة عبر PayTabs'
+        : 'غير مفعّل حاليًا';
+
     final canPlaceOrder =
         !_placing &&
         !_loading &&
@@ -584,9 +590,7 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
                           groupValue: _paymentMethod,
                           icon: Icons.credit_card_rounded,
                           title: 'الدفع الإلكتروني',
-                          subtitle: _cardPaymentReady
-                              ? 'Visa / Mastercard والمحافظ المفعّلة عبر PayTabs'
-                              : 'غير مفعّل حاليًا',
+                          subtitle: electronicPaymentSubtitle,
                           enabled:
                               _cardPaymentReady &&
                               !_settings.maintenancePayments,
