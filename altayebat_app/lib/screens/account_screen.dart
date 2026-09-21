@@ -61,8 +61,13 @@ class _AccountScreenState extends State<AccountScreen> {
     }
   }
 
-  bool get _hasProfile =>
-      (_name?.isNotEmpty ?? false) && (_phone?.isNotEmpty ?? false);
+  bool get _hasProfile {
+    final user = Supabase.instance.client.auth.currentUser;
+    return user != null &&
+        !user.isAnonymous &&
+        (_name?.isNotEmpty ?? false) &&
+        (_phone?.isNotEmpty ?? false);
+  }
 
   Future<void> _openSupport() async {
     await Navigator.of(
@@ -81,7 +86,7 @@ class _AccountScreenState extends State<AccountScreen> {
 
   Future<void> _requestAccountDeletion() async {
     final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) {
+    if (user == null || user.isAnonymous) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('سجّل الدخول أولًا لطلب حذف الحساب.')),
@@ -249,7 +254,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 subtitle: 'شروط استخدام التطبيق والطلبات',
                 onTap: () => _openExternal(_settings.termsUrl, 'terms'),
               ),
-            if (Supabase.instance.client.auth.currentUser != null)
+            if (Supabase.instance.client.auth.currentUser?.isAnonymous == false)
               _AccountTile(
                 icon: Icons.delete_outline_rounded,
                 title: 'حذف الحساب وبياناتي',
