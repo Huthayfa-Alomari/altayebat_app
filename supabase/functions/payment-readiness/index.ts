@@ -17,6 +17,8 @@ Deno.serve(async (req: Request) => {
 
   const serverKey = Deno.env.get("PAYTABS_SERVER_KEY");
   const profileId = Deno.env.get("PAYTABS_PROFILE_ID");
+  const applePayEnabled =
+    Deno.env.get("PAYTABS_APPLE_PAY_ENABLED")?.toLowerCase() === "true";
   const baseUrl =
     Deno.env.get("PAYTABS_BASE_URL") ||
     "https://secure-jordan.paytabs.com";
@@ -24,6 +26,8 @@ Deno.serve(async (req: Request) => {
   return Response.json(
     {
       card_enabled: Boolean(serverKey && profileId),
+      apple_pay_enabled: Boolean(serverKey && profileId && applePayEnabled),
+      google_pay_enabled: false,
       provider: "paytabs",
       environment: baseUrl.includes("secure-jordan.paytabs.com")
         ? "jordan"
