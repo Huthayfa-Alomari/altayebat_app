@@ -64,6 +64,35 @@ Deno.serve(async (req: Request) => {
 
     const body = await req.json();
     const orderId = body?.order_id;
+    const preferredMethod =
+      typeof body?.payment_method === "string"
+        ? body.payment_method.toLowerCase()
+        : "all";
+    const supportedPreferredMethods = new Set(["all", "applepay"]);
+
+    if (!supportedPreferredMethods.has(preferredMethod)) {
+      return json(
+        {
+          error: "Unsupported PayTabs payment method",
+          code: "UNSUPPORTED_PAYMENT_METHOD",
+        },
+        400,
+      );
+    }
+
+    if (
+      preferredMethod === "applepay" &&
+      Deno.env.get("PAYTABS_APPLE_PAY_ENABLED")?.toLowerCase() !== "true"
+    ) {
+      return json(
+        {
+          error: "Apple Pay is not enabled",
+          code: "APPLE_PAY_NOT_ENABLED",
+        },
+        409,
+      );
+    }
+
     if (typeof orderId !== "string" || !orderId) {
       return json(
         {
@@ -149,10 +178,9 @@ Deno.serve(async (req: Request) => {
           cart_currency: "JOD",
           cart_amount: Number(order.total),
           paypage_lang: "ar",
-          // Ask PayTabs to render every payment method enabled on this merchant profile.
-          // This keeps the hosted checkout ready for Apple Pay and any future
-          // wallet PayTabs activates for the Jordan profile without app changes.
-          payment_methods: ["all"],
+          // "all" shows every method enabled on the merchant profile. For a
+          // dedicated Apple Pay checkout we ask PayTabs for applepay only.
+          payment_methods: [preferredMethod],
           return: returnUrl,
           callback,
           customer_details: {
