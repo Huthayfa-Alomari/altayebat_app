@@ -169,7 +169,12 @@ class _AccountScreenState extends State<AccountScreen> {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
           children: [
             _profileCard(),
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
+            const _AccountSectionTitle(
+              title: 'التسوق والحساب',
+              icon: Icons.shopping_bag_outlined,
+            ),
+            const SizedBox(height: 10),
             _AccountTile(
               icon: Icons.receipt_long_outlined,
               title: 'طلباتي',
@@ -204,6 +209,12 @@ class _AccountScreenState extends State<AccountScreen> {
                   MaterialPageRoute(builder: (_) => const ReferralScreen()),
                 ),
               ),
+            const SizedBox(height: 10),
+            const _AccountSectionTitle(
+              title: 'المساعدة والتطبيق',
+              icon: Icons.support_agent_outlined,
+            ),
+            const SizedBox(height: 10),
             _AccountTile(
               icon: Icons.support_agent_rounded,
               title: 'خدمة العملاء',
@@ -291,9 +302,20 @@ class _AccountScreenState extends State<AccountScreen> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        gradient: const LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [Color(0xFFFFF3F5), Colors.white, Color(0xFFF0F8FF)],
+        ),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.navy.withValues(alpha: 0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 7),
+          ),
+        ],
       ),
       child: _loading
           ? const SizedBox(
@@ -305,9 +327,12 @@ class _AccountScreenState extends State<AccountScreen> {
                 Container(
                   width: 58,
                   height: 58,
-                  decoration: const BoxDecoration(
-                    color: AppColors.skySoft,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.14),
+                    ),
                   ),
                   child: const Icon(
                     Icons.person_outline_rounded,
@@ -365,6 +390,40 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 }
 
+class _AccountSectionTitle extends StatelessWidget {
+  final String title;
+  final IconData icon;
+
+  const _AccountSectionTitle({required this.title, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 20,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(99),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Icon(icon, color: AppColors.skyBlueDark, size: 18),
+        const SizedBox(width: 6),
+        Text(
+          title,
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _AccountTile extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -380,6 +439,10 @@ class _AccountTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accent = icon.codePoint.isEven
+        ? AppColors.primary
+        : AppColors.skyBlueDark;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
@@ -400,10 +463,10 @@ class _AccountTile extends StatelessWidget {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: AppColors.softSurface,
+                    color: accent.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, color: AppColors.primary, size: 22),
+                  child: Icon(icon, color: accent, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

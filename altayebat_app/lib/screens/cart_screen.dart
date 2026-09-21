@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/cart_item.dart';
 import '../providers/cart_provider.dart';
 import '../services/supabase_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/measured_product_sheet.dart';
 import '../widgets/store_open_banner.dart';
 import 'barcode_scanner_screen.dart';
@@ -23,6 +24,7 @@ class CartScreen extends StatelessWidget {
     final subtotal = cart.total;
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('السلة')),
       body: Column(
         children: [
@@ -61,76 +63,97 @@ class CartScreen extends StatelessWidget {
           : SafeArea(
               top: false,
               child: Material(
-                color: theme.colorScheme.surface,
-                elevation: 14,
+                color: Colors.white,
+                elevation: 16,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'الإجمالي',
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '$totalLines ${totalLines == 1 ? 'صنف' : 'أصناف'}',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            '${subtotal.toStringAsFixed(2)} د.أ',
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topRight,
+                        end: Alignment.bottomLeft,
+                        colors: [
+                          Color(0xFFFFF5F6),
+                          Colors.white,
+                          Color(0xFFF2F8FF),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      Align(
-                        alignment: AlignmentDirectional.centerStart,
-                        child: Text(
-                          'رسوم التوصيل والسعر النهائي تُحسب حسب موقعك قبل تأكيد الطلب.',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontSize: 11,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'ملخص السلة',
+                                    style: TextStyle(
+                                      color: AppColors.navy,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    '$totalLines ${totalLines == 1 ? 'صنف' : 'أصناف'}',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              '${subtotal.toStringAsFixed(2)} د.أ',
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 23,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 7),
+                        const Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            'رسوم التوصيل والسعر النهائي تظهر قبل تأكيد الطلب.',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: () => _checkout(context, cart),
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size.fromHeight(56),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () => _checkout(context, cart),
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size.fromHeight(52),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              textStyle: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
-                            textStyle: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w900,
-                            ),
+                            icon: const Icon(Icons.arrow_back_rounded),
+                            label: const Text('متابعة لإتمام الطلب'),
                           ),
-                          icon: const Icon(Icons.arrow_back_rounded),
-                          label: const Text('متابعة لإتمام الطلب'),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -287,9 +310,16 @@ class _CartLineCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: theme.colorScheme.outlineVariant),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.navy.withValues(alpha: 0.04),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
+            ),
+          ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -459,20 +489,18 @@ class _QuantityControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Container(
-      height: 48,
+      height: 44,
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary,
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(13),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
             width: 48,
-            height: 48,
+            height: 44,
             child: IconButton(
               tooltip: quantity <= 1 ? 'إزالة من السلة' : 'تقليل الكمية',
               padding: EdgeInsets.zero,
@@ -500,7 +528,7 @@ class _QuantityControl extends StatelessWidget {
           ),
           SizedBox(
             width: 48,
-            height: 48,
+            height: 44,
             child: IconButton(
               tooltip: canIncrement ? 'زيادة الكمية' : 'وصلت للكمية المتوفرة',
               padding: EdgeInsets.zero,
@@ -531,10 +559,21 @@ class _EmptyCart extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.shopping_cart_outlined,
-              size: 62,
-              color: Color(0xFF9CA3AF),
+            Container(
+              width: 92,
+              height: 92,
+              decoration: BoxDecoration(
+                color: AppColors.skySoft,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.skyBlue.withValues(alpha: 0.15),
+                ),
+              ),
+              child: const Icon(
+                Icons.shopping_cart_outlined,
+                size: 44,
+                color: AppColors.primary,
+              ),
             ),
             const SizedBox(height: 12),
             const Text(
