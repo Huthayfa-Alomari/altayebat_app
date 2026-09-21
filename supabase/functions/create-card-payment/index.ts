@@ -149,6 +149,10 @@ Deno.serve(async (req: Request) => {
           cart_currency: "JOD",
           cart_amount: Number(order.total),
           paypage_lang: "ar",
+          // Ask PayTabs to render every payment method enabled on this merchant profile.
+          // This keeps the hosted checkout ready for Apple Pay and any future
+          // wallet PayTabs activates for the Jordan profile without app changes.
+          payment_methods: ["all"],
           return: returnUrl,
           callback,
           customer_details: {

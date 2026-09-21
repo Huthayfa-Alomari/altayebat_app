@@ -330,7 +330,7 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
           if (cancelled) {
             setState(() {
               _error =
-                  'تعذر بدء الدفع بالبطاقة، لذلك أُلغي الطلب وأُعيد المخزون تلقائيًا. جرّب مرة ثانية.';
+                  'تعذر بدء الدفع الإلكتروني، لذلك أُلغي الطلب وأُعيد المخزون تلقائيًا. جرّب مرة ثانية.';
             });
             return;
           }
@@ -583,9 +583,9 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
                           value: 'card',
                           groupValue: _paymentMethod,
                           icon: Icons.credit_card_rounded,
-                          title: 'بطاقة بنكية',
+                          title: 'الدفع الإلكتروني',
                           subtitle: _cardPaymentReady
-                              ? 'Visa / Mastercard عبر PayTabs'
+                              ? 'Visa / Mastercard والمحافظ المفعّلة عبر PayTabs'
                               : 'غير مفعّل حاليًا',
                           enabled:
                               _cardPaymentReady &&

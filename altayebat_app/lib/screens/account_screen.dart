@@ -346,9 +346,7 @@ class _AccountScreenState extends State<AccountScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _hasProfile
-                            ? _name!
-                            : 'أهلًا بك في ${_settings.storeName}',
+                        _hasProfile ? _name! : 'أنت تتصفح كضيف',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -361,7 +359,7 @@ class _AccountScreenState extends State<AccountScreen> {
                       Text(
                         _hasProfile
                             ? _phone!
-                            : 'أكمل بياناتك لتسريع إتمام الطلب',
+                            : 'تصفح وتسوق براحتك، وسنطلب OTP فقط عند إتمام الشراء',
                         style: const TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 11.5,
@@ -373,7 +371,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 const SizedBox(width: 8),
                 FilledButton.tonal(
                   onPressed: _editProfile,
-                  child: Text(_hasProfile ? 'تعديل' : 'إكمال'),
+                  child: Text(_hasProfile ? 'تعديل' : 'تسجيل / دخول'),
                 ),
               ],
             ),
