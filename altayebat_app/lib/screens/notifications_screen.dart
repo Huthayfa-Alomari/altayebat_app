@@ -125,7 +125,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       itemBuilder: (context, index) {
                         final item = _items[index];
                         final unread = item['read_at'] == null;
-                        final accent = item['type']?.toString() == 'order_status'
+                        final accent =
+                            item['type']?.toString() == 'order_status'
                             ? AppColors.skyBlueDark
                             : AppColors.primary;
 
