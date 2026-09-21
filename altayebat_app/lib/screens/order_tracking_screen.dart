@@ -300,7 +300,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   String _paymentMethodLabel() {
     switch (_paymentMethod) {
       case 'card':
-        return 'Visa / Mastercard';
+        return 'دفع إلكتروني عبر PayTabs';
       case 'cliq':
         return 'CliQ';
       case 'cash':
