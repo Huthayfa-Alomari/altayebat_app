@@ -187,6 +187,9 @@ class CartScreen extends StatelessWidget {
     if (!context.mounted) return;
 
     if (!hasProfile) {
+      final wantsToSignIn = await _showCheckoutAuthGate(context);
+      if (wantsToSignIn != true || !context.mounted) return;
+
       final authenticated = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
           builder: (_) => const CustomerAuthScreen(returnAfterSuccess: true),
@@ -242,6 +245,85 @@ class CartScreen extends StatelessWidget {
         ),
       );
     }
+  }
+
+  Future<bool?> _showCheckoutAuthGate(BuildContext context) {
+    return showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: const BoxDecoration(
+                    color: AppColors.skySoft,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.lock_person_outlined,
+                    color: AppColors.skyBlueDark,
+                    size: 31,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'سجّل لإكمال الطلب',
+                  style: TextStyle(
+                    color: AppColors.navy,
+                    fontSize: 21,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                const Text(
+                  'تقدر تتصفح وتعبّي السلة كضيف براحتك. نحتاج رقم الموبايل وOTP فقط عند إتمام الشراء والتوصيل.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    height: 1.55,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => Navigator.of(sheetContext).pop(true),
+                    icon: const Icon(Icons.sms_outlined),
+                    label: const Text('تسجيل / إنشاء حساب بالـ OTP'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(false),
+                    child: const Text('متابعة التصفح كضيف'),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'السلة ستبقى كما هي ولن تضيع بعد تسجيل الدخول.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _editMeasured(

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -33,6 +34,7 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
   Map<String, dynamic>? _quote;
   Map<String, dynamic> _paymentConfig = const {};
   bool _cardPaymentReady = false;
+  bool _applePayReady = false;
   StorePublicSettings _settings = StorePublicSettings.defaults();
   DateTime? _scheduledFor;
 
@@ -68,14 +70,16 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
         SupabaseService.getStoreOpenState(),
         SupabaseService.fetchAddresses(),
         SupabaseService.getStorePaymentConfig(),
-        SupabaseService.isCardPaymentConfigured(),
+        SupabaseService.getPaymentReadiness(),
         StoreSettingsService.load(forceRefresh: true),
       ]);
 
       final openState = results[0] as Map<String, dynamic>;
       final addresses = results[1] as List<CustomerAddress>;
       final paymentConfig = results[2] as Map<String, dynamic>;
-      final cardPaymentReady = results[3] as bool;
+      final paymentReadiness = results[3] as Map<String, dynamic>;
+      final cardPaymentReady = paymentReadiness['card_enabled'] == true;
+      final applePayReady = paymentReadiness['apple_pay_enabled'] == true;
       final settings = results[4] as StorePublicSettings;
 
       CustomerAddress? selected;
@@ -93,6 +97,7 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
         _selectedAddress = selected;
         _paymentConfig = paymentConfig;
         _cardPaymentReady = cardPaymentReady;
+        _applePayReady = applePayReady;
         _settings = settings;
         if (settings.maintenancePayments && _paymentMethod != 'cash') {
           _paymentMethod = 'cash';
@@ -234,6 +239,17 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
     );
   }
 
+  bool get _isIos => defaultTargetPlatform == TargetPlatform.iOS;
+
+  bool get _usesPayTabs =>
+      _paymentMethod == 'card' || _paymentMethod == 'apple_pay';
+
+  String get _backendPaymentMethod =>
+      _paymentMethod == 'apple_pay' ? 'card' : _paymentMethod;
+
+  String get _paytabsPreferredMethod =>
+      _paymentMethod == 'apple_pay' ? 'applepay' : 'all';
+
   Future<void> _placeOrder() async {
     final address = _selectedAddress;
     final quote = _quote;
@@ -273,13 +289,23 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
       return;
     }
 
-    if (_paymentMethod == 'card') {
-      final ready = await SupabaseService.isCardPaymentConfigured();
+    if (_usesPayTabs) {
+      final readiness = await SupabaseService.getPaymentReadiness();
       if (!mounted) return;
-      setState(() => _cardPaymentReady = ready);
 
-      if (!ready) {
-        setState(() => _error = 'الدفع بالبطاقة غير مفعّل حاليًا');
+      final cardReady = readiness['card_enabled'] == true;
+      final applePayReady = readiness['apple_pay_enabled'] == true;
+      setState(() {
+        _cardPaymentReady = cardReady;
+        _applePayReady = applePayReady;
+      });
+
+      if (!cardReady) {
+        setState(() => _error = 'الدفع الإلكتروني غير مفعّل حاليًا');
+        return;
+      }
+      if (_paymentMethod == 'apple_pay' && !applePayReady) {
+        setState(() => _error = 'Apple Pay غير مفعّل حاليًا');
         return;
       }
     }
@@ -293,7 +319,7 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
       final orderId = await SupabaseService.createDeliveryOrder(
         items: widget.items,
         addressId: address.id,
-        paymentMethod: _paymentMethod,
+        paymentMethod: _backendPaymentMethod,
         customerNote: _note.text,
         substitutePolicy: _substitutePolicy,
         scheduledFor: _scheduledFor,
@@ -301,9 +327,12 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
 
       String? paymentWarning;
 
-      if (_paymentMethod == 'card') {
+      if (_usesPayTabs) {
         try {
-          final paymentUrl = await SupabaseService.startCardPayment(orderId);
+          final paymentUrl = await SupabaseService.startCardPayment(
+            orderId,
+            preferredMethod: _paytabsPreferredMethod,
+          );
           final uri = Uri.parse(paymentUrl);
           final opened = await launchUrl(
             uri,
@@ -579,13 +608,28 @@ class _DeliveryCheckoutScreenState extends State<DeliveryCheckoutScreen> {
                           onChanged: (value) =>
                               setState(() => _paymentMethod = value),
                         ),
+                        if (_isIos)
+                          _PaymentOption(
+                            value: 'apple_pay',
+                            groupValue: _paymentMethod,
+                            icon: Icons.phone_iphone_rounded,
+                            title: 'Apple Pay',
+                            subtitle: _applePayReady
+                                ? 'دفع سريع وآمن عبر PayTabs'
+                                : 'غير مفعّل على حساب PayTabs حاليًا',
+                            enabled:
+                                _applePayReady &&
+                                !_settings.maintenancePayments,
+                            onChanged: (value) =>
+                                setState(() => _paymentMethod = value),
+                          ),
                         _PaymentOption(
                           value: 'card',
                           groupValue: _paymentMethod,
                           icon: Icons.credit_card_rounded,
-                          title: 'الدفع الإلكتروني',
+                          title: 'بطاقة بنكية',
                           subtitle: _cardPaymentReady
-                              ? 'Visa / Mastercard والمحافظ المفعّلة عبر PayTabs'
+                              ? 'Visa / Mastercard • عبر PayTabs'
                               : 'غير مفعّل حاليًا',
                           enabled:
                               _cardPaymentReady &&
