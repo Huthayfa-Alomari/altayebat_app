@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/cart_item.dart';
 import '../providers/cart_provider.dart';
 import '../services/growth_service.dart';
+import '../theme/app_theme.dart';
 import 'cart_screen.dart';
 import 'order_tracking_screen.dart';
 
@@ -60,6 +61,23 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         return 'ملغي';
       default:
         return value;
+    }
+  }
+
+  Color _statusColor(String value) {
+    switch (value) {
+      case 'pending':
+        return const Color(0xFFE58A00);
+      case 'preparing':
+        return AppColors.skyBlueDark;
+      case 'out_for_delivery':
+        return const Color(0xFF6D4BD1);
+      case 'delivered':
+        return AppColors.success;
+      case 'cancelled':
+        return AppColors.primary;
+      default:
+        return AppColors.textSecondary;
     }
   }
 
@@ -157,6 +175,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('طلباتي'), centerTitle: true),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -168,10 +187,21 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                       padding: const EdgeInsets.all(28),
                       children: [
                         const SizedBox(height: 100),
-                        Icon(
-                          Icons.receipt_long_outlined,
-                          size: 58,
-                          color: Theme.of(context).colorScheme.primary,
+                        Container(
+                          width: 92,
+                          height: 92,
+                          decoration: BoxDecoration(
+                            color: AppColors.skySoft,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.skyBlue.withValues(alpha: 0.16),
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.receipt_long_outlined,
+                            size: 44,
+                            color: AppColors.primary,
+                          ),
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -201,10 +231,25 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                             .toUpperCase();
                         final busy = _busyOrderId == id;
 
-                        return Card(
-                          elevation: 0,
+                        final status =
+                            order['status']?.toString() ?? '';
+                        final statusColor = _statusColor(status);
+
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.border),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.navy.withValues(alpha: 0.04),
+                                blurRadius: 14,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
                           child: Padding(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(15),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
@@ -219,15 +264,24 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                         ),
                                       ),
                                     ),
-                                    Text(
-                                      _statusLabel(
-                                        order['status']?.toString() ?? '',
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 9,
+                                        vertical: 6,
                                       ),
-                                      style: TextStyle(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
-                                        fontWeight: FontWeight.w800,
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withValues(
+                                          alpha: 0.09,
+                                        ),
+                                        borderRadius: BorderRadius.circular(99),
+                                      ),
+                                      child: Text(
+                                        _statusLabel(status),
+                                        style: TextStyle(
+                                          color: statusColor,
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w900,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -241,12 +295,33 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                Text(
-                                  '${_number(order['total']).toStringAsFixed(2)} د.أ',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 18,
-                                  ),
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 34,
+                                      height: 34,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.skySoft,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Icon(
+                                        Icons.shopping_bag_outlined,
+                                        color: AppColors.skyBlueDark,
+                                        size: 18,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 9),
+                                    Expanded(
+                                      child: Text(
+                                        '${_number(order['total']).toStringAsFixed(2)} د.أ',
+                                        style: const TextStyle(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 18,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 14),
                                 Row(
