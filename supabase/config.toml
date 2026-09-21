@@ -30,3 +30,6 @@ verify_jwt = true
 
 [functions.smart-shopping-health]
 verify_jwt = true
+
+[functions.enrich-product-images]
+verify_jwt = true
