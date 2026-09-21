@@ -350,9 +350,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return [
       if (_errorMessage != null) SliverToBoxAdapter(child: _errorState()),
-      if (showDiscovery) SliverToBoxAdapter(child: _heroBanner()),
       if (showDiscovery && _categories.isNotEmpty)
         SliverToBoxAdapter(child: _categoriesStrip()),
+      if (showDiscovery) SliverToBoxAdapter(child: _heroBanner()),
+      if (showDiscovery && _categories.isNotEmpty)
+        SliverToBoxAdapter(child: _categoryShowcase()),
       if (showDiscovery && _settings.featureReorder)
         SliverToBoxAdapter(child: _reorderCard()),
       if (showDiscovery && _settings.featureOffers && _offers.isNotEmpty)
@@ -659,9 +661,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
                   colors: [
-                    Color(0xFFDFF1FF),
-                    Color(0xFFF5FBFF),
-                    Color(0xFFDDEEFF),
+                    Color(0xFFFFEEF1),
+                    Color(0xFFFFFFFF),
+                    Color(0xFFE6F4FF),
                   ],
                 ),
                 boxShadow: [
@@ -792,84 +794,306 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _categoriesStrip() {
-    const colors = [
-      Color(0xFFEAF4FF),
-      Color(0xFFFFECEF),
-      Color(0xFFEAF8EF),
-      Color(0xFFFFF4DF),
-      Color(0xFFF1ECFF),
-      Color(0xFFE9F8F7),
-    ];
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(0, 9, 0, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              children: [
+                Text(
+                  'الأقسام',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Spacer(),
+                Text(
+                  'اسحب للمزيد',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 9),
+          SizedBox(
+            height: 92,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              scrollDirection: Axis.horizontal,
+              itemCount: _categories.length + 1,
+              separatorBuilder: (_, __) => const SizedBox(width: 4),
+              itemBuilder: (context, index) {
+                final category = index == 0 ? null : _categories[index - 1];
+                final selected = category == null
+                    ? _selectedCategoryId == null
+                    : category.id == _selectedCategoryId;
+                final name = category?.name ?? 'الكل';
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: SizedBox(
-        height: 110,
-        child: ListView.separated(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          scrollDirection: Axis.horizontal,
-          itemCount: _categories.length + 1,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
-          itemBuilder: (context, index) {
-            final category = index == 0 ? null : _categories[index - 1];
-            final selected = category == null
-                ? _selectedCategoryId == null
-                : category.id == _selectedCategoryId;
-            final name = category?.name ?? 'جميع الأقسام';
-            final color = colors[index % colors.length];
-
-            return SizedBox(
-              width: 88,
-              child: Material(
-                color: selected ? AppColors.skySoft : color,
-                borderRadius: BorderRadius.circular(18),
-                child: InkWell(
-                  onTap: () => _selectCategory(category?.id),
-                  borderRadius: BorderRadius.circular(18),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 9,
-                    ),
-                    decoration: BoxDecoration(
+                return SizedBox(
+                  width: 75,
+                  child: Semantics(
+                    button: true,
+                    selected: selected,
+                    label: name,
+                    child: InkWell(
+                      onTap: () => _selectCategory(category?.id),
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: selected
-                            ? AppColors.skyBlue
-                            : Colors.transparent,
-                        width: 1.2,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _categoryMedia(
+                              category: category,
+                              name: name,
+                              size: 52,
+                              selected: selected,
+                              compact: true,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              name,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: selected
+                                    ? AppColors.primary
+                                    : AppColors.textPrimary,
+                                fontSize: 10.7,
+                                fontWeight: selected
+                                    ? FontWeight.w900
+                                    : FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              width: selected ? 22 : 0,
+                              height: 3,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(99),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          _categoryIcon(name),
-                          color: selected
-                              ? AppColors.skyBlueDark
-                              : AppColors.navy,
-                          size: 32,
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _categoryShowcase() {
+    const cardColors = [
+      Color(0xFFF4F5F7),
+      Color(0xFFFFF1F3),
+      Color(0xFFEAF6FF),
+      Color(0xFFF1F8EE),
+      Color(0xFFFFF6E7),
+      Color(0xFFF4EEFF),
+    ];
+
+    final visibleCategories = _categories.take(12).toList(growable: false);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 2, 0, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'تسوق حسب القسم',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          name,
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 11.5,
-                            height: 1.18,
-                            fontWeight: FontWeight.w800,
-                          ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'صور متحركة وبطاقات واضحة للوصول أسرع للمنتجات',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => _selectCategory(null),
+                  child: const Text(
+                    'عرض الكل',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
-              ),
-            );
-          },
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 176,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              scrollDirection: Axis.horizontal,
+              itemCount: visibleCategories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, index) {
+                final category = visibleCategories[index];
+                final selected = category.id == _selectedCategoryId;
+
+                return SizedBox(
+                  width: 142,
+                  child: Material(
+                    color: cardColors[index % cardColors.length],
+                    borderRadius: BorderRadius.circular(20),
+                    child: InkWell(
+                      onTap: () => _selectCategory(category.id),
+                      borderRadius: BorderRadius.circular(20),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 190),
+                        padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: selected
+                                ? AppColors.primary
+                                : AppColors.border.withValues(alpha: 0.35),
+                            width: selected ? 1.5 : 0.8,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(
+                                0xFF17365B,
+                              ).withValues(alpha: selected ? 0.10 : 0.035),
+                              blurRadius: selected ? 15 : 8,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              category.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: selected
+                                    ? AppColors.primaryDark
+                                    : AppColors.textPrimary,
+                                fontSize: 13.2,
+                                height: 1.16,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const Spacer(),
+                            Align(
+                              alignment: AlignmentDirectional.bottomCenter,
+                              child: _categoryMedia(
+                                category: category,
+                                name: category.name,
+                                size: 102,
+                                selected: selected,
+                                compact: false,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _categoryMedia({
+    required ProductCategory? category,
+    required String name,
+    required double size,
+    required bool selected,
+    required bool compact,
+  }) {
+    final imageUrl = category?.imageUrl?.trim();
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
+    final radius = compact ? 17.0 : 22.0;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.93, end: 1),
+      duration: const Duration(milliseconds: 430),
+      curve: Curves.easeOutBack,
+      builder: (context, value, child) =>
+          Transform.scale(scale: value, child: child),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: size,
+        height: size,
+        padding: EdgeInsets.all(compact ? 5 : 7),
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xFFFFF0F2)
+              : Colors.white.withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(radius),
+          border: Border.all(
+            color: selected
+                ? AppColors.primary.withValues(alpha: 0.45)
+                : Colors.white,
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(radius - 5),
+          child: hasImage
+              ? Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  gaplessPlayback: true,
+                  filterQuality: FilterQuality.medium,
+                  errorBuilder: (_, __, ___) => Icon(
+                    _categoryIcon(name),
+                    color: selected ? AppColors.primary : AppColors.navy,
+                    size: size * 0.48,
+                  ),
+                )
+              : Icon(
+                  _categoryIcon(name),
+                  color: selected ? AppColors.primary : AppColors.navy,
+                  size: size * 0.48,
+                ),
         ),
       ),
     );
