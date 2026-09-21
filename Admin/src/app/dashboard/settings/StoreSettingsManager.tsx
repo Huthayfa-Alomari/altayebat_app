@@ -685,7 +685,7 @@ export default function StoreSettingsManager({
           <div className="flex items-center justify-between rounded-xl bg-gray-50 p-3">
             <div>
               <div className="font-semibold">PayTabs</div>
-              <div className="text-xs text-gray-500">Visa / Mastercard</div>
+              <div className="text-xs text-gray-500">Visa / Mastercard + المحافظ المفعّلة</div>
             </div>
             <span
               className={`rounded-full px-3 py-1 text-xs font-bold ${
