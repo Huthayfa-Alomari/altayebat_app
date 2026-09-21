@@ -79,7 +79,7 @@ class CatalogService {
   static Future<List<ProductCategory>> _loadCategories() async {
     final data = await _client
         .from('categories')
-        .select('id,name,sort_order')
+        .select('id,name,sort_order,image_url')
         .eq('store_id', AppConfig.storeId)
         .eq('is_active', true)
         .order('sort_order')
