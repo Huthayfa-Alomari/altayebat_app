@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'providers/cart_provider.dart';
 import 'screens/storefront_root_screen.dart';
+import 'screens/welcome_screen.dart';
 import 'services/driver_deep_link_navigator_observer.dart';
 import 'services/push_notification_service.dart';
 import 'services/supabase_service.dart';
@@ -15,6 +17,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   Object? bootstrapError;
+  var showEntryChoice = false;
   try {
     await SupabaseService.initialize();
 
@@ -28,6 +31,12 @@ Future<void> main() async {
         throw StateError('تعذر بدء جلسة التسوق');
       }
     }
+
+    final prefs = await SharedPreferences.getInstance();
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    showEntryChoice =
+        currentUser?.isAnonymous == true &&
+        !(prefs.getBool('entry_choice_completed') ?? false);
   } catch (error, stackTrace) {
     bootstrapError = error;
     FlutterError.reportError(
@@ -39,7 +48,12 @@ Future<void> main() async {
     );
   }
 
-  runApp(AltayebatApp(bootstrapError: bootstrapError));
+  runApp(
+    AltayebatApp(
+      bootstrapError: bootstrapError,
+      showEntryChoice: showEntryChoice,
+    ),
+  );
 
   // Push permission, token retrieval and registration may involve Firebase and
   // network round-trips. They are optional for shopping, so never delay the
@@ -51,8 +65,13 @@ Future<void> main() async {
 
 class AltayebatApp extends StatelessWidget {
   final Object? bootstrapError;
+  final bool showEntryChoice;
 
-  const AltayebatApp({super.key, this.bootstrapError});
+  const AltayebatApp({
+    super.key,
+    this.bootstrapError,
+    this.showEntryChoice = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +92,8 @@ class AltayebatApp extends StatelessWidget {
         },
         home: bootstrapError != null
             ? const _BootstrapErrorScreen()
+            : showEntryChoice
+            ? const WelcomeScreen()
             : const StorefrontRootScreen(),
       ),
     );
