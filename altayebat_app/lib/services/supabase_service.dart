@@ -469,7 +469,7 @@ class SupabaseService {
   // Existing PayTabs / store / tracking functionality preserved
   // ---------------------------------------------------------------------------
 
-  static Future<bool> isCardPaymentConfigured() async {
+  static Future<Map<String, dynamic>> getPaymentReadiness() async {
     try {
       final response = await _client.functions.invoke(
         'payment-readiness',
@@ -477,21 +477,51 @@ class SupabaseService {
       );
 
       if (response.status < 200 || response.status >= 300) {
-        return false;
+        return const <String, dynamic>{
+          'card_enabled': false,
+          'apple_pay_enabled': false,
+          'google_pay_enabled': false,
+        };
       }
 
       final data = response.data;
-      return data is Map && data['card_enabled'] == true;
+      return data is Map
+          ? Map<String, dynamic>.from(data)
+          : const <String, dynamic>{
+              'card_enabled': false,
+              'apple_pay_enabled': false,
+              'google_pay_enabled': false,
+            };
     } catch (_) {
-      return false;
+      return const <String, dynamic>{
+        'card_enabled': false,
+        'apple_pay_enabled': false,
+        'google_pay_enabled': false,
+      };
     }
   }
 
-  static Future<String> startCardPayment(String orderId) async {
+  static Future<bool> isCardPaymentConfigured() async {
+    final readiness = await getPaymentReadiness();
+    return readiness['card_enabled'] == true;
+  }
+
+  static Future<String> startCardPayment(
+    String orderId, {
+    String preferredMethod = 'all',
+  }) async {
+    const allowedMethods = {'all', 'applepay'};
+    if (!allowedMethods.contains(preferredMethod)) {
+      throw ArgumentError('طريقة PayTabs غير مدعومة');
+    }
+
     try {
       final response = await _client.functions.invoke(
         'create-card-payment',
-        body: {'order_id': orderId},
+        body: {
+          'order_id': orderId,
+          'payment_method': preferredMethod,
+        },
       );
 
       final data = response.data;
@@ -504,7 +534,10 @@ class SupabaseService {
         if (details.contains('PAYMENT_ALREADY_STARTED')) {
           throw StateError('عملية الدفع لهذا الطلب بدأت مسبقًا');
         }
-        throw StateError('تعذر بدء الدفع بالبطاقة');
+        if (details.contains('APPLE_PAY_NOT_ENABLED')) {
+          throw StateError('Apple Pay غير مفعّل على حساب PayTabs حاليًا');
+        }
+        throw StateError('تعذر بدء الدفع الإلكتروني');
       }
 
       if (data is! Map || data['redirect_url'] is! String) {
@@ -521,7 +554,10 @@ class SupabaseService {
       if (details.contains('PAYMENT_ALREADY_STARTED')) {
         throw StateError('عملية الدفع لهذا الطلب بدأت مسبقًا');
       }
-      throw StateError('تعذر بدء الدفع بالبطاقة');
+      if (details.contains('APPLE_PAY_NOT_ENABLED')) {
+        throw StateError('Apple Pay غير مفعّل على حساب PayTabs حاليًا');
+      }
+      throw StateError('تعذر بدء الدفع الإلكتروني');
     }
   }
 
