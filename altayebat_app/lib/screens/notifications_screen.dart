@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../services/growth_service.dart';
+import '../theme/app_theme.dart';
 import 'order_tracking_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -77,6 +78,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('الإشعارات'), centerTitle: true),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -88,10 +90,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       padding: const EdgeInsets.all(28),
                       children: [
                         const SizedBox(height: 100),
-                        Icon(
-                          Icons.notifications_none,
-                          size: 58,
-                          color: Theme.of(context).colorScheme.primary,
+                        Container(
+                          width: 92,
+                          height: 92,
+                          decoration: BoxDecoration(
+                            color: AppColors.skySoft,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.skyBlue.withValues(alpha: 0.16),
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.notifications_none,
+                            size: 44,
+                            color: AppColors.primary,
+                          ),
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -112,31 +125,45 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       itemBuilder: (context, index) {
                         final item = _items[index];
                         final unread = item['read_at'] == null;
+                        final accent = item['type']?.toString() == 'order_status'
+                            ? AppColors.skyBlueDark
+                            : AppColors.primary;
+
                         return Material(
-                          color: unread
-                              ? Theme.of(
-                                  context,
-                                ).colorScheme.primary.withValues(alpha: 0.07)
-                              : Colors.white,
-                          borderRadius: BorderRadius.circular(16),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
                           child: InkWell(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(18),
                             onTap: () => _open(item),
-                            child: Padding(
+                            child: Container(
                               padding: const EdgeInsets.all(15),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: unread
+                                      ? accent.withValues(alpha: 0.22)
+                                      : AppColors.border,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.navy.withValues(
+                                      alpha: 0.035,
+                                    ),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   CircleAvatar(
-                                    backgroundColor: Theme.of(context)
-                                        .colorScheme
-                                        .primary
-                                        .withValues(alpha: 0.10),
+                                    backgroundColor: accent.withValues(
+                                      alpha: 0.09,
+                                    ),
                                     child: Icon(
                                       _iconFor(item['type']?.toString() ?? ''),
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
+                                      color: accent,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -178,9 +205,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                       width: 9,
                                       height: 9,
                                       decoration: BoxDecoration(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
+                                        color: accent,
                                         shape: BoxShape.circle,
                                       ),
                                     ),
