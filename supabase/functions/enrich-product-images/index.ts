@@ -105,34 +105,52 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Supabase runtime is not configured" }, 500);
   }
 
-  const authorization = req.headers.get("Authorization") || "";
-  const jwt = authorization.replace(/^Bearer\s+/i, "");
-  if (!jwt) return json({ error: "Unauthorized" }, 401);
-
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data: userData, error: userError } = await admin.auth.getUser(jwt);
-  const user = userData.user;
-  if (userError || !user) return json({ error: "Unauthorized" }, 401);
-
   const payload = await req.json().catch(() => ({}));
   const storeId = typeof payload?.store_id === "string" ? payload.store_id : "";
   const requestedBatch = Number(payload?.batch_size || 10);
-  const batchSize = Math.max(1, Math.min(Number.isFinite(requestedBatch) ? requestedBatch : 10, 12));
+  const batchSize = Math.max(
+    1,
+    Math.min(Number.isFinite(requestedBatch) ? requestedBatch : 10, 12),
+  );
   const retryFailed = payload?.retry_failed === true;
 
   if (!storeId) return json({ error: "store_id is required" }, 400);
 
-  const { data: membership, error: membershipError } = await admin
-    .from("store_admins")
-    .select("store_id")
-    .eq("user_id", user.id)
-    .eq("store_id", storeId)
-    .maybeSingle();
+  const authorization = req.headers.get("Authorization") || "";
+  const jwt = authorization.replace(/^Bearer\s+/i, "");
+  const jobToken = req.headers.get("x-image-job-token") || "";
 
-  if (membershipError || !membership) return json({ error: "Forbidden" }, 403);
+  let authorized = false;
+
+  if (jwt) {
+    const { data: userData, error: userError } = await admin.auth.getUser(jwt);
+    const user = userData.user;
+
+    if (!userError && user) {
+      const { data: membership, error: membershipError } = await admin
+        .from("store_admins")
+        .select("store_id")
+        .eq("user_id", user.id)
+        .eq("store_id", storeId)
+        .maybeSingle();
+
+      authorized = !membershipError && Boolean(membership);
+    }
+  }
+
+  if (!authorized && jobToken) {
+    const { data: jobAllowed, error: jobAuthError } = await admin.rpc(
+      "internal_validate_product_image_job_token",
+      { p_store_id: storeId, p_token: jobToken },
+    );
+    authorized = !jobAuthError && jobAllowed === true;
+  }
+
+  if (!authorized) return json({ error: "Forbidden" }, 403);
 
   let queue = admin
     .from("products")
