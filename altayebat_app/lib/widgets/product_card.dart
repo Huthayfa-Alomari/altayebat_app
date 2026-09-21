@@ -30,7 +30,7 @@ class ProductCard extends StatelessWidget {
         color: Colors.white,
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
           side: const BorderSide(color: AppColors.border),
         ),
         child: InkWell(
@@ -48,13 +48,13 @@ class ProductCard extends StatelessWidget {
                   SizedBox(
                     height: imageHeight,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+                      padding: const EdgeInsets.fromLTRB(9, 9, 9, 0),
                       child: _imageArea(outOfStock),
                     ),
                   ),
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(11, 8, 11, 10),
+                      padding: const EdgeInsets.fromLTRB(10, 7, 10, 9),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -64,7 +64,7 @@ class ProductCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: AppColors.textPrimary,
-                              fontSize: 13,
+                              fontSize: 12.5,
                               height: 1.25,
                               fontWeight: FontWeight.w800,
                             ),
@@ -91,7 +91,7 @@ class ProductCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: AppColors.primary,
-                              fontSize: 17,
+                              fontSize: 16.5,
                               height: 1.05,
                               fontWeight: FontWeight.w900,
                             ),
@@ -210,13 +210,13 @@ class ProductCard extends StatelessWidget {
     final hasSelection = qty > 0;
     return SizedBox(
       width: double.infinity,
-      height: 48,
+      height: 42,
       child: FilledButton.icon(
         onPressed: outOfStock ? null : () => _chooseMeasured(context),
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(13),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
         icon: Icon(
@@ -267,7 +267,7 @@ class ProductCard extends StatelessWidget {
   }) {
     return SizedBox(
       width: double.infinity,
-      height: 48,
+      height: 42,
       child: FilledButton.icon(
         onPressed: enabled
             ? () {
@@ -278,7 +278,7 @@ class ProductCard extends StatelessWidget {
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(13),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
         icon: Icon(
@@ -296,10 +296,10 @@ class ProductCard extends StatelessWidget {
   Widget _stepper(BuildContext context, int qty, {required bool canAdd}) {
     return Container(
       width: double.infinity,
-      height: 48,
+      height: 42,
       decoration: BoxDecoration(
         color: AppColors.primary,
-        borderRadius: BorderRadius.circular(13),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
@@ -307,7 +307,7 @@ class ProductCard extends StatelessWidget {
             child: IconButton(
               tooltip: qty == 1 ? 'إزالة من السلة' : 'تقليل الكمية',
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              constraints: const BoxConstraints(minWidth: 42, minHeight: 42),
               icon: Icon(
                 qty == 1 ? Icons.delete_outline_rounded : Icons.remove_rounded,
                 color: Colors.white,
@@ -328,7 +328,7 @@ class ProductCard extends StatelessWidget {
             child: IconButton(
               tooltip: canAdd ? 'زيادة الكمية' : 'وصلت للكمية المتوفرة',
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              constraints: const BoxConstraints(minWidth: 42, minHeight: 42),
               icon: Icon(
                 Icons.add_rounded,
                 color: canAdd ? Colors.white : Colors.white54,
