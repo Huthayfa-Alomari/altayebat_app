@@ -8,7 +8,7 @@ export default async function CategoriesPage() {
 
   const { data: categories } = await supabase
     .from("categories")
-    .select("id, name, sort_order, image_url")
+    .select("id, name, sort_order, image_url, parent_id")
     .eq("store_id", storeId)
     .order("sort_order");
 
