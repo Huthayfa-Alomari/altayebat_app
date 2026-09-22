@@ -115,7 +115,9 @@ class CatalogService {
     return ids.toList(growable: false);
   }
 
-  static List<ProductCategory> rootCategories(List<ProductCategory> categories) {
+  static List<ProductCategory> rootCategories(
+    List<ProductCategory> categories,
+  ) {
     return categories
         .where((category) => category.parentId == null)
         .toList(growable: false);
