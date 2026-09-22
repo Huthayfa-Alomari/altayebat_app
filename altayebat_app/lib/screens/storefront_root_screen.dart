@@ -9,8 +9,8 @@ import '../widgets/store_announcement_banner.dart';
 import 'account_screen.dart';
 import 'ai_shopping_assistant_screen.dart';
 import 'cart_screen.dart';
+import 'categories_screen.dart';
 import 'home_screen_v2.dart';
-import 'order_history_screen.dart';
 
 class StorefrontRootScreen extends StatefulWidget {
   const StorefrontRootScreen({super.key});
@@ -72,7 +72,7 @@ class _StorefrontRootScreenState extends State<StorefrontRootScreen>
                 index: _index,
                 children: [
                   HomeScreen(settings: _settings),
-                  const OrderHistoryScreen(),
+                  const CategoriesScreen(),
                   const CartScreen(),
                   const AccountScreen(),
                 ],
@@ -97,9 +97,9 @@ class _StorefrontRootScreenState extends State<StorefrontRootScreen>
                 label: 'الرئيسية',
               ),
               const NavigationDestination(
-                icon: Icon(Icons.receipt_long_outlined),
-                selectedIcon: Icon(Icons.receipt_long_rounded),
-                label: 'طلباتي',
+                icon: Icon(Icons.grid_view_outlined),
+                selectedIcon: Icon(Icons.grid_view_rounded),
+                label: 'التصنيفات',
               ),
               NavigationDestination(
                 icon: Badge.count(
