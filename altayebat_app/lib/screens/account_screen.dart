@@ -7,6 +7,7 @@ import '../services/analytics_service.dart';
 import '../services/customer_support_service.dart';
 import '../services/store_settings_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/altayebat_brand.dart';
 import 'customer_auth_screen.dart';
 import 'loyalty_screen.dart';
 import 'notifications_screen.dart';
@@ -168,6 +169,16 @@ class _AccountScreenState extends State<AccountScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
           children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: const AltayebatBrandLogo(markSize: 118),
+            ),
+            const SizedBox(height: 14),
             _profileCard(),
             const SizedBox(height: 20),
             const _AccountSectionTitle(
