@@ -105,7 +105,13 @@ export default function ImageEnrichmentManager({ storeId }: { storeId: string })
     void refreshStats();
   }, [refreshStats]);
 
-  const processBatch = useCallback(async () => {
+  const processBatch = useCallback(async ({
+    mode = "fill_missing",
+    retryNotFound = false,
+  }: {
+    mode?: "fill_missing" | "refresh_existing";
+    retryNotFound?: boolean;
+  } = {}) => {
     setBatchBusy(true);
     setError(null);
     try {
@@ -113,7 +119,9 @@ export default function ImageEnrichmentManager({ storeId }: { storeId: string })
         await supabaseRef.current.functions.invoke("enrich-product-images", {
           body: {
             store_id: storeId,
-            batch_size: 10,
+            batch_size: mode === "refresh_existing" ? 8 : 10,
+            mode,
+            retry_not_found: retryNotFound,
           },
         });
       if (functionError) throw functionError;
@@ -140,7 +148,7 @@ export default function ImageEnrichmentManager({ storeId }: { storeId: string })
 
     try {
       while (!stopRef.current) {
-        const result = await processBatch();
+        const result = await processBatch({ mode: "fill_missing" });
         if (!result.processed || result.remaining_unchecked === 0) break;
         await new Promise((resolve) => window.setTimeout(resolve, 1500));
       }
@@ -201,7 +209,7 @@ export default function ImageEnrichmentManager({ storeId }: { storeId: string })
           <button
             type="button"
             disabled={batchBusy || autoRunning}
-            onClick={() => void processBatch()}
+            onClick={() => void processBatch({ mode: "fill_missing" })}
             className="rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
             {batchBusy && !autoRunning ? "جاري فحص الدفعة…" : "فحص دفعة واحدة"}
@@ -225,6 +233,28 @@ export default function ImageEnrichmentManager({ storeId }: { storeId: string })
               إيقاف بعد الدفعة الحالية
             </button>
           )}
+
+          <button
+            type="button"
+            disabled={batchBusy || autoRunning}
+            onClick={() =>
+              void processBatch({ mode: "refresh_existing" })
+            }
+            className="rounded-xl border border-sky-300 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-800 disabled:opacity-50"
+          >
+            تحديث 8 صور قديمة
+          </button>
+
+          <button
+            type="button"
+            disabled={batchBusy || autoRunning}
+            onClick={() =>
+              void processBatch({ mode: "fill_missing", retryNotFound: true })
+            }
+            className="rounded-xl border border-violet-300 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-800 disabled:opacity-50"
+          >
+            إعادة فحص صور غير موجودة
+          </button>
 
           <button
             type="button"
@@ -255,9 +285,10 @@ export default function ImageEnrichmentManager({ storeId }: { storeId: string })
       </section>
 
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-        المرحلة الأولى لا تستخدم بحث صور عام بالاسم، لأن ذلك قد يربط منتجًا
-        مشابهًا بصورة منتج مختلف. الأصناف ذات الأكواد الداخلية أو التي لا تجد
-        لها قاعدة المصدر صورة تنتقل إلى قائمة المراجعة للمرحلة الثانية.
+        المطابقة الآلية تعتمد على GTIN/الباركود فقط وتستخدم شبكة Open Facts
+        (الغذاء، العناية، الحيوانات والمنتجات العامة). صفحات المتاجر الأخرى
+        نستخدمها للمقارنة والتحقق من العبوة والسعر، وليس لنسخ صورها تلقائيًا.
+        صور العلامات الرسمية أو الصور المرخصة فقط هي التي نعتمدها كمصدر دائم.
       </div>
     </div>
   );
