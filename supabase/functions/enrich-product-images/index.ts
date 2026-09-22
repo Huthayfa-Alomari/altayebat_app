@@ -310,7 +310,10 @@ function pickImageFromHtml(html: string, pageUrl: string) {
       text.includes("invalid_icon") ||
       text.includes("/invalid") ||
       text.includes("no-image") ||
-      text.includes("no_image")
+      text.includes("no_image") ||
+      text.includes("pro_recipes") ||
+      text.includes("/recipe/") ||
+      text.includes("recipe_")
     ) {
       continue;
     }
