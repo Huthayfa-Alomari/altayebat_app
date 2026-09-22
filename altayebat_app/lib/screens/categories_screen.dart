@@ -161,7 +161,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           ),
                           const SizedBox(height: 12),
                           FilledButton(
-                            onPressed: _load,
+                            onPressed: () => _load(),
                             child: const Text('إعادة المحاولة'),
                           ),
                         ],
