@@ -93,6 +93,43 @@ class CatalogService {
         .toList(growable: false);
   }
 
+  static Future<List<String>> categoryAndDescendantIds(
+    String categoryId, {
+    bool forceRefresh = false,
+  }) async {
+    final categories = await fetchCategories(forceRefresh: forceRefresh);
+    final ids = <String>{categoryId};
+    var changed = true;
+
+    while (changed) {
+      changed = false;
+      for (final category in categories) {
+        if (category.parentId != null &&
+            ids.contains(category.parentId) &&
+            ids.add(category.id)) {
+          changed = true;
+        }
+      }
+    }
+
+    return ids.toList(growable: false);
+  }
+
+  static List<ProductCategory> rootCategories(List<ProductCategory> categories) {
+    return categories
+        .where((category) => category.parentId == null)
+        .toList(growable: false);
+  }
+
+  static List<ProductCategory> childrenOf(
+    List<ProductCategory> categories,
+    String parentId,
+  ) {
+    return categories
+        .where((category) => category.parentId == parentId)
+        .toList(growable: false);
+  }
+
   static Future<CatalogPage> fetchProductsPage({
     String? categoryId,
     String? searchQuery,
