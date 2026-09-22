@@ -205,6 +205,27 @@ function absoluteUrl(value: string, base: string) {
   }
 }
 
+function isRejectedProductImageUrl(url: string) {
+  const text = url.toLowerCase();
+  return (
+    text.includes("barcode") ||
+    text.includes("logo") ||
+    text.includes("favicon") ||
+    text.includes("sprite") ||
+    text.includes("placeholder") ||
+    text.includes("invalid_icon") ||
+    text.includes("/invalid") ||
+    text.includes("no-image") ||
+    text.includes("no_image") ||
+    text.includes("pro_recipes") ||
+    text.includes("/recipe/") ||
+    text.includes("recipe_") ||
+    text.includes("banner") ||
+    text.includes("social-share") ||
+    text.includes("default-image")
+  );
+}
+
 function pickImageFromHtml(html: string, pageUrl: string) {
   const patterns = [
     /<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["'][^>]*>/i,
@@ -217,7 +238,13 @@ function pickImageFromHtml(html: string, pageUrl: string) {
     const match = html.match(pattern);
     if (match?.[1]) {
       const resolved = absoluteUrl(match[1], pageUrl);
-      if (resolved && /^https:\/\//i.test(resolved)) return resolved;
+      if (
+        resolved &&
+        /^https:\/\//i.test(resolved) &&
+        !isRejectedProductImageUrl(resolved)
+      ) {
+        return resolved;
+      }
     }
   }
 
@@ -301,22 +328,7 @@ function pickImageFromHtml(html: string, pageUrl: string) {
     if (!resolved || !/^https:\/\//i.test(resolved)) continue;
 
     const text = `${alt} ${resolved}`.toLowerCase();
-    if (
-      text.includes("barcode") ||
-      text.includes("logo") ||
-      text.includes("favicon") ||
-      text.includes("sprite") ||
-      text.includes("placeholder") ||
-      text.includes("invalid_icon") ||
-      text.includes("/invalid") ||
-      text.includes("no-image") ||
-      text.includes("no_image") ||
-      text.includes("pro_recipes") ||
-      text.includes("/recipe/") ||
-      text.includes("recipe_")
-    ) {
-      continue;
-    }
+    if (isRejectedProductImageUrl(text)) continue;
 
     let score = 0;
     if (text.includes("product image")) score += 8;
@@ -368,6 +380,161 @@ async function imageFromProductPage(pageUrl: string) {
   return {
     pageUrl: response.url || pageUrl,
     imageUrl,
+  };
+}
+
+async function tryDookantiFallback(
+  admin: any,
+  storeId: string,
+  product: ProductRow,
+  code: string,
+) {
+  const pageUrl = `https://api.dookanti.app/${encodeURIComponent(code)}.html`;
+  const response = await fetch(pageUrl, {
+    headers: {
+      "User-Agent": USER_AGENT,
+      Accept: "text/html,application/xhtml+xml",
+    },
+    redirect: "follow",
+  });
+
+  if (response.status === 404) return { status: "not_found" as const };
+  if (response.status === 429) return { status: "rate_limited" as const };
+  if (!response.ok) {
+    return { status: "error" as const, message: `HTTP ${response.status}` };
+  }
+
+  const html = (await response.text()).slice(0, 2_000_000);
+  const compactDigits = html.replace(/\D/g, "");
+  if (!compactDigits.includes(code)) {
+    return { status: "not_found" as const };
+  }
+
+  const imageUrl = pickImageFromHtml(html, response.url || pageUrl);
+  if (!imageUrl) return { status: "not_found" as const };
+
+  const stored = await downloadAndStoreImage(
+    admin,
+    storeId,
+    product.id,
+    imageUrl,
+    "internet/dookanti",
+  );
+
+  const { error: updateError } = await admin
+    .from("products")
+    .update({
+      image_url: stored.publicUrl,
+      image_source: "dookanti-jordan",
+      image_source_url: response.url || pageUrl,
+      image_license:
+        "Internet catalog image; exact barcode product page retained for provenance.",
+      image_match_method: "exact_gtin_dookanti",
+      image_enrichment_status: "matched",
+      image_checked_at: new Date().toISOString(),
+      image_secondary_source: "dookanti-jordan",
+      image_secondary_status: "matched",
+      image_secondary_checked_at: new Date().toISOString(),
+    })
+    .eq("id", product.id)
+    .eq("store_id", storeId)
+    .is("image_url", null);
+
+  if (updateError) throw updateError;
+  return { status: "matched" as const, imageUrl: stored.publicUrl };
+}
+
+async function runCatalogFallback(
+  admin: any,
+  storeId: string,
+  products: ProductRow[],
+) {
+  let matched = 0;
+  let notFound = 0;
+  let errors = 0;
+  let rateLimited = false;
+
+  for (let index = 0; index < products.length; index++) {
+    const product = products[index];
+    const code = normalizeDigits(product.barcode || product.sku);
+
+    if (!hasValidGtinCheckDigit(code)) {
+      notFound++;
+      await admin
+        .from("products")
+        .update({
+          image_secondary_source: "catalog-cascade",
+          image_secondary_status: "not_found",
+          image_secondary_checked_at: new Date().toISOString(),
+        })
+        .eq("id", product.id)
+        .eq("store_id", storeId)
+        .is("image_url", null);
+      continue;
+    }
+
+    try {
+      let result = await tryDookantiFallback(admin, storeId, product, code);
+      if (result.status !== "matched" && result.status !== "rate_limited") {
+        result = await tryGoUpcFallback(admin, storeId, product, code);
+      }
+
+      if (result.status === "matched") {
+        matched++;
+      } else {
+        if (result.status === "rate_limited") rateLimited = true;
+        else if (result.status === "error") errors++;
+        else notFound++;
+
+        await admin
+          .from("products")
+          .update({
+            image_secondary_source:
+              result.status === "rate_limited" ? "catalog-cascade" : "catalog-cascade",
+            image_secondary_status:
+              result.status === "rate_limited"
+                ? "rate_limited"
+                : result.status === "error"
+                  ? "error"
+                  : "not_found",
+            image_secondary_checked_at: new Date().toISOString(),
+          })
+          .eq("id", product.id)
+          .eq("store_id", storeId)
+          .is("image_url", null);
+      }
+    } catch (error) {
+      errors++;
+      console.error("catalog-image-fallback", {
+        productId: product.id,
+        barcode: code,
+        message: error instanceof Error ? error.message : String(error),
+      });
+
+      await admin
+        .from("products")
+        .update({
+          image_secondary_source: "catalog-cascade",
+          image_secondary_status: "error",
+          image_secondary_checked_at: new Date().toISOString(),
+        })
+        .eq("id", product.id)
+        .eq("store_id", storeId)
+        .is("image_url", null);
+    }
+
+    if (index < products.length - 1) await sleep(700);
+  }
+
+  return {
+    ok: true,
+    mode: "catalog_fallback",
+    provider: "dookanti-then-go-upc",
+    processed: products.length,
+    matched,
+    not_found: notFound,
+    errors,
+    rate_limited: rateLimited,
   };
 }
 
@@ -761,11 +928,14 @@ Deno.serve(async (req: Request) => {
           ? "manual_candidate"
           : payload?.mode === "manual_page"
             ? "manual_page"
-            : "fill_missing";
+            : payload?.mode === "catalog_fallback"
+              ? "catalog_fallback"
+              : "fill_missing";
   const refreshExisting = mode === "refresh_existing";
   const internetFallback = mode === "internet_fallback";
   const manualCandidate = mode === "manual_candidate";
   const manualPage = mode === "manual_page";
+  const catalogFallback = mode === "catalog_fallback";
 
   if (!storeId) return json({ error: "store_id is required" }, 400);
 
@@ -987,7 +1157,7 @@ Deno.serve(async (req: Request) => {
     .order("sort_order", { ascending: true })
     .limit(batchSize);
 
-  if (internetFallback) {
+  if (internetFallback || catalogFallback) {
     queue = queue
       .is("image_url", null)
       .eq("image_enrichment_status", "not_found")
@@ -1023,6 +1193,21 @@ Deno.serve(async (req: Request) => {
   if (queueError) return json({ error: queueError.message }, 500);
 
   const products = (productRows || []) as ProductRow[];
+
+  if (catalogFallback) {
+    try {
+      return json(await runCatalogFallback(admin, storeId, products));
+    } catch (error) {
+      return json(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          mode,
+          provider: "dookanti-then-go-upc",
+        },
+        502,
+      );
+    }
+  }
 
   if (internetFallback) {
     try {
