@@ -52,7 +52,13 @@ values
   ('centro','Centro','https://www.talabat.com/jordan/centro','marketplace_catalog','reference_only',now(),'Jordan supermarket presence; public marketplace catalog used for assortment comparison.'),
   ('miles','Miles','https://www.miles.com.jo/','online_catalog','reference_only',now(),'Jordan supermarket catalog benchmark.'),
   ('talabat_mart','Talabat Mart Jordan','https://www.talabat.com/jordan/tmart','online_catalog','reference_only',now(),'Fast grocery benchmark with broad category coverage.'),
-  ('familys_basket','Family''s Basket','https://www.talabat.com/jordan/familys-basket','marketplace_catalog','reference_only',now(),'Jordan supermarket marketplace listing; reference-only.')
+  ('familys_basket','Family''s Basket','https://www.talabat.com/jordan/familys-basket','marketplace_catalog','reference_only',now(),'Jordan supermarket marketplace listing; reference-only.'),
+  ('yaser_mall','Yaser Mall','https://www.yasermallonline.com/','online_catalog','reference_only',now(),'Jordan online grocery catalog; 30,000+ products advertised in current app listing.'),
+  ('jcscc','المؤسسة الاستهلاكية المدنية','https://jcsccshop.gov.jo/','online_catalog','reference_only',now(),'Official civil consumer establishment online market and price benchmark.'),
+  ('mce','المؤسسة الاستهلاكية العسكرية','https://mce.jaf.mil.jo/','official_catalog','reference_only',now(),'Official military consumer establishment; broad national retail and price benchmark.'),
+  ('city_stores','City Stores','https://www.talabat.com/jordan/city-stores','marketplace_catalog','reference_only',now(),'Jordan supermarket marketplace catalog.'),
+  ('golden_basket','Golden Basket','https://www.talabat.com/jordan/golden-basket','marketplace_catalog','reference_only',now(),'Jordan hypermarket and fresh-food marketplace catalog.'),
+  ('gourmet_grocery','Gourmet Grocery Supermarket','https://www.talabat.com/jordan/gourmet-grocery-supermarket','marketplace_catalog','reference_only',now(),'Jordan supermarket marketplace catalog.')
 on conflict (slug) do update
 set name=excluded.name,
     website_url=excluded.website_url,
