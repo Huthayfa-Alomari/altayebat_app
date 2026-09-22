@@ -281,6 +281,50 @@ export default function CategoriesManager({
     router.refresh();
   }
 
+  async function changeCategoryParent(category: Category, nextParentId: string) {
+    const normalizedParentId = nextParentId || null;
+    if (normalizedParentId === category.parent_id) return;
+
+    const hasChildren = initialCategories.some(
+      (item) => item.parent_id === category.id,
+    );
+    if (hasChildren && normalizedParentId) {
+      setError("هذا التصنيف رئيسي وتحته أقسام فرعية. انقل الأقسام الفرعية أولاً.");
+      return;
+    }
+
+    setBusyCategoryId(category.id);
+    setError(null);
+    setSuccess(null);
+
+    const siblingCount = initialCategories.filter(
+      (item) =>
+        item.id !== category.id && item.parent_id === normalizedParentId,
+    ).length;
+
+    const { error: updateError } = await supabase
+      .from("categories")
+      .update({
+        parent_id: normalizedParentId,
+        sort_order: siblingCount,
+      })
+      .eq("id", category.id)
+      .eq("store_id", storeId);
+
+    setBusyCategoryId(null);
+    if (updateError) {
+      setError("تعذر تغيير مكان التصنيف.");
+      return;
+    }
+
+    setSuccess(
+      normalizedParentId
+        ? "تم نقل التصنيف تحت القسم الرئيسي."
+        : "تم تحويل التصنيف إلى قسم رئيسي.",
+    );
+    router.refresh();
+  }
+
   async function deleteCategory(category: Category) {
     if (!window.confirm("متأكد إنك بدك تحذف التصنيف؟")) return;
 
@@ -399,8 +443,19 @@ export default function CategoriesManager({
             ما في تصنيفات لسه.
           </p>
         ) : (
-          orderedCategories.map((cat, index) => {
+          orderedCategories.map((cat) => {
             const busy = busyCategoryId === cat.id;
+            const siblings = initialCategories
+              .filter((item) => item.parent_id === cat.parent_id)
+              .sort(
+                (a, b) =>
+                  a.sort_order - b.sort_order ||
+                  a.name.localeCompare(b.name, "ar"),
+              );
+            const siblingIndex = siblings.findIndex((item) => item.id === cat.id);
+            const hasChildren = initialCategories.some(
+              (item) => item.parent_id === cat.id,
+            );
             return (
               <div
                 key={cat.id}
@@ -434,6 +489,29 @@ export default function CategoriesManager({
                       ترتيب المجموعة: {cat.sort_order + 1}
                     </p>
 
+                    <select
+                      value={cat.parent_id ?? ""}
+                      disabled={busy || hasChildren}
+                      onChange={(e) =>
+                        void changeCategoryParent(cat, e.target.value)
+                      }
+                      className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      title={
+                        hasChildren
+                          ? "انقل التصنيفات الفرعية أولاً قبل تغيير القسم الرئيسي"
+                          : "تغيير القسم الرئيسي"
+                      }
+                    >
+                      <option value="">قسم رئيسي</option>
+                      {roots
+                        .filter((root) => root.id !== cat.id)
+                        .map((root) => (
+                          <option key={root.id} value={root.id}>
+                            تحت: {root.name}
+                          </option>
+                        ))}
+                    </select>
+
                     <label className="mt-3 inline-flex cursor-pointer items-center rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700 hover:bg-sky-100">
                       {busy ? "جاري..." : cat.image_url ? "تغيير الصورة/GIF" : "إضافة صورة/GIF"}
                       <input
@@ -455,7 +533,7 @@ export default function CategoriesManager({
                   <div className="flex gap-1">
                     <button
                       type="button"
-                      disabled={busy || index === 0}
+                      disabled={busy || siblingIndex <= 0}
                       onClick={() => void moveCategory(cat, -1)}
                       className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 disabled:opacity-35"
                       title="تحريك للأعلى"
@@ -464,7 +542,7 @@ export default function CategoriesManager({
                     </button>
                     <button
                       type="button"
-                      disabled={busy || index === orderedCategories.length - 1}
+                      disabled={busy || siblingIndex < 0 || siblingIndex === siblings.length - 1}
                       onClick={() => void moveCategory(cat, 1)}
                       className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 disabled:opacity-35"
                       title="تحريك للأسفل"
