@@ -79,7 +79,7 @@ class CatalogService {
   static Future<List<ProductCategory>> _loadCategories() async {
     final data = await _client
         .from('categories')
-        .select('id,name,sort_order,image_url')
+        .select('id,name,sort_order,image_url,parent_id')
         .eq('store_id', AppConfig.storeId)
         .eq('is_active', true)
         .order('sort_order')
@@ -91,6 +91,24 @@ class CatalogService {
               ProductCategory.fromMap(Map<String, dynamic>.from(row as Map)),
         )
         .toList(growable: false);
+  }
+
+  static List<String> _categoryScopeIds(String categoryId) {
+    final cached = _categoryCache?.value ?? const <ProductCategory>[];
+    if (cached.isEmpty) return <String>[categoryId];
+
+    final scope = <String>{categoryId};
+    var changed = true;
+    while (changed) {
+      changed = false;
+      for (final category in cached) {
+        final parentId = category.parentId;
+        if (parentId != null && scope.contains(parentId) && scope.add(category.id)) {
+          changed = true;
+        }
+      }
+    }
+    return scope.toList(growable: false);
   }
 
   static Future<CatalogPage> fetchProductsPage({
@@ -146,7 +164,15 @@ class CatalogService {
         .eq('is_available', true);
 
     if (categoryId != null && categoryId.isNotEmpty) {
-      query = query.eq('category_id', categoryId);
+      final scopeIds = _categoryScopeIds(categoryId);
+      if (scopeIds.length == 1) {
+        query = query.eq('category_id', categoryId);
+      } else {
+        final scopeFilter = scopeIds
+            .map((id) => 'category_id.eq.$id')
+            .join(',');
+        query = query.or(scopeFilter);
+      }
     }
 
     final search = searchQuery?.trim();
