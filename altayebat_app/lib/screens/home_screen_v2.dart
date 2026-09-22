@@ -250,6 +250,43 @@ class _HomeScreenState extends State<HomeScreen> {
     await _reloadProducts(categoryId: categoryId);
   }
 
+  List<ProductCategory> get _rootCategories {
+    final roots = _categories.where((category) => category.isRoot).toList();
+    roots.sort(
+      (a, b) => a.sortOrder.compareTo(b.sortOrder) != 0
+          ? a.sortOrder.compareTo(b.sortOrder)
+          : a.name.compareTo(b.name),
+    );
+    return roots;
+  }
+
+  List<ProductCategory> _childrenOf(String parentId) {
+    final children = _categories
+        .where((category) => category.parentId == parentId)
+        .toList();
+    children.sort(
+      (a, b) => a.sortOrder.compareTo(b.sortOrder) != 0
+          ? a.sortOrder.compareTo(b.sortOrder)
+          : a.name.compareTo(b.name),
+    );
+    return children;
+  }
+
+  ProductCategory? get _selectedCategory {
+    final id = _selectedCategoryId;
+    if (id == null) return null;
+    for (final category in _categories) {
+      if (category.id == id) return category;
+    }
+    return null;
+  }
+
+  List<ProductCategory> get _selectedChildren {
+    final selected = _selectedCategory;
+    if (selected == null) return const [];
+    return _childrenOf(selected.id);
+  }
+
   Future<void> _openNotifications() async {
     await Navigator.of(
       context,
@@ -336,6 +373,8 @@ class _HomeScreenState extends State<HomeScreen> {
       if (_errorMessage != null) SliverToBoxAdapter(child: _errorState()),
       if (showDiscovery && _categories.isNotEmpty)
         SliverToBoxAdapter(child: _categoriesStrip()),
+      if (showDiscovery && _selectedChildren.isNotEmpty)
+        SliverToBoxAdapter(child: _subcategoriesStrip()),
       if (showDiscovery) SliverToBoxAdapter(child: _heroBanner()),
       if (showDiscovery && _categories.isNotEmpty)
         SliverToBoxAdapter(child: _categoryShowcase()),
@@ -771,6 +810,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _categoriesStrip() {
+    final categories = _rootCategories;
+
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.fromLTRB(0, 12, 0, 10),
@@ -819,13 +860,15 @@ class _HomeScreenState extends State<HomeScreen> {
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               scrollDirection: Axis.horizontal,
-              itemCount: _categories.length + 1,
+              itemCount: categories.length + 1,
               separatorBuilder: (_, __) => const SizedBox(width: 7),
               itemBuilder: (context, index) {
-                final category = index == 0 ? null : _categories[index - 1];
+                final category = index == 0 ? null : categories[index - 1];
+                final selectedCategory = _selectedCategory;
                 final selected = category == null
                     ? _selectedCategoryId == null
-                    : category.id == _selectedCategoryId;
+                    : category.id == _selectedCategoryId ||
+                          selectedCategory?.parentId == category.id;
                 final name = category?.name ?? 'الكل';
 
                 return SizedBox(
@@ -925,8 +968,102 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _subcategoriesStrip() {
+    final children = _selectedChildren;
+    if (children.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(0, 4, 0, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              children: [
+                Text(
+                  _selectedCategoryName ?? 'التصنيفات الفرعية',
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const Spacer(),
+                const Text(
+                  'اختر تصنيفًا فرعيًا',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 126,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              scrollDirection: Axis.horizontal,
+              itemCount: children.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 9),
+              itemBuilder: (context, index) {
+                final child = children[index];
+                return SizedBox(
+                  width: 104,
+                  child: Material(
+                    color: index.isEven
+                        ? const Color(0xFFFFF5F6)
+                        : const Color(0xFFF2F8FF),
+                    borderRadius: BorderRadius.circular(18),
+                    child: InkWell(
+                      onTap: () => _selectCategory(child.id),
+                      borderRadius: BorderRadius.circular(18),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Column(
+                          children: [
+                            Expanded(
+                              child: _categoryMedia(
+                                category: child,
+                                name: child.name,
+                                size: 72,
+                                selected: child.id == _selectedCategoryId,
+                                compact: false,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              child.name,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 10.5,
+                                height: 1.1,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _categoryShowcase() {
-    final visibleCategories = _categories.take(14).toList(growable: false);
+    final visibleCategories = _rootCategories.take(14).toList(growable: false);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 4, 0, 18),
@@ -1428,14 +1565,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  String? get _selectedCategoryName {
-    final id = _selectedCategoryId;
-    if (id == null) return null;
-    for (final category in _categories) {
-      if (category.id == id) return category.name;
-    }
-    return null;
-  }
+  String? get _selectedCategoryName => _selectedCategory?.name;
 
   Widget _householdBanner() {
     return Padding(
