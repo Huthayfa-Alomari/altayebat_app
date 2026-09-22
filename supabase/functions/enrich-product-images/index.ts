@@ -125,6 +125,279 @@ function extensionForContentType(contentType: string) {
   return null;
 }
 
+function upcItemCodes(item: Record<string, unknown>) {
+  return [item.ean, item.upc, item.gtin]
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => normalizeDigits(value))
+    .filter(Boolean);
+}
+
+function pickUpcItemImage(item: Record<string, unknown>) {
+  if (!Array.isArray(item.images)) return null;
+  const image = item.images.find(
+    (candidate) => typeof candidate === "string" && /^https:\/\//i.test(candidate),
+  );
+  return typeof image === "string" ? image : null;
+}
+
+async function downloadAndStoreImage(
+  admin: any,
+  storeId: string,
+  productId: string,
+  imageSourceUrl: string,
+  folder: string,
+) {
+  const imageResponse = await fetch(imageSourceUrl, {
+    headers: { "User-Agent": USER_AGENT, Accept: "image/*" },
+    redirect: "follow",
+  });
+  if (!imageResponse.ok) {
+    throw new Error(`Image download failed: HTTP ${imageResponse.status}`);
+  }
+
+  const declaredLength = Number(imageResponse.headers.get("content-length") || 0);
+  if (declaredLength > MAX_IMAGE_BYTES) throw new Error("Image exceeds 5 MB");
+
+  const imageType = extensionForContentType(
+    imageResponse.headers.get("content-type") || "",
+  );
+  if (!imageType) throw new Error("Unsupported image MIME type");
+
+  const bytes = new Uint8Array(await imageResponse.arrayBuffer());
+  if (bytes.byteLength > MAX_IMAGE_BYTES) throw new Error("Image exceeds 5 MB");
+
+  const storagePath =
+    `${storeId}/${folder}/${productId}-${Date.now()}.${imageType.ext}`;
+  const { error: uploadError } = await admin.storage
+    .from(PRODUCT_IMAGES_BUCKET)
+    .upload(storagePath, bytes, {
+      upsert: true,
+      contentType: imageType.contentType,
+      cacheControl: "31536000",
+    });
+  if (uploadError) throw uploadError;
+
+  const { data: publicUrlData } = admin.storage
+    .from(PRODUCT_IMAGES_BUCKET)
+    .getPublicUrl(storagePath);
+
+  return {
+    storagePath,
+    publicUrl: publicUrlData.publicUrl as string,
+    resolvedSourceUrl: imageResponse.url || imageSourceUrl,
+  };
+}
+
+async function runUpcItemDbFallback(
+  admin: any,
+  storeId: string,
+  products: ProductRow[],
+) {
+  const userKey = Deno.env.get("UPCITEMDB_USER_KEY") || "";
+  const keyType = Deno.env.get("UPCITEMDB_KEY_TYPE") || "3scale";
+  const maxItems = userKey ? 10 : 2;
+  const candidates = products
+    .map((product) => ({
+      product,
+      code: normalizeDigits(product.barcode || product.sku),
+    }))
+    .filter(({ code }) => hasValidGtinCheckDigit(code))
+    .slice(0, maxItems);
+
+  if (candidates.length === 0) {
+    return {
+      ok: true,
+      mode: "internet_fallback",
+      processed: 0,
+      matched: 0,
+      not_found: 0,
+      errors: 0,
+      rate_limited: false,
+      provider: "upcitemdb",
+    };
+  }
+
+  const endpoint = new URL(
+    userKey
+      ? "https://api.upcitemdb.com/prod/v1/lookup"
+      : "https://api.upcitemdb.com/prod/trial/lookup",
+  );
+  endpoint.searchParams.set(
+    "upc",
+    candidates.map(({ code }) => code).join(","),
+  );
+
+  const headers: Record<string, string> = {
+    "User-Agent": USER_AGENT,
+    Accept: "application/json",
+    "Accept-Encoding": "gzip, deflate",
+  };
+  if (userKey) {
+    headers.user_key = userKey;
+    headers.key_type = keyType;
+  }
+
+  const lookupResponse = await fetch(endpoint, {
+    headers,
+    redirect: "follow",
+  });
+
+  if (lookupResponse.status === 429) {
+    const checkedAt = new Date().toISOString();
+    for (const { product } of candidates) {
+      await admin
+        .from("products")
+        .update({
+          image_secondary_source: "upcitemdb",
+          image_secondary_status: "rate_limited",
+          image_secondary_checked_at: checkedAt,
+        })
+        .eq("id", product.id)
+        .eq("store_id", storeId)
+        .is("image_url", null);
+    }
+
+    return {
+      ok: true,
+      mode: "internet_fallback",
+      processed: 0,
+      matched: 0,
+      not_found: 0,
+      errors: 0,
+      rate_limited: true,
+      provider: "upcitemdb",
+      remaining: lookupResponse.headers.get("x-ratelimit-remaining"),
+      reset: lookupResponse.headers.get("x-ratelimit-reset"),
+    };
+  }
+
+  if (lookupResponse.status === 404) {
+    const checkedAt = new Date().toISOString();
+    for (const { product } of candidates) {
+      await admin
+        .from("products")
+        .update({
+          image_secondary_source: "upcitemdb",
+          image_secondary_status: "not_found",
+          image_secondary_checked_at: checkedAt,
+        })
+        .eq("id", product.id)
+        .eq("store_id", storeId)
+        .is("image_url", null);
+    }
+
+    return {
+      ok: true,
+      mode: "internet_fallback",
+      processed: candidates.length,
+      matched: 0,
+      not_found: candidates.length,
+      errors: 0,
+      rate_limited: false,
+      provider: "upcitemdb",
+    };
+  }
+
+  if (!lookupResponse.ok) {
+    throw new Error(`UPCitemdb lookup failed: HTTP ${lookupResponse.status}`);
+  }
+
+  const body = await lookupResponse.json();
+  const items = Array.isArray(body?.items)
+    ? (body.items as Record<string, unknown>[])
+    : [];
+
+  let matched = 0;
+  let notFound = 0;
+  let errors = 0;
+
+  for (const { product, code } of candidates) {
+    const item = items.find((candidate) => upcItemCodes(candidate).includes(code));
+    const imageSourceUrl = item ? pickUpcItemImage(item) : null;
+    const externalName =
+      item && typeof item.title === "string" ? item.title : null;
+
+    if (!item || !imageSourceUrl) {
+      notFound++;
+      await admin
+        .from("products")
+        .update({
+          image_secondary_source: "upcitemdb",
+          image_secondary_status: "not_found",
+          image_secondary_checked_at: new Date().toISOString(),
+        })
+        .eq("id", product.id)
+        .eq("store_id", storeId)
+        .is("image_url", null);
+      continue;
+    }
+
+    try {
+      const stored = await downloadAndStoreImage(
+        admin,
+        storeId,
+        product.id,
+        imageSourceUrl,
+        "internet/upcitemdb",
+      );
+
+      const { error: updateError } = await admin
+        .from("products")
+        .update({
+          image_url: stored.publicUrl,
+          image_source: "upcitemdb",
+          image_source_url: stored.resolvedSourceUrl,
+          image_license:
+            "UPCitemdb catalog image; original source URL retained for provenance.",
+          image_match_method: "exact_gtin_upcitemdb",
+          image_external_name: externalName,
+          image_enrichment_status: "matched",
+          image_checked_at: new Date().toISOString(),
+          image_secondary_source: "upcitemdb",
+          image_secondary_status: "matched",
+          image_secondary_checked_at: new Date().toISOString(),
+        })
+        .eq("id", product.id)
+        .eq("store_id", storeId)
+        .is("image_url", null);
+
+      if (updateError) throw updateError;
+      matched++;
+    } catch (error) {
+      errors++;
+      console.error("product-image-internet-fallback", {
+        productId: product.id,
+        barcode: code,
+        message: error instanceof Error ? error.message : String(error),
+      });
+
+      await admin
+        .from("products")
+        .update({
+          image_secondary_source: "upcitemdb",
+          image_secondary_status: "error",
+          image_secondary_checked_at: new Date().toISOString(),
+        })
+        .eq("id", product.id)
+        .eq("store_id", storeId)
+        .is("image_url", null);
+    }
+  }
+
+  return {
+    ok: true,
+    mode: "internet_fallback",
+    processed: candidates.length,
+    matched,
+    not_found: notFound,
+    errors,
+    rate_limited: false,
+    provider: "upcitemdb",
+    remaining: lookupResponse.headers.get("x-ratelimit-remaining"),
+    reset: lookupResponse.headers.get("x-ratelimit-reset"),
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -148,8 +421,14 @@ Deno.serve(async (req: Request) => {
   );
   const retryFailed = payload?.retry_failed === true;
   const retryNotFound = payload?.retry_not_found === true;
-  const mode = payload?.mode === "refresh_existing" ? "refresh_existing" : "fill_missing";
+  const mode =
+    payload?.mode === "refresh_existing"
+      ? "refresh_existing"
+      : payload?.mode === "internet_fallback"
+        ? "internet_fallback"
+        : "fill_missing";
   const refreshExisting = mode === "refresh_existing";
+  const internetFallback = mode === "internet_fallback";
 
   if (!storeId) return json({ error: "store_id is required" }, 400);
 
@@ -194,7 +473,12 @@ Deno.serve(async (req: Request) => {
     .order("sort_order", { ascending: true })
     .limit(batchSize);
 
-  if (refreshExisting) {
+  if (internetFallback) {
+    queue = queue
+      .is("image_url", null)
+      .eq("image_enrichment_status", "not_found")
+      .is("image_secondary_status", null);
+  } else if (refreshExisting) {
     // Refresh only images already coming from our automated open-catalog
     // pipeline. Source-null/legacy photography is intentionally left alone
     // because it may have been curated manually.
@@ -225,6 +509,22 @@ Deno.serve(async (req: Request) => {
   if (queueError) return json({ error: queueError.message }, 500);
 
   const products = (productRows || []) as ProductRow[];
+
+  if (internetFallback) {
+    try {
+      return json(await runUpcItemDbFallback(admin, storeId, products));
+    } catch (error) {
+      return json(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          mode,
+          provider: "upcitemdb",
+        },
+        502,
+      );
+    }
+  }
+
   let matched = 0;
   let notFound = 0;
   let needsReview = 0;
