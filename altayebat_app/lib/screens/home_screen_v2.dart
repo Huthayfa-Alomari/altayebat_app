@@ -11,6 +11,7 @@ import '../services/catalog_service.dart';
 import '../services/growth_service.dart';
 import '../services/store_settings_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/altayebat_brand.dart';
 import '../widgets/call_fab.dart';
 import '../widgets/product_card.dart';
 import '../widgets/social_contact_strip.dart';
@@ -42,24 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Color(0xFF000000 | value);
   }
 
-  Widget _brandMark() {
-    final logo = _settings.logoUrl.trim();
-    if (logo.isEmpty) {
-      return Icon(Icons.storefront_rounded, color: _brandColor, size: 30);
-    }
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: Image.network(
-        logo,
-        width: 34,
-        height: 34,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) =>
-            Icon(Icons.storefront_rounded, color: _brandColor, size: 30),
-      ),
-    );
-  }
+  Widget _brandMark() => const AltayebatAppMark(size: 38);
 
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
