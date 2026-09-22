@@ -282,7 +282,47 @@ function pickImageFromHtml(html: string, pageUrl: string) {
     }
   }
 
-  return null;
+  // Some barcode/catalog sites expose the product packshot as a regular
+  // image rather than OpenGraph/JSON-LD metadata. Prefer images whose alt
+  // text clearly says they are a product image and reject barcode/logo art.
+  const imageTags = [...html.matchAll(/<img\b[^>]*>/gi)];
+  const candidates: Array<{ url: string; score: number }> = [];
+
+  for (const match of imageTags) {
+    const tag = match[0];
+    const srcMatch =
+      tag.match(/\bsrc=["']([^"']+)["']/i) ||
+      tag.match(/\bdata-src=["']([^"']+)["']/i) ||
+      tag.match(/\bdata-original=["']([^"']+)["']/i);
+    if (!srcMatch?.[1]) continue;
+
+    const alt = tag.match(/\balt=["']([^"']*)["']/i)?.[1] || "";
+    const resolved = absoluteUrl(srcMatch[1], pageUrl);
+    if (!resolved || !/^https:\/\//i.test(resolved)) continue;
+
+    const text = `${alt} ${resolved}`.toLowerCase();
+    if (
+      text.includes("barcode") ||
+      text.includes("logo") ||
+      text.includes("favicon") ||
+      text.includes("sprite") ||
+      text.includes("placeholder")
+    ) {
+      continue;
+    }
+
+    let score = 0;
+    if (text.includes("product image")) score += 8;
+    if (text.includes("product")) score += 4;
+    if (text.includes("image")) score += 1;
+    if (/\.(jpe?g|png|webp)(\?|$)/i.test(resolved)) score += 2;
+    if (/\b(600|800|1000|1200|1500|2000)\b/.test(resolved)) score += 1;
+
+    if (score > 0) candidates.push({ url: resolved, score });
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates[0]?.url || null;
 }
 
 async function imageFromProductPage(pageUrl: string) {
