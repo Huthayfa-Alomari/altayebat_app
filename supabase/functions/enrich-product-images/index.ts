@@ -206,7 +206,8 @@ Deno.serve(async (req: Request) => {
         "open-beauty-facts",
         "open-pet-food-facts",
         "open-products-facts",
-      ]);
+      ])
+      .eq("image_match_method", "exact_gtin");
   } else {
     queue = queue.is("image_url", null);
     if (retryNotFound) {
