@@ -792,6 +792,17 @@ class _HomeScreenState extends State<HomeScreen> {
     return CatalogService.childrenOf(_categories, parentId);
   }
 
+  bool _isCategoryOrAncestorSelected(ProductCategory category) {
+    final selectedId = _selectedCategoryId;
+    if (selectedId == null) return false;
+    if (category.id == selectedId) return true;
+
+    for (final item in _categories) {
+      if (item.id == selectedId) return item.parentId == category.id;
+    }
+    return false;
+  }
+
   Widget _categoriesStrip() {
     final rootCategories = _rootCategories;
     return Container(
@@ -848,7 +859,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 final category = index == 0 ? null : rootCategories[index - 1];
                 final selected = category == null
                     ? _selectedCategoryId == null
-                    : category.id == _selectedCategoryId;
+                    : _isCategoryOrAncestorSelected(category);
                 final name = category?.name ?? 'الكل';
 
                 return SizedBox(
@@ -1098,7 +1109,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               itemBuilder: (context, index) {
                 final category = visibleCategories[index];
-                final selected = category.id == _selectedCategoryId;
+                final selected = _isCategoryOrAncestorSelected(category);
                 final redTint = index.isEven;
 
                 return Material(
