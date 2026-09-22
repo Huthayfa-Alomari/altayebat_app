@@ -188,6 +188,142 @@ async function downloadAndStoreImage(
   };
 }
 
+function decodeHtmlEntities(value: string) {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function absoluteUrl(value: string, base: string) {
+  try {
+    return new URL(decodeHtmlEntities(value), base).toString();
+  } catch {
+    return null;
+  }
+}
+
+function pickImageFromHtml(html: string, pageUrl: string) {
+  const patterns = [
+    /<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["'][^>]*>/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::secure_url)?["'][^>]*>/i,
+    /<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["'][^>]*>/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["'][^>]*>/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match?.[1]) {
+      const resolved = absoluteUrl(match[1], pageUrl);
+      if (resolved && /^https:\/\//i.test(resolved)) return resolved;
+    }
+  }
+
+  const jsonLdBlocks = [
+    ...html.matchAll(
+      /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
+    ),
+  ];
+
+  const visit = (value: unknown): string | null => {
+    if (!value) return null;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const found = visit(item);
+        if (found) return found;
+      }
+      return null;
+    }
+    if (typeof value !== "object") return null;
+
+    const record = value as Record<string, unknown>;
+    const type = record["@type"];
+    const isProduct =
+      type === "Product" ||
+      (Array.isArray(type) && type.some((item) => item === "Product"));
+
+    if (isProduct) {
+      const image = record.image;
+      const candidates = Array.isArray(image) ? image : [image];
+      for (const candidate of candidates) {
+        if (typeof candidate === "string") {
+          const resolved = absoluteUrl(candidate, pageUrl);
+          if (resolved && /^https:\/\//i.test(resolved)) return resolved;
+        } else if (
+          candidate &&
+          typeof candidate === "object" &&
+          typeof (candidate as Record<string, unknown>).url === "string"
+        ) {
+          const resolved = absoluteUrl(
+            (candidate as Record<string, unknown>).url as string,
+            pageUrl,
+          );
+          if (resolved && /^https:\/\//i.test(resolved)) return resolved;
+        }
+      }
+    }
+
+    for (const nested of Object.values(record)) {
+      const found = visit(nested);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  for (const block of jsonLdBlocks) {
+    try {
+      const parsed = JSON.parse(block[1].trim());
+      const found = visit(parsed);
+      if (found) return found;
+    } catch {
+      // Ignore malformed structured data and continue to the next block.
+    }
+  }
+
+  return null;
+}
+
+async function imageFromProductPage(pageUrl: string) {
+  const parsed = new URL(pageUrl);
+  const host = parsed.hostname.toLowerCase();
+  if (
+    parsed.protocol !== "https:" ||
+    host === "localhost" ||
+    host.endsWith(".local") ||
+    host === "127.0.0.1" ||
+    host === "::1"
+  ) {
+    throw new Error("A public https product page is required");
+  }
+
+  const response = await fetch(pageUrl, {
+    headers: {
+      "User-Agent": USER_AGENT,
+      Accept: "text/html,application/xhtml+xml",
+    },
+    redirect: "follow",
+  });
+  if (!response.ok) {
+    throw new Error(`Product page fetch failed: HTTP ${response.status}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.toLowerCase().includes("text/html")) {
+    throw new Error("Product page did not return HTML");
+  }
+
+  const html = (await response.text()).slice(0, 2_000_000);
+  const imageUrl = pickImageFromHtml(html, response.url || pageUrl);
+  if (!imageUrl) throw new Error("No product image found in page metadata");
+
+  return {
+    pageUrl: response.url || pageUrl,
+    imageUrl,
+  };
+}
+
 async function runUpcItemDbFallback(
   admin: any,
   storeId: string,
@@ -428,10 +564,13 @@ Deno.serve(async (req: Request) => {
         ? "internet_fallback"
         : payload?.mode === "manual_candidate"
           ? "manual_candidate"
-          : "fill_missing";
+          : payload?.mode === "manual_page"
+            ? "manual_page"
+            : "fill_missing";
   const refreshExisting = mode === "refresh_existing";
   const internetFallback = mode === "internet_fallback";
   const manualCandidate = mode === "manual_candidate";
+  const manualPage = mode === "manual_page";
 
   if (!storeId) return json({ error: "store_id is required" }, 400);
 
@@ -466,6 +605,90 @@ Deno.serve(async (req: Request) => {
   }
 
   if (!authorized) return json({ error: "Forbidden" }, 403);
+
+  if (manualPage) {
+    const productId =
+      typeof payload?.product_id === "string" ? payload.product_id : "";
+    const pageUrl =
+      typeof payload?.page_url === "string" ? payload.page_url.trim() : "";
+    const candidateSource =
+      typeof payload?.source === "string" && payload.source.trim()
+        ? payload.source.trim().slice(0, 120)
+        : "manual-web-page";
+    const candidateExternalName =
+      typeof payload?.external_name === "string"
+        ? payload.external_name.trim().slice(0, 300)
+        : null;
+
+    if (!productId) return json({ error: "product_id is required" }, 400);
+    if (!/^https:\/\//i.test(pageUrl)) {
+      return json({ error: "A public https page_url is required" }, 400);
+    }
+
+    const { data: product, error: productError } = await admin
+      .from("products")
+      .select("id,name,barcode")
+      .eq("id", productId)
+      .eq("store_id", storeId)
+      .eq("is_available", true)
+      .maybeSingle();
+
+    if (productError) return json({ error: productError.message }, 500);
+    if (!product) return json({ error: "Product not found" }, 404);
+
+    try {
+      const resolved = await imageFromProductPage(pageUrl);
+      const stored = await downloadAndStoreImage(
+        admin,
+        storeId,
+        productId,
+        resolved.imageUrl,
+        "internet/page",
+      );
+
+      const { error: updateError } = await admin
+        .from("products")
+        .update({
+          image_url: stored.publicUrl,
+          image_source: candidateSource,
+          image_source_url: resolved.pageUrl,
+          image_license:
+            "Internet catalog image; product page retained for provenance.",
+          image_match_method: "manual_page_verified",
+          image_external_name: candidateExternalName,
+          image_enrichment_status: "matched",
+          image_checked_at: new Date().toISOString(),
+          image_secondary_source: candidateSource,
+          image_secondary_status: "matched",
+          image_secondary_checked_at: new Date().toISOString(),
+        })
+        .eq("id", productId)
+        .eq("store_id", storeId);
+
+      if (updateError) throw updateError;
+
+      return json({
+        ok: true,
+        mode,
+        product_id: productId,
+        product_name: product.name,
+        barcode: product.barcode,
+        source: candidateSource,
+        page_url: resolved.pageUrl,
+        resolved_image_url: resolved.imageUrl,
+        stored_url: stored.publicUrl,
+      });
+    } catch (error) {
+      return json(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          mode,
+          product_id: productId,
+        },
+        502,
+      );
+    }
+  }
 
   if (manualCandidate) {
     const productId =
