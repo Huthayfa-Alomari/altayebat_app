@@ -336,6 +336,8 @@ class _HomeScreenState extends State<HomeScreen> {
       if (_errorMessage != null) SliverToBoxAdapter(child: _errorState()),
       if (showDiscovery && _categories.isNotEmpty)
         SliverToBoxAdapter(child: _categoriesStrip()),
+      if (showDiscovery && _activeSubcategories.isNotEmpty)
+        SliverToBoxAdapter(child: _subcategoryStrip()),
       if (showDiscovery) SliverToBoxAdapter(child: _heroBanner()),
       if (showDiscovery && _categories.isNotEmpty)
         SliverToBoxAdapter(child: _categoryShowcase()),
@@ -770,7 +772,28 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  List<ProductCategory> get _rootCategories =>
+      CatalogService.rootCategories(_categories);
+
+  List<ProductCategory> get _activeSubcategories {
+    final selectedId = _selectedCategoryId;
+    if (selectedId == null) return const [];
+
+    ProductCategory? selected;
+    for (final category in _categories) {
+      if (category.id == selectedId) {
+        selected = category;
+        break;
+      }
+    }
+    if (selected == null) return const [];
+
+    final parentId = selected.parentId ?? selected.id;
+    return CatalogService.childrenOf(_categories, parentId);
+  }
+
   Widget _categoriesStrip() {
+    final rootCategories = _rootCategories;
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.fromLTRB(0, 12, 0, 10),
@@ -819,10 +842,10 @@ class _HomeScreenState extends State<HomeScreen> {
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               scrollDirection: Axis.horizontal,
-              itemCount: _categories.length + 1,
+              itemCount: rootCategories.length + 1,
               separatorBuilder: (_, __) => const SizedBox(width: 7),
               itemBuilder: (context, index) {
-                final category = index == 0 ? null : _categories[index - 1];
+                final category = index == 0 ? null : rootCategories[index - 1];
                 final selected = category == null
                     ? _selectedCategoryId == null
                     : category.id == _selectedCategoryId;
@@ -925,8 +948,74 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _subcategoryStrip() {
+    final items = _activeSubcategories;
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(0, 2, 0, 12),
+      child: SizedBox(
+        height: 92,
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          scrollDirection: Axis.horizontal,
+          itemCount: items.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 9),
+          itemBuilder: (context, index) {
+            final category = items[index];
+            final selected = category.id == _selectedCategoryId;
+            return SizedBox(
+              width: 92,
+              child: Material(
+                color: selected
+                    ? const Color(0xFFFFF1F3)
+                    : const Color(0xFFF4F8FC),
+                borderRadius: BorderRadius.circular(16),
+                child: InkWell(
+                  onTap: () => _selectCategory(category.id),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 7, 8, 6),
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: _categoryMedia(
+                            category: category,
+                            name: category.name,
+                            size: 50,
+                            selected: selected,
+                            compact: true,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          category.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: selected
+                                ? AppColors.primary
+                                : AppColors.textPrimary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   Widget _categoryShowcase() {
-    final visibleCategories = _categories.take(14).toList(growable: false);
+    final visibleCategories = _rootCategories.take(14).toList(growable: false);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 4, 0, 18),
