@@ -41,10 +41,10 @@
 
     <path
         android:fillColor="#1E3A5F"
-        android:pathData="M150,282 A16,16 0,1 1,149.99 282 Z" />
+        android:pathData="M150,282 A16,16 0,1 1,150,314 A16,16 0,1 1,150,282 Z" />
     <path
         android:fillColor="#1E3A5F"
-        android:pathData="M220,282 A16,16 0,1 1,219.99 282 Z" />
+        android:pathData="M220,282 A16,16 0,1 1,220,314 A16,16 0,1 1,220,282 Z" />
 
     <path
         android:fillColor="#1E3A5F"
