@@ -121,11 +121,7 @@ class _AltayebatAppMarkPainter extends CustomPainter {
       ..lineTo(270, 280);
     canvas.drawPath(basket, whiteStroke);
 
-    canvas.drawLine(
-      const Offset(110, 130),
-      const Offset(92, 100),
-      whiteStroke,
-    );
+    canvas.drawLine(const Offset(110, 130), const Offset(92, 100), whiteStroke);
     canvas.drawLine(
       const Offset(132, 158),
       const Offset(248, 158),
@@ -215,11 +211,7 @@ class _AltayebatRoundMarkPainter extends CustomPainter {
       ..quadraticBezierTo(130, 210, 145, 210)
       ..lineTo(235, 210);
     canvas.drawPath(basket, whiteStroke);
-    canvas.drawLine(
-      const Offset(130, 110),
-      const Offset(118, 90),
-      whiteStroke,
-    );
+    canvas.drawLine(const Offset(130, 110), const Offset(118, 90), whiteStroke);
     canvas.drawLine(
       const Offset(145, 130),
       const Offset(225, 130),
