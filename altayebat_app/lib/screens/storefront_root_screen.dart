@@ -9,6 +9,7 @@ import '../widgets/store_announcement_banner.dart';
 import 'account_screen.dart';
 import 'ai_shopping_assistant_screen.dart';
 import 'cart_screen.dart';
+import 'categories_screen.dart';
 import 'home_screen_v2.dart';
 import 'order_history_screen.dart';
 
@@ -72,9 +73,10 @@ class _StorefrontRootScreenState extends State<StorefrontRootScreen>
                 index: _index,
                 children: [
                   HomeScreen(settings: _settings),
+                  const CategoriesScreen(),
                   const OrderHistoryScreen(),
-                  const CartScreen(),
                   const AccountScreen(),
+                  const CartScreen(),
                 ],
               ),
             ),
@@ -87,6 +89,16 @@ class _StorefrontRootScreenState extends State<StorefrontRootScreen>
             ],
           ],
         ),
+        floatingActionButton: _settings.featureAi
+            ? FloatingActionButton.small(
+                heroTag: 'storefront-ai',
+                tooltip: 'المساعد الذكي',
+                onPressed: _openAiAssistant,
+                backgroundColor: AppColors.navy,
+                foregroundColor: Colors.white,
+                child: const Icon(Icons.auto_awesome_rounded),
+              )
+            : null,
         bottomNavigationBar: Selector<CartProvider, int>(
           selector: (_, cart) => cart.itemCount,
           builder: (context, cartCount, child) {
@@ -97,9 +109,19 @@ class _StorefrontRootScreenState extends State<StorefrontRootScreen>
                 label: 'الرئيسية',
               ),
               const NavigationDestination(
+                icon: Icon(Icons.grid_view_outlined),
+                selectedIcon: Icon(Icons.grid_view_rounded),
+                label: 'التصنيفات',
+              ),
+              const NavigationDestination(
                 icon: Icon(Icons.receipt_long_outlined),
                 selectedIcon: Icon(Icons.receipt_long_rounded),
                 label: 'طلباتي',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.person_outline_rounded),
+                selectedIcon: Icon(Icons.person_rounded),
+                label: 'حسابي',
               ),
               NavigationDestination(
                 icon: Badge.count(
@@ -116,17 +138,6 @@ class _StorefrontRootScreenState extends State<StorefrontRootScreen>
                 ),
                 label: 'السلة',
               ),
-              const NavigationDestination(
-                icon: Icon(Icons.person_outline_rounded),
-                selectedIcon: Icon(Icons.person_rounded),
-                label: 'حسابي',
-              ),
-              if (_settings.featureAi)
-                const NavigationDestination(
-                  icon: Icon(Icons.auto_awesome_outlined),
-                  selectedIcon: Icon(Icons.auto_awesome_rounded),
-                  label: 'المساعد',
-                ),
             ];
 
             return DecoratedBox(
@@ -145,10 +156,6 @@ class _StorefrontRootScreenState extends State<StorefrontRootScreen>
                 child: NavigationBar(
                   selectedIndex: _index,
                   onDestinationSelected: (value) {
-                    if (_settings.featureAi && value == 4) {
-                      _openAiAssistant();
-                      return;
-                    }
                     if (_index == value) return;
                     setState(() => _index = value);
                   },
