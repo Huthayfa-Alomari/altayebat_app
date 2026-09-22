@@ -371,6 +371,84 @@ async function imageFromProductPage(pageUrl: string) {
   };
 }
 
+async function tryGoUpcFallback(
+  admin: any,
+  storeId: string,
+  product: ProductRow,
+  code: string,
+) {
+  const pageUrl = `https://go-upc.com/search?q=${encodeURIComponent(code)}`;
+  const response = await fetch(pageUrl, {
+    headers: {
+      "User-Agent": USER_AGENT,
+      Accept: "text/html,application/xhtml+xml",
+    },
+    redirect: "follow",
+  });
+
+  if (response.status === 429) {
+    return { status: "rate_limited" as const };
+  }
+  if (!response.ok) {
+    return { status: "error" as const, message: `HTTP ${response.status}` };
+  }
+
+  const html = (await response.text()).slice(0, 2_000_000);
+  const compactDigits = html.replace(/\D/g, "");
+  if (!compactDigits.includes(code)) {
+    return { status: "not_found" as const };
+  }
+
+  const imageUrl = pickImageFromHtml(html, response.url || pageUrl);
+  if (!imageUrl) return { status: "not_found" as const };
+
+  let imageHost = "";
+  try {
+    imageHost = new URL(imageUrl).hostname.toLowerCase();
+  } catch {
+    return { status: "not_found" as const };
+  }
+
+  // Search pages can contain unrelated site graphics. Only accept the
+  // product-image CDN used by Go-UPC for exact catalog results.
+  if (
+    imageHost !== "go-upc.s3.amazonaws.com" &&
+    !imageHost.endsWith(".go-upc.s3.amazonaws.com")
+  ) {
+    return { status: "not_found" as const };
+  }
+
+  const stored = await downloadAndStoreImage(
+    admin,
+    storeId,
+    product.id,
+    imageUrl,
+    "internet/go-upc",
+  );
+
+  const { error: updateError } = await admin
+    .from("products")
+    .update({
+      image_url: stored.publicUrl,
+      image_source: "go-upc",
+      image_source_url: response.url || pageUrl,
+      image_license:
+        "Internet barcode catalog image; exact GTIN search page retained for provenance.",
+      image_match_method: "exact_gtin_go_upc",
+      image_enrichment_status: "matched",
+      image_checked_at: new Date().toISOString(),
+      image_secondary_source: "go-upc",
+      image_secondary_status: "matched",
+      image_secondary_checked_at: new Date().toISOString(),
+    })
+    .eq("id", product.id)
+    .eq("store_id", storeId)
+    .is("image_url", null);
+
+  if (updateError) throw updateError;
+  return { status: "matched" as const, imageUrl: stored.publicUrl };
+}
+
 async function runUpcItemDbFallback(
   admin: any,
   storeId: string,
@@ -426,58 +504,108 @@ async function runUpcItemDbFallback(
   });
 
   if (lookupResponse.status === 429) {
-    const checkedAt = new Date().toISOString();
-    for (const { product } of candidates) {
-      await admin
-        .from("products")
-        .update({
-          image_secondary_source: "upcitemdb",
-          image_secondary_status: "rate_limited",
-          image_secondary_checked_at: checkedAt,
-        })
-        .eq("id", product.id)
-        .eq("store_id", storeId)
-        .is("image_url", null);
-    }
+    let goUpcMatched = 0;
+    let goUpcNotFound = 0;
+    let goUpcErrors = 0;
+    let goUpcRateLimited = false;
 
-    return {
-      ok: true,
-      mode: "internet_fallback",
-      processed: 0,
-      matched: 0,
-      not_found: 0,
-      errors: 0,
-      rate_limited: true,
-      provider: "upcitemdb",
-      remaining: lookupResponse.headers.get("x-ratelimit-remaining"),
-      reset: lookupResponse.headers.get("x-ratelimit-reset"),
-    };
-  }
-
-  if (lookupResponse.status === 404) {
-    const checkedAt = new Date().toISOString();
-    for (const { product } of candidates) {
-      await admin
-        .from("products")
-        .update({
-          image_secondary_source: "upcitemdb",
-          image_secondary_status: "not_found",
-          image_secondary_checked_at: checkedAt,
-        })
-        .eq("id", product.id)
-        .eq("store_id", storeId)
-        .is("image_url", null);
+    for (const { product, code } of candidates) {
+      try {
+        const fallback = await tryGoUpcFallback(admin, storeId, product, code);
+        if (fallback.status === "matched") {
+          goUpcMatched++;
+        } else if (fallback.status === "rate_limited") {
+          goUpcRateLimited = true;
+          await admin
+            .from("products")
+            .update({
+              image_secondary_source: "go-upc",
+              image_secondary_status: "rate_limited",
+              image_secondary_checked_at: new Date().toISOString(),
+            })
+            .eq("id", product.id)
+            .eq("store_id", storeId)
+            .is("image_url", null);
+        } else {
+          goUpcNotFound++;
+          await admin
+            .from("products")
+            .update({
+              image_secondary_source: "go-upc",
+              image_secondary_status:
+                fallback.status === "error" ? "error" : "not_found",
+              image_secondary_checked_at: new Date().toISOString(),
+            })
+            .eq("id", product.id)
+            .eq("store_id", storeId)
+            .is("image_url", null);
+        }
+      } catch (error) {
+        goUpcErrors++;
+        console.error("go-upc-fallback", {
+          productId: product.id,
+          barcode: code,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
 
     return {
       ok: true,
       mode: "internet_fallback",
       processed: candidates.length,
-      matched: 0,
-      not_found: candidates.length,
-      errors: 0,
+      matched: goUpcMatched,
+      not_found: goUpcNotFound,
+      errors: goUpcErrors,
+      rate_limited: goUpcRateLimited,
+      provider: "go-upc-after-upcitemdb-limit",
+      remaining: lookupResponse.headers.get("x-ratelimit-remaining"),
+      reset: lookupResponse.headers.get("x-ratelimit-reset"),
+    };
+  }
+
+  if (lookupResponse.status === 404) {
+    let goUpcMatched = 0;
+    let goUpcNotFound = 0;
+    let goUpcErrors = 0;
+
+    for (const { product, code } of candidates) {
+      try {
+        const fallback = await tryGoUpcFallback(admin, storeId, product, code);
+        if (fallback.status === "matched") {
+          goUpcMatched++;
+        } else {
+          goUpcNotFound++;
+          await admin
+            .from("products")
+            .update({
+              image_secondary_source: "go-upc",
+              image_secondary_status:
+                fallback.status === "rate_limited"
+                  ? "rate_limited"
+                  : fallback.status === "error"
+                    ? "error"
+                    : "not_found",
+              image_secondary_checked_at: new Date().toISOString(),
+            })
+            .eq("id", product.id)
+            .eq("store_id", storeId)
+            .is("image_url", null);
+        }
+      } catch (error) {
+        goUpcErrors++;
+      }
+    }
+
+    return {
+      ok: true,
+      mode: "internet_fallback",
+      processed: candidates.length,
+      matched: goUpcMatched,
+      not_found: goUpcNotFound,
+      errors: goUpcErrors,
       rate_limited: false,
-      provider: "upcitemdb",
+      provider: "go-upc-after-upcitemdb-404",
     };
   }
 
@@ -501,17 +629,37 @@ async function runUpcItemDbFallback(
       item && typeof item.title === "string" ? item.title : null;
 
     if (!item || !imageSourceUrl) {
-      notFound++;
-      await admin
-        .from("products")
-        .update({
-          image_secondary_source: "upcitemdb",
-          image_secondary_status: "not_found",
-          image_secondary_checked_at: new Date().toISOString(),
-        })
-        .eq("id", product.id)
-        .eq("store_id", storeId)
-        .is("image_url", null);
+      try {
+        const fallback = await tryGoUpcFallback(admin, storeId, product, code);
+        if (fallback.status === "matched") {
+          matched++;
+          continue;
+        }
+
+        notFound++;
+        await admin
+          .from("products")
+          .update({
+            image_secondary_source: "go-upc",
+            image_secondary_status:
+              fallback.status === "rate_limited"
+                ? "rate_limited"
+                : fallback.status === "error"
+                  ? "error"
+                  : "not_found",
+            image_secondary_checked_at: new Date().toISOString(),
+          })
+          .eq("id", product.id)
+          .eq("store_id", storeId)
+          .is("image_url", null);
+      } catch (error) {
+        errors++;
+        console.error("go-upc-fallback", {
+          productId: product.id,
+          barcode: code,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
       continue;
     }
 
