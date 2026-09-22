@@ -9,6 +9,7 @@ type Category = {
   name: string;
   sort_order: number;
   image_url: string | null;
+  parent_id: string | null;
 };
 
 const CATEGORY_MEDIA_BUCKET = "product-images";
@@ -54,6 +55,7 @@ export default function CategoriesManager({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [name, setName] = useState("");
+  const [parentId, setParentId] = useState("");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [busyCategoryId, setBusyCategoryId] = useState<string | null>(null);
@@ -123,7 +125,10 @@ export default function CategoriesManager({
         .insert({
           store_id: storeId,
           name: normalizedName,
-          sort_order: initialCategories.length,
+          parent_id: parentId || null,
+          sort_order: initialCategories.filter(
+            (item) => (item.parent_id ?? "") === parentId,
+          ).length * 10 + 10,
         })
         .select("id")
         .single();
@@ -145,6 +150,7 @@ export default function CategoriesManager({
       }
 
       setName("");
+      setParentId("");
       setMediaFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       setSuccess("تمت إضافة التصنيف وترتيبه للواجهة.");
@@ -228,14 +234,17 @@ export default function CategoriesManager({
   }
 
   async function moveCategory(category: Category, direction: -1 | 1) {
-    const ordered = [...initialCategories].sort(
-      (a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "ar"),
-    );
-    const index = ordered.findIndex((item) => item.id === category.id);
+    const siblings = initialCategories
+      .filter((item) => item.parent_id === category.parent_id)
+      .sort(
+        (a, b) =>
+          a.sort_order - b.sort_order || a.name.localeCompare(b.name, "ar"),
+      );
+    const index = siblings.findIndex((item) => item.id === category.id);
     const swapIndex = index + direction;
-    if (index < 0 || swapIndex < 0 || swapIndex >= ordered.length) return;
+    if (index < 0 || swapIndex < 0 || swapIndex >= siblings.length) return;
 
-    const other = ordered[swapIndex];
+    const other = siblings[swapIndex];
     setBusyCategoryId(category.id);
     setError(null);
     setSuccess(null);
@@ -277,6 +286,49 @@ export default function CategoriesManager({
     router.refresh();
   }
 
+  async function changeParent(category: Category, nextParentId: string) {
+    const normalizedParentId = nextParentId || null;
+    if (normalizedParentId === category.parent_id) return;
+
+    const hasChildren = initialCategories.some(
+      (item) => item.parent_id === category.id,
+    );
+    if (hasChildren && normalizedParentId) {
+      setError("هذا قسم رئيسي وله تصنيفات فرعية. انقل التصنيفات الفرعية أولاً.");
+      return;
+    }
+
+    setBusyCategoryId(category.id);
+    setError(null);
+    setSuccess(null);
+
+    const siblingCount = initialCategories.filter(
+      (item) => item.parent_id === normalizedParentId && item.id !== category.id,
+    ).length;
+
+    const { error: updateError } = await supabase
+      .from("categories")
+      .update({
+        parent_id: normalizedParentId,
+        sort_order: siblingCount * 10 + 10,
+      })
+      .eq("id", category.id)
+      .eq("store_id", storeId);
+
+    setBusyCategoryId(null);
+    if (updateError) {
+      setError("تعذر تغيير القسم الرئيسي.");
+      return;
+    }
+
+    setSuccess(
+      normalizedParentId
+        ? "تم تحويل التصنيف إلى تصنيف فرعي."
+        : "تم تحويل التصنيف إلى قسم رئيسي.",
+    );
+    router.refresh();
+  }
+
   async function deleteCategory(category: Category) {
     if (!window.confirm("متأكد إنك بدك تحذف التصنيف؟")) return;
 
@@ -302,15 +354,42 @@ export default function CategoriesManager({
     router.refresh();
   }
 
-  const orderedCategories = [...initialCategories].sort(
-    (a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "ar"),
-  );
+  const rootCategories = initialCategories
+    .filter((item) => !item.parent_id)
+    .sort(
+      (a, b) =>
+        a.sort_order - b.sort_order || a.name.localeCompare(b.name, "ar"),
+    );
+
+  const knownRootIds = new Set(rootCategories.map((item) => item.id));
+  const orderedCategories = [
+    ...rootCategories.flatMap((root) => [
+      root,
+      ...initialCategories
+        .filter((item) => item.parent_id === root.id)
+        .sort(
+          (a, b) =>
+            a.sort_order - b.sort_order || a.name.localeCompare(b.name, "ar"),
+        ),
+    ]),
+    ...initialCategories
+      .filter(
+        (item) =>
+          item.parent_id &&
+          !knownRootIds.has(item.parent_id) &&
+          !rootCategories.some((root) => root.id === item.id),
+      )
+      .sort(
+        (a, b) =>
+          a.sort_order - b.sort_order || a.name.localeCompare(b.name, "ar"),
+      ),
+  ];
 
   return (
     <div className="space-y-6">
       <form
         onSubmit={handleAdd}
-        className="grid gap-4 rounded-2xl border border-gray-200 bg-white p-4 lg:grid-cols-[1fr_1fr_auto]"
+        className="grid gap-4 rounded-2xl border border-gray-200 bg-white p-4 lg:grid-cols-[1fr_0.8fr_1fr_auto]"
       >
         <div>
           <label className="mb-1.5 block text-xs font-medium text-gray-600">
@@ -323,6 +402,27 @@ export default function CategoriesManager({
             maxLength={80}
             className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-brand"
           />
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-gray-600">
+            القسم الرئيسي
+          </label>
+          <select
+            value={parentId}
+            onChange={(e) => setParentId(e.target.value)}
+            className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
+          >
+            <option value="">قسم رئيسي</option>
+            {rootCategories.map((root) => (
+              <option key={root.id} value={root.id}>
+                {root.name}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-[11px] text-gray-400">
+            اتركه "قسم رئيسي" أو اختر القسم الذي يظهر تحته.
+          </p>
         </div>
 
         <div>
@@ -393,9 +493,34 @@ export default function CategoriesManager({
                     <p className="truncate text-sm font-semibold text-gray-900">
                       {cat.name}
                     </p>
-                    <p className="mt-1 text-xs text-gray-400">
-                      ترتيب الواجهة: {index + 1}
-                    </p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                        cat.parent_id
+                          ? "bg-sky-50 text-sky-700"
+                          : "bg-red-50 text-red-700"
+                      }`}>
+                        {cat.parent_id ? "تصنيف فرعي" : "قسم رئيسي"}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        ترتيب الواجهة: {index + 1}
+                      </span>
+                    </div>
+
+                    <select
+                      value={cat.parent_id ?? ""}
+                      disabled={busy}
+                      onChange={(e) => void changeParent(cat, e.target.value)}
+                      className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 disabled:opacity-50"
+                    >
+                      <option value="">قسم رئيسي</option>
+                      {rootCategories
+                        .filter((root) => root.id !== cat.id)
+                        .map((root) => (
+                          <option key={root.id} value={root.id}>
+                            تحت: {root.name}
+                          </option>
+                        ))}
+                    </select>
 
                     <label className="mt-3 inline-flex cursor-pointer items-center rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700 hover:bg-sky-100">
                       {busy ? "جاري..." : cat.image_url ? "تغيير الصورة/GIF" : "إضافة صورة/GIF"}
@@ -418,7 +543,17 @@ export default function CategoriesManager({
                   <div className="flex gap-1">
                     <button
                       type="button"
-                      disabled={busy || index === 0}
+                      disabled={
+                        busy ||
+                        initialCategories
+                          .filter((item) => item.parent_id === cat.parent_id)
+                          .sort(
+                            (a, b) =>
+                              a.sort_order - b.sort_order ||
+                              a.name.localeCompare(b.name, "ar"),
+                          )
+                          .findIndex((item) => item.id === cat.id) === 0
+                      }
                       onClick={() => void moveCategory(cat, -1)}
                       className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 disabled:opacity-35"
                       title="تحريك للأعلى"
@@ -427,7 +562,22 @@ export default function CategoriesManager({
                     </button>
                     <button
                       type="button"
-                      disabled={busy || index === orderedCategories.length - 1}
+                      disabled={
+                        busy ||
+                        (() => {
+                          const siblings = initialCategories
+                            .filter((item) => item.parent_id === cat.parent_id)
+                            .sort(
+                              (a, b) =>
+                                a.sort_order - b.sort_order ||
+                                a.name.localeCompare(b.name, "ar"),
+                            );
+                          return (
+                            siblings.findIndex((item) => item.id === cat.id) ===
+                            siblings.length - 1
+                          );
+                        })()
+                      }
                       onClick={() => void moveCategory(cat, 1)}
                       className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 disabled:opacity-35"
                       title="تحريك للأسفل"
