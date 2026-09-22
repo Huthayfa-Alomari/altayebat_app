@@ -201,10 +201,7 @@ class _CategoryTile extends StatelessWidget {
   final ProductCategory category;
   final VoidCallback onTap;
 
-  const _CategoryTile({
-    required this.category,
-    required this.onTap,
-  });
+  const _CategoryTile({required this.category, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -223,10 +220,7 @@ class _CategoryTile extends StatelessWidget {
               children: [
                 Expanded(
                   child: Center(
-                    child: _CategoryImage(
-                      category: category,
-                      size: 110,
-                    ),
+                    child: _CategoryImage(category: category, size: 110),
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -254,10 +248,7 @@ class _CategoryImage extends StatelessWidget {
   final ProductCategory category;
   final double size;
 
-  const _CategoryImage({
-    required this.category,
-    required this.size,
-  });
+  const _CategoryImage({required this.category, required this.size});
 
   @override
   Widget build(BuildContext context) {
@@ -296,10 +287,7 @@ class _CategoryImage extends StatelessWidget {
 class CategoryProductsScreen extends StatefulWidget {
   final ProductCategory category;
 
-  const CategoryProductsScreen({
-    super.key,
-    required this.category,
-  });
+  const CategoryProductsScreen({super.key, required this.category});
 
   @override
   State<CategoryProductsScreen> createState() => _CategoryProductsScreenState();
@@ -435,11 +423,11 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                           sliver: SliverGrid(
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: 12,
-                              crossAxisSpacing: 12,
-                              mainAxisExtent: 264,
-                            ),
+                                  crossAxisCount: 2,
+                                  mainAxisSpacing: 12,
+                                  crossAxisSpacing: 12,
+                                  mainAxisExtent: 264,
+                                ),
                             delegate: SliverChildBuilderDelegate(
                               (context, index) =>
                                   ProductCard(product: _products[index]),
@@ -451,9 +439,7 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                           const SliverToBoxAdapter(
                             child: Padding(
                               padding: EdgeInsets.all(22),
-                              child: Center(
-                                child: CircularProgressIndicator(),
-                              ),
+                              child: Center(child: CircularProgressIndicator()),
                             ),
                           ),
                         if (_products.isEmpty)
