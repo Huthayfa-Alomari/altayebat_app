@@ -426,9 +426,12 @@ Deno.serve(async (req: Request) => {
       ? "refresh_existing"
       : payload?.mode === "internet_fallback"
         ? "internet_fallback"
-        : "fill_missing";
+        : payload?.mode === "manual_candidate"
+          ? "manual_candidate"
+          : "fill_missing";
   const refreshExisting = mode === "refresh_existing";
   const internetFallback = mode === "internet_fallback";
+  const manualCandidate = mode === "manual_candidate";
 
   if (!storeId) return json({ error: "store_id is required" }, 400);
 
@@ -463,6 +466,99 @@ Deno.serve(async (req: Request) => {
   }
 
   if (!authorized) return json({ error: "Forbidden" }, 403);
+
+  if (manualCandidate) {
+    const productId =
+      typeof payload?.product_id === "string" ? payload.product_id : "";
+    const candidateUrl =
+      typeof payload?.image_url === "string" ? payload.image_url.trim() : "";
+    const candidateSource =
+      typeof payload?.source === "string" && payload.source.trim()
+        ? payload.source.trim().slice(0, 120)
+        : "manual-web";
+    const candidateExternalName =
+      typeof payload?.external_name === "string"
+        ? payload.external_name.trim().slice(0, 300)
+        : null;
+
+    if (!productId) return json({ error: "product_id is required" }, 400);
+    if (!/^https:\/\//i.test(candidateUrl)) {
+      return json({ error: "A public https image_url is required" }, 400);
+    }
+
+    const parsed = new URL(candidateUrl);
+    const host = parsed.hostname.toLowerCase();
+    if (
+      host === "localhost" ||
+      host.endsWith(".local") ||
+      host === "127.0.0.1" ||
+      host === "::1"
+    ) {
+      return json({ error: "Private/local image hosts are not allowed" }, 400);
+    }
+
+    const { data: product, error: productError } = await admin
+      .from("products")
+      .select("id,name,barcode,image_url")
+      .eq("id", productId)
+      .eq("store_id", storeId)
+      .eq("is_available", true)
+      .maybeSingle();
+
+    if (productError) return json({ error: productError.message }, 500);
+    if (!product) return json({ error: "Product not found" }, 404);
+
+    try {
+      const stored = await downloadAndStoreImage(
+        admin,
+        storeId,
+        productId,
+        candidateUrl,
+        "internet/manual",
+      );
+
+      const { error: updateError } = await admin
+        .from("products")
+        .update({
+          image_url: stored.publicUrl,
+          image_source: candidateSource,
+          image_source_url: stored.resolvedSourceUrl,
+          image_license:
+            "Internet catalog image; source URL retained for provenance.",
+          image_match_method: "manual_web_verified",
+          image_external_name: candidateExternalName,
+          image_enrichment_status: "matched",
+          image_checked_at: new Date().toISOString(),
+          image_secondary_source: candidateSource,
+          image_secondary_status: "matched",
+          image_secondary_checked_at: new Date().toISOString(),
+        })
+        .eq("id", productId)
+        .eq("store_id", storeId);
+
+      if (updateError) throw updateError;
+
+      return json({
+        ok: true,
+        mode,
+        product_id: productId,
+        product_name: product.name,
+        barcode: product.barcode,
+        source: candidateSource,
+        source_url: stored.resolvedSourceUrl,
+        stored_url: stored.publicUrl,
+      });
+    } catch (error) {
+      return json(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          mode,
+          product_id: productId,
+        },
+        502,
+      );
+    }
+  }
 
   let queue = admin
     .from("products")
