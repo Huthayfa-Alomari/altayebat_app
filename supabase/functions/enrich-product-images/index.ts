@@ -196,13 +196,17 @@ Deno.serve(async (req: Request) => {
 
   if (refreshExisting) {
     // Refresh only images already coming from our automated open-catalog
-    // pipeline (plus legacy rows with no source). This avoids overwriting
-    // deliberately curated/manual photography.
+    // pipeline. Source-null/legacy photography is intentionally left alone
+    // because it may have been curated manually.
     queue = queue
       .not("image_url", "is", null)
-      .or(
-        "image_source.eq.open-food-facts-network,image_source.eq.open-food-facts,image_source.eq.open-beauty-facts,image_source.eq.open-pet-food-facts,image_source.eq.open-products-facts,image_source.is.null",
-      );
+      .in("image_source", [
+        "open-food-facts-network",
+        "open-food-facts",
+        "open-beauty-facts",
+        "open-pet-food-facts",
+        "open-products-facts",
+      ]);
   } else {
     queue = queue.is("image_url", null);
     if (retryNotFound) {
