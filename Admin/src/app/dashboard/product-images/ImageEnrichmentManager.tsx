@@ -21,6 +21,9 @@ type BatchResult = {
   not_found?: number;
   needs_review?: number;
   errors?: number;
+  rate_limited?: boolean;
+  provider?: string;
+  remaining?: string | null;
   remaining_unchecked?: number;
   total_matched?: number;
   total_needs_review?: number;
@@ -109,7 +112,7 @@ export default function ImageEnrichmentManager({ storeId }: { storeId: string })
     mode = "fill_missing",
     retryNotFound = false,
   }: {
-    mode?: "fill_missing" | "refresh_existing";
+    mode?: "fill_missing" | "refresh_existing" | "internet_fallback";
     retryNotFound?: boolean;
   } = {}) => {
     setBatchBusy(true);
@@ -119,7 +122,8 @@ export default function ImageEnrichmentManager({ storeId }: { storeId: string })
         await supabaseRef.current.functions.invoke("enrich-product-images", {
           body: {
             store_id: storeId,
-            batch_size: mode === "refresh_existing" ? 8 : 10,
+            batch_size:
+              mode === "refresh_existing" ? 8 : mode === "internet_fallback" ? 2 : 10,
             mode,
             retry_not_found: retryNotFound,
           },
@@ -238,6 +242,17 @@ export default function ImageEnrichmentManager({ storeId }: { storeId: string })
             type="button"
             disabled={batchBusy || autoRunning}
             onClick={() =>
+              void processBatch({ mode: "internet_fallback" })
+            }
+            className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 disabled:opacity-50"
+          >
+            سحب صور من الإنترنت
+          </button>
+
+          <button
+            type="button"
+            disabled={batchBusy || autoRunning}
+            onClick={() =>
               void processBatch({ mode: "refresh_existing" })
             }
             className="rounded-xl border border-sky-300 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-800 disabled:opacity-50"
@@ -279,7 +294,9 @@ export default function ImageEnrichmentManager({ storeId }: { storeId: string })
             {lastResult.matched || 0} صورة مضافة —{" "}
             {lastResult.needs_review || 0} للمراجعة —{" "}
             {lastResult.not_found || 0} بدون صورة —{" "}
-            {lastResult.errors || 0} أخطاء.
+            {lastResult.errors || 0} أخطاء
+            {lastResult.provider ? ` — المصدر: ${lastResult.provider}` : ""}
+            {lastResult.rate_limited ? " — تم بلوغ حد المصدر مؤقتًا" : ""}.
           </div>
         ) : null}
       </section>
