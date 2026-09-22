@@ -20,6 +20,9 @@ type ProductRow = {
   name: string;
   barcode: string | null;
   sku: string | null;
+  image_url: string | null;
+  image_source: string | null;
+  image_source_url: string | null;
 };
 
 function json(body: unknown, status = 200) {
@@ -80,11 +83,38 @@ function pickSelectedFront(selectedImages: unknown) {
 }
 
 function pickImageUrl(product: Record<string, unknown>) {
+  // Prefer the largest front packshot first. The selected display variant is
+  // deliberately secondary because it is often a smaller derivative.
   return (
-    pickSelectedFront(product.selected_images) ||
     (typeof product.image_front_url === "string" ? product.image_front_url : null) ||
+    pickSelectedFront(product.selected_images) ||
     (typeof product.image_url === "string" ? product.image_url : null)
   );
+}
+
+function openFactsSourceName(url: string) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (host.includes("openbeautyfacts")) return "open-beauty-facts";
+    if (host.includes("openpetfoodfacts")) return "open-pet-food-facts";
+    if (host.includes("openproductsfacts")) return "open-products-facts";
+    return "open-food-facts";
+  } catch {
+    return SOURCE_NAME;
+  }
+}
+
+function storagePathFromPublicUrl(url: string | null) {
+  if (!url) return null;
+  const marker = `/storage/v1/object/public/${PRODUCT_IMAGES_BUCKET}/`;
+  const index = url.indexOf(marker);
+  if (index < 0) return null;
+  const encoded = url.slice(index + marker.length).split("?")[0];
+  try {
+    return decodeURIComponent(encoded);
+  } catch {
+    return encoded;
+  }
 }
 
 function extensionForContentType(contentType: string) {
@@ -117,6 +147,9 @@ Deno.serve(async (req: Request) => {
     Math.min(Number.isFinite(requestedBatch) ? requestedBatch : 10, 12),
   );
   const retryFailed = payload?.retry_failed === true;
+  const retryNotFound = payload?.retry_not_found === true;
+  const mode = payload?.mode === "refresh_existing" ? "refresh_existing" : "fill_missing";
+  const refreshExisting = mode === "refresh_existing";
 
   if (!storeId) return json({ error: "store_id is required" }, 400);
 
@@ -154,17 +187,34 @@ Deno.serve(async (req: Request) => {
 
   let queue = admin
     .from("products")
-    .select("id,name,barcode,sku")
+    .select("id,name,barcode,sku,image_url,image_source,image_source_url")
     .eq("store_id", storeId)
     .eq("is_available", true)
-    .is("image_url", null)
     .order("image_checked_at", { ascending: true, nullsFirst: true })
     .order("sort_order", { ascending: true })
     .limit(batchSize);
 
-  queue = retryFailed
-    ? queue.or("image_enrichment_status.is.null,image_enrichment_status.eq.error")
-    : queue.is("image_enrichment_status", null);
+  if (refreshExisting) {
+    // Refresh only images already coming from our automated open-catalog
+    // pipeline (plus legacy rows with no source). This avoids overwriting
+    // deliberately curated/manual photography.
+    queue = queue
+      .not("image_url", "is", null)
+      .or(
+        "image_source.eq.open-food-facts-network,image_source.eq.open-food-facts,image_source.eq.open-beauty-facts,image_source.eq.open-pet-food-facts,image_source.eq.open-products-facts,image_source.is.null",
+      );
+  } else {
+    queue = queue.is("image_url", null);
+    if (retryNotFound) {
+      queue = queue.or(
+        "image_enrichment_status.is.null,image_enrichment_status.eq.not_found,image_enrichment_status.eq.error,image_enrichment_status.eq.needs_review",
+      );
+    } else if (retryFailed) {
+      queue = queue.or("image_enrichment_status.is.null,image_enrichment_status.eq.error");
+    } else {
+      queue = queue.is("image_enrichment_status", null);
+    }
+  }
 
   const { data: productRows, error: queueError } = await queue;
   if (queueError) return json({ error: queueError.message }, 500);
@@ -204,7 +254,7 @@ Deno.serve(async (req: Request) => {
       endpoint.searchParams.set("product_type", "all");
       endpoint.searchParams.set(
         "fields",
-        "code,product_name,brands,selected_images,image_front_url,image_url",
+        "code,product_name,brands,selected_images,image_front_url,image_url,last_modified_t,last_image_t",
       );
 
       const lookupResponse = await fetch(endpoint, {
@@ -271,7 +321,9 @@ Deno.serve(async (req: Request) => {
           const bytes = new Uint8Array(await imageResponse.arrayBuffer());
           if (bytes.byteLength > MAX_IMAGE_BYTES) throw new Error("Image exceeds 5 MB");
 
-          const storagePath = `${storeId}/auto/${product.id}.${imageType.ext}`;
+          const storagePath = refreshExisting
+            ? `${storeId}/auto-v2/${product.id}-${Date.now()}.${imageType.ext}`
+            : `${storeId}/auto/${product.id}.${imageType.ext}`;
           const { error: uploadError } = await admin.storage
             .from(PRODUCT_IMAGES_BUCKET)
             .upload(storagePath, bytes, {
@@ -285,39 +337,64 @@ Deno.serve(async (req: Request) => {
             .from(PRODUCT_IMAGES_BUCKET)
             .getPublicUrl(storagePath);
 
-          const { error: updateError } = await admin
+          let updateQuery = admin
             .from("products")
             .update({
               image_url: publicUrlData.publicUrl,
-              image_source: SOURCE_NAME,
+              image_source: openFactsSourceName(lookupResponse.url),
               image_source_url: imageSourceUrl,
               image_license: SOURCE_LICENSE,
-              image_match_method: "exact_gtin",
+              image_match_method: refreshExisting
+                ? "exact_gtin_refresh"
+                : "exact_gtin",
               image_external_name: externalName,
               image_enrichment_status: "matched",
               image_checked_at: new Date().toISOString(),
             })
             .eq("id", product.id)
-            .eq("store_id", storeId)
-            .is("image_url", null);
+            .eq("store_id", storeId);
 
+          if (!refreshExisting) {
+            updateQuery = updateQuery.is("image_url", null);
+          }
+
+          const { error: updateError } = await updateQuery;
           if (updateError) throw updateError;
+
+          if (
+            refreshExisting &&
+            product.image_url &&
+            product.image_url !== publicUrlData.publicUrl
+          ) {
+            const oldStoragePath = storagePathFromPublicUrl(product.image_url);
+            if (oldStoragePath && oldStoragePath !== storagePath) {
+              await admin.storage
+                .from(PRODUCT_IMAGES_BUCKET)
+                .remove([oldStoragePath])
+                .catch(() => undefined);
+            }
+          }
+
           matched++;
         }
       }
     } catch (error) {
       errors++;
       const message = error instanceof Error ? error.message : String(error);
-      await admin
+      let errorUpdate = admin
         .from("products")
         .update({
-          image_enrichment_status: "error",
-          image_match_method: "exact_gtin",
+          image_enrichment_status: refreshExisting ? "matched" : "error",
+          image_match_method: refreshExisting ? "exact_gtin_refresh_error" : "exact_gtin",
           image_checked_at: new Date().toISOString(),
         })
         .eq("id", product.id)
-        .eq("store_id", storeId)
-        .is("image_url", null);
+        .eq("store_id", storeId);
+
+      if (!refreshExisting) {
+        errorUpdate = errorUpdate.is("image_url", null);
+      }
+      await errorUpdate;
 
       console.error("product-image-enrichment", {
         productId: product.id,
@@ -354,6 +431,7 @@ Deno.serve(async (req: Request) => {
 
   return json({
     ok: true,
+    mode,
     processed: products.length,
     external_lookups: externalLookups,
     matched,
