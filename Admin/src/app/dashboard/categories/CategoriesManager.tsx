@@ -9,6 +9,7 @@ type Category = {
   name: string;
   sort_order: number;
   image_url: string | null;
+  parent_id: string | null;
 };
 
 const CATEGORY_MEDIA_BUCKET = "product-images";
@@ -54,6 +55,7 @@ export default function CategoriesManager({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [name, setName] = useState("");
+  const [parentId, setParentId] = useState("");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [busyCategoryId, setBusyCategoryId] = useState<string | null>(null);
@@ -123,7 +125,8 @@ export default function CategoriesManager({
         .insert({
           store_id: storeId,
           name: normalizedName,
-          sort_order: initialCategories.length,
+          sort_order: initialCategories.filter((item) => (item.parent_id ?? "") === parentId).length,
+          parent_id: parentId || null,
         })
         .select("id")
         .single();
@@ -145,6 +148,7 @@ export default function CategoriesManager({
       }
 
       setName("");
+      setParentId("");
       setMediaFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       setSuccess("تمت إضافة التصنيف وترتيبه للواجهة.");
@@ -228,9 +232,9 @@ export default function CategoriesManager({
   }
 
   async function moveCategory(category: Category, direction: -1 | 1) {
-    const ordered = [...initialCategories].sort(
-      (a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "ar"),
-    );
+    const ordered = initialCategories
+      .filter((item) => item.parent_id === category.parent_id)
+      .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "ar"));
     const index = ordered.findIndex((item) => item.id === category.id);
     const swapIndex = index + direction;
     if (index < 0 || swapIndex < 0 || swapIndex >= ordered.length) return;
@@ -302,15 +306,22 @@ export default function CategoriesManager({
     router.refresh();
   }
 
-  const orderedCategories = [...initialCategories].sort(
-    (a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "ar"),
-  );
+  const roots = initialCategories
+    .filter((item) => !item.parent_id)
+    .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "ar"));
+  const orderedCategories = roots.flatMap((root) => [
+    root,
+    ...initialCategories
+      .filter((item) => item.parent_id === root.id)
+      .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "ar")),
+  ]);
+  const categoryNameById = new Map(initialCategories.map((item) => [item.id, item.name]));
 
   return (
     <div className="space-y-6">
       <form
         onSubmit={handleAdd}
-        className="grid gap-4 rounded-2xl border border-gray-200 bg-white p-4 lg:grid-cols-[1fr_1fr_auto]"
+        className="grid gap-4 rounded-2xl border border-gray-200 bg-white p-4 lg:grid-cols-[1fr_1fr_1fr_auto]"
       >
         <div>
           <label className="mb-1.5 block text-xs font-medium text-gray-600">
@@ -323,6 +334,27 @@ export default function CategoriesManager({
             maxLength={80}
             className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-brand"
           />
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-gray-600">
+            التصنيف الأب
+          </label>
+          <select
+            value={parentId}
+            onChange={(e) => setParentId(e.target.value)}
+            className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
+          >
+            <option value="">تصنيف رئيسي</option>
+            {initialCategories
+              .filter((item) => !item.parent_id)
+              .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "ar"))
+              .map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+          </select>
         </div>
 
         <div>
@@ -372,7 +404,7 @@ export default function CategoriesManager({
             return (
               <div
                 key={cat.id}
-                className="overflow-hidden rounded-2xl border border-gray-200 bg-white"
+                className={`overflow-hidden rounded-2xl border bg-white ${cat.parent_id ? "mr-6 border-sky-100" : "border-gray-200"}`}
               >
                 <div className="flex min-h-36 items-center gap-4 p-4">
                   <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-red-50 to-sky-50">
@@ -394,7 +426,12 @@ export default function CategoriesManager({
                       {cat.name}
                     </p>
                     <p className="mt-1 text-xs text-gray-400">
-                      ترتيب الواجهة: {index + 1}
+                      {cat.parent_id
+                        ? `فرعي ضمن: ${categoryNameById.get(cat.parent_id) ?? "غير معروف"}`
+                        : "تصنيف رئيسي"}
+                    </p>
+                    <p className="mt-1 text-[11px] text-gray-400">
+                      ترتيب المجموعة: {cat.sort_order + 1}
                     </p>
 
                     <label className="mt-3 inline-flex cursor-pointer items-center rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700 hover:bg-sky-100">
