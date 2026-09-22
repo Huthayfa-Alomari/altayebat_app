@@ -306,7 +306,11 @@ function pickImageFromHtml(html: string, pageUrl: string) {
       text.includes("logo") ||
       text.includes("favicon") ||
       text.includes("sprite") ||
-      text.includes("placeholder")
+      text.includes("placeholder") ||
+      text.includes("invalid_icon") ||
+      text.includes("/invalid") ||
+      text.includes("no-image") ||
+      text.includes("no_image")
     ) {
       continue;
     }
