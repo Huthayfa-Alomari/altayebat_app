@@ -9,8 +9,9 @@ import 'measured_product_sheet.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
+  final bool compact;
 
-  const ProductCard({super.key, required this.product});
+  const ProductCard({super.key, required this.product, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
@@ -38,8 +39,8 @@ class ProductCard extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final imageHeight = (constraints.maxHeight * 0.42).clamp(
-                108.0,
-                138.0,
+                compact ? 96.0 : 108.0,
+                compact ? 118.0 : 138.0,
               );
 
               return Column(
@@ -54,7 +55,12 @@ class ProductCard extends StatelessWidget {
                   ),
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(10, 7, 10, 9),
+                      padding: EdgeInsets.fromLTRB(
+                        compact ? 8 : 10,
+                        7,
+                        compact ? 8 : 10,
+                        9,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -89,9 +95,9 @@ class ProductCard extends StatelessWidget {
                             product.priceLabel,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.primary,
-                              fontSize: 16.5,
+                              fontSize: compact ? 14.5 : 16.5,
                               height: 1.05,
                               fontWeight: FontWeight.w900,
                             ),
@@ -168,7 +174,9 @@ class ProductCard extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
               decoration: BoxDecoration(
-                color: outOfStock ? AppColors.textSecondary : AppColors.skyBlue,
+                color: outOfStock
+                    ? AppColors.textSecondary
+                    : AppColors.skyBlueDark,
                 borderRadius: BorderRadius.circular(99),
               ),
               child: Text(
@@ -210,7 +218,7 @@ class ProductCard extends StatelessWidget {
     final hasSelection = qty > 0;
     return SizedBox(
       width: double.infinity,
-      height: 42,
+      height: 48,
       child: FilledButton.icon(
         onPressed: outOfStock ? null : () => _chooseMeasured(context),
         style: FilledButton.styleFrom(
@@ -267,7 +275,7 @@ class ProductCard extends StatelessWidget {
   }) {
     return SizedBox(
       width: double.infinity,
-      height: 42,
+      height: 48,
       child: FilledButton.icon(
         onPressed: enabled
             ? () {
@@ -286,7 +294,11 @@ class ProductCard extends StatelessWidget {
           size: 17,
         ),
         label: Text(
-          outOfStock ? 'غير متوفر' : 'أضف للسلة',
+          outOfStock
+              ? 'غير متوفر'
+              : compact
+              ? 'أضف'
+              : 'أضف للسلة',
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
         ),
       ),
@@ -296,7 +308,7 @@ class ProductCard extends StatelessWidget {
   Widget _stepper(BuildContext context, int qty, {required bool canAdd}) {
     return Container(
       width: double.infinity,
-      height: 42,
+      height: 48,
       decoration: BoxDecoration(
         color: AppColors.primary,
         borderRadius: BorderRadius.circular(12),
@@ -307,7 +319,7 @@ class ProductCard extends StatelessWidget {
             child: IconButton(
               tooltip: qty == 1 ? 'إزالة من السلة' : 'تقليل الكمية',
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 42, minHeight: 42),
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
               icon: Icon(
                 qty == 1 ? Icons.delete_outline_rounded : Icons.remove_rounded,
                 color: Colors.white,
@@ -328,7 +340,7 @@ class ProductCard extends StatelessWidget {
             child: IconButton(
               tooltip: canAdd ? 'زيادة الكمية' : 'وصلت للكمية المتوفرة',
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 42, minHeight: 42),
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
               icon: Icon(
                 Icons.add_rounded,
                 color: canAdd ? Colors.white : Colors.white54,

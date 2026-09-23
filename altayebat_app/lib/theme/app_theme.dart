@@ -9,7 +9,7 @@ class AppColors {
   static const Color background = Color(0xFFF7FAFD);
   static const Color surface = Color(0xFFFFFFFF);
   static const Color textPrimary = Color(0xFF172033);
-  static const Color textSecondary = Color(0xFF7B8493);
+  static const Color textSecondary = Color(0xFF5C687A);
   static const Color border = Color(0xFFE7EDF4);
   static const Color softSurface = Color(0xFFF3F7FB);
   static const Color success = Color(0xFF2E9A52);
@@ -30,6 +30,7 @@ class AppTheme {
       useMaterial3: true,
       scaffoldBackgroundColor: AppColors.background,
       colorScheme: colorScheme,
+      fontFamily: 'IBMPlexSansArabic',
       fontFamilyFallback: const ['Arial', 'sans-serif'],
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.surface,
@@ -39,6 +40,7 @@ class AppTheme {
         scrolledUnderElevation: 0,
         centerTitle: true,
         titleTextStyle: TextStyle(
+          fontFamily: 'IBMPlexSansArabic',
           color: AppColors.textPrimary,
           fontSize: 18,
           fontWeight: FontWeight.w900,
@@ -104,7 +106,10 @@ class AppTheme {
           horizontal: 16,
           vertical: 14,
         ),
-        hintStyle: const TextStyle(color: Color(0xFF989FAA), fontSize: 13),
+        hintStyle: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 13,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: const BorderSide(color: AppColors.border),

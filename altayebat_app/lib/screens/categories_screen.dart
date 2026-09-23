@@ -1,332 +1,39 @@
 import 'package:flutter/material.dart';
-
 import '../models/category.dart';
-import '../models/product.dart';
+import '../models/category_tree.dart';
 import '../services/catalog_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/product_card.dart';
+import '../widgets/altayebat_brand.dart';
+import '../widgets/category_artwork.dart';
+import 'category_products_screen.dart';
+export 'category_products_screen.dart';
 
 class CategoriesScreen extends StatefulWidget {
-  const CategoriesScreen({super.key});
-
+  final CatalogRepository repository;
+  const CategoriesScreen({
+    super.key,
+    this.repository = const CatalogRepository(),
+  });
   @override
   State<CategoriesScreen> createState() => _CategoriesScreenState();
 }
 
 class _CategoriesScreenState extends State<CategoriesScreen> {
+  final _search = TextEditingController();
   List<ProductCategory> _categories = const [];
   bool _loading = true;
   String? _error;
-
+  String? _rootId;
   @override
   void initState() {
     super.initState();
-    _load();
-  }
-
-  Future<void> _load({bool forceRefresh = false}) async {
-    if (mounted) {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
-    }
-    try {
-      final categories = await CatalogService.fetchCategories(
-        forceRefresh: forceRefresh,
-      );
-      if (!mounted) return;
-      setState(() {
-        _categories = categories;
-        _loading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = 'تعذر تحميل التصنيفات. حاول مرة ثانية.';
-      });
-    }
-  }
-
-  List<ProductCategory> get _roots =>
-      CatalogService.rootCategories(_categories);
-
-  List<ProductCategory> _children(String parentId) =>
-      CatalogService.childrenOf(_categories, parentId);
-
-  Future<void> _openCategory(ProductCategory category) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CategoryProductsScreen(category: category),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'التصنيفات',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 21,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: () => _load(forceRefresh: true),
-              child: _error != null
-                  ? ListView(
-                      padding: const EdgeInsets.all(24),
-                      children: [
-                        const SizedBox(height: 100),
-                        Icon(
-                          Icons.cloud_off_rounded,
-                          color: AppColors.textSecondary,
-                          size: 46,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          _error!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(0, 8, 0, 28),
-                      itemCount: _roots.length,
-                      itemBuilder: (context, index) {
-                        final root = _roots[index];
-                        final children = _children(root.id);
-                        return _CategorySection(
-                          root: root,
-                          children: children,
-                          onOpen: _openCategory,
-                        );
-                      },
-                    ),
-            ),
-    );
-  }
-}
-
-class _CategorySection extends StatelessWidget {
-  final ProductCategory root;
-  final List<ProductCategory> children;
-  final Future<void> Function(ProductCategory category) onOpen;
-
-  const _CategorySection({
-    required this.root,
-    required this.children,
-    required this.onOpen,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cards = children.isEmpty ? <ProductCategory>[root] : children;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 18),
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(14, 14, 0, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsetsDirectional.only(end: 14),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    root.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => onOpen(root),
-                  child: const Text(
-                    'عرض الكل',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 176,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsetsDirectional.only(end: 14),
-              itemCount: cards.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (context, index) {
-                final category = cards[index];
-                return _CategoryTile(
-                  category: category,
-                  onTap: () => onOpen(category),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CategoryTile extends StatelessWidget {
-  final ProductCategory category;
-  final VoidCallback onTap;
-
-  const _CategoryTile({required this.category, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 142,
-      child: Material(
-        color: const Color(0xFFF6F7F8),
-        borderRadius: BorderRadius.circular(18),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 10, 10, 9),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Center(
-                    child: _CategoryImage(category: category, size: 110),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  category.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 13,
-                    height: 1.15,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryImage extends StatelessWidget {
-  final ProductCategory category;
-  final double size;
-
-  const _CategoryImage({required this.category, required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    final url = category.imageUrl?.trim();
-    if (url != null && url.isNotEmpty) {
-      return Image.network(
-        url,
-        width: size,
-        height: size,
-        fit: BoxFit.contain,
-        gaplessPlayback: true,
-        errorBuilder: (_, __, ___) => _fallback(),
-      );
-    }
-    return _fallback();
-  }
-
-  Widget _fallback() {
-    return Container(
-      width: size,
-      height: size,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Icon(
-        _categoryIcon(category.name),
-        color: AppColors.navy,
-        size: size * 0.42,
-      ),
-    );
-  }
-}
-
-class CategoryProductsScreen extends StatefulWidget {
-  final ProductCategory category;
-
-  const CategoryProductsScreen({super.key, required this.category});
-
-  @override
-  State<CategoryProductsScreen> createState() => _CategoryProductsScreenState();
-}
-
-class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
-  static const _pageSize = CatalogService.defaultPageSize;
-  final ScrollController _controller = ScrollController();
-
-  List<Product> _products = const [];
-  bool _loading = true;
-  bool _loadingMore = false;
-  bool _hasMore = true;
-  int _nextOffset = 0;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.addListener(_onScroll);
     _load();
   }
 
   @override
   void dispose() {
-    _controller
-      ..removeListener(_onScroll)
-      ..dispose();
+    _search.dispose();
     super.dispose();
-  }
-
-  void _onScroll() {
-    if (_controller.hasClients &&
-        _controller.position.extentAfter < 650 &&
-        !_loading &&
-        !_loadingMore &&
-        _hasMore) {
-      _loadMore();
-    }
   }
 
   Future<void> _load({bool forceRefresh = false}) async {
@@ -335,162 +42,308 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
       _error = null;
     });
     try {
-      if (forceRefresh) CatalogService.invalidateProducts();
-      final page = await CatalogService.fetchProductsPage(
-        categoryId: widget.category.id,
-        offset: 0,
-        limit: _pageSize,
+      final categories = await widget.repository.categories(
         forceRefresh: forceRefresh,
       );
       if (!mounted) return;
       setState(() {
-        _products = page.items;
-        _nextOffset = page.nextOffset;
-        _hasMore = page.hasMore;
+        _categories = categories;
         _loading = false;
+        if (!categories.any((c) => c.id == _rootId)) _rootId = null;
       });
     } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = 'تعذر تحميل المنتجات.';
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'تعذر تحميل الأقسام. تأكد من الاتصال وحاول مرة ثانية.';
+        });
+      }
     }
   }
 
-  Future<void> _loadMore() async {
-    if (_loadingMore || !_hasMore) return;
-    setState(() => _loadingMore = true);
-    try {
-      final page = await CatalogService.fetchProductsPage(
-        categoryId: widget.category.id,
-        offset: _nextOffset,
-        limit: _pageSize,
-      );
-      if (!mounted) return;
-      final known = _products.map((item) => item.id).toSet();
-      setState(() {
-        _products = [
-          ..._products,
-          ...page.items.where((item) => known.add(item.id)),
-        ];
-        _nextOffset = page.nextOffset;
-        _hasMore = page.hasMore;
-        _loadingMore = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _loadingMore = false);
-    }
-  }
-
+  void _open(ProductCategory category) => Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => CategoryProductsScreen(
+        category: category,
+        categories: _categories,
+        repository: widget.repository,
+      ),
+    ),
+  );
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
+    final tree = CategoryTree(_categories);
+    final query = normalizeCategoryName(_search.text);
+    final roots = tree.roots
+        .where(
+          (root) =>
+              (_rootId == null || root.id == _rootId) &&
+              (query.isEmpty ||
+                  normalizeCategoryName(root.name).contains(query) ||
+                  tree
+                      .descendantsOf(root.id)
+                      .any(
+                        (c) => normalizeCategoryName(c.name).contains(query),
+                      )),
+        )
+        .toList();
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
         backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: Text(
-          widget.category.name,
-          style: const TextStyle(fontWeight: FontWeight.w900),
-        ),
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: () => _load(forceRefresh: true),
-              child: _error != null
-                  ? ListView(
-                      padding: const EdgeInsets.all(30),
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              Container(
+                color: AppColors.navy,
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        const SizedBox(height: 100),
-                        Text(
-                          _error!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    )
-                  : CustomScrollView(
-                      controller: _controller,
-                      slivers: [
-                        SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
-                          sliver: SliverGrid(
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  mainAxisSpacing: 12,
-                                  crossAxisSpacing: 12,
-                                  mainAxisExtent: 264,
-                                ),
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) =>
-                                  ProductCard(product: _products[index]),
-                              childCount: _products.length,
+                        if (Navigator.of(context).canPop())
+                          IconButton(
+                            tooltip: 'رجوع',
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(
+                              Icons.arrow_back_rounded,
+                              color: Colors.white,
                             ),
                           ),
-                        ),
-                        if (_loadingMore)
-                          const SliverToBoxAdapter(
-                            child: Padding(
-                              padding: EdgeInsets.all(22),
-                              child: Center(child: CircularProgressIndicator()),
-                            ),
-                          ),
-                        if (_products.isEmpty)
-                          const SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: Center(
-                              child: Text(
-                                'لا توجد منتجات في هذا التصنيف حاليًا.',
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'كل الأقسام',
                                 style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w900,
                                 ),
                               ),
-                            ),
+                              SizedBox(height: 3),
+                              Text(
+                                'كل احتياجات بيتك، مرتبة إلك',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ),
+                        ),
+                        const AltayebatAppMark(size: 46),
                       ],
                     ),
-            ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _search,
+                      onChanged: (_) => setState(() {}),
+                      onTapOutside: (_) => FocusScope.of(context).unfocus(),
+                      decoration: InputDecoration(
+                        hintText: 'ابحث عن قسم أو صنف…',
+                        prefixIcon: const Icon(
+                          Icons.search_rounded,
+                          color: AppColors.navy,
+                        ),
+                        suffixIcon: query.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: 'مسح البحث',
+                                icon: const Icon(Icons.close_rounded),
+                                onPressed: () => setState(_search.clear),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (!_loading && _categories.isNotEmpty)
+                SizedBox(
+                  height:
+                      62 +
+                      (MediaQuery.textScalerOf(context).scale(1) - 1).clamp(
+                            0,
+                            3,
+                          ) *
+                          18,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 7,
+                    ),
+                    itemCount: tree.roots.length + 1,
+                    separatorBuilder: (_, index) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final root = index == 0 ? null : tree.roots[index - 1];
+                      return ChoiceChip(
+                        label: Text(root?.name ?? 'الكل'),
+                        selected: _rootId == root?.id,
+                        selectedColor: AppColors.skySoft,
+                        onSelected: (_) => setState(() => _rootId = root?.id),
+                      );
+                    },
+                  ),
+                ),
+              Expanded(
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : RefreshIndicator(
+                        onRefresh: () => _load(forceRefresh: true),
+                        child: _error != null || roots.isEmpty
+                            ? ListView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.all(32),
+                                children: [
+                                  const SizedBox(height: 60),
+                                  Icon(
+                                    _error != null
+                                        ? Icons.cloud_off_outlined
+                                        : Icons.search_off_rounded,
+                                    size: 44,
+                                    color: AppColors.skyBlueDark,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    _error ??
+                                        (query.isEmpty
+                                            ? 'الأقسام قيد التجهيز'
+                                            : 'ما لقينا قسم بهذا الاسم'),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  if (_error != null)
+                                    FilledButton(
+                                      onPressed: () =>
+                                          _load(forceRefresh: true),
+                                      child: const Text('إعادة المحاولة'),
+                                    ),
+                                  if (_error == null && query.isNotEmpty)
+                                    TextButton(
+                                      onPressed: () => setState(() {
+                                        _search.clear();
+                                        _rootId = null;
+                                      }),
+                                      child: const Text('عرض جميع الأقسام'),
+                                    ),
+                                ],
+                              )
+                            : ListView.builder(
+                                key: ValueKey('sections-$_rootId-$query'),
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.only(bottom: 24),
+                                itemCount: roots.length,
+                                itemBuilder: (context, index) {
+                                  final root = roots[index];
+                                  final children = tree.childrenOf(root.id);
+                                  final matches = normalizeCategoryName(
+                                    root.name,
+                                  ).contains(query);
+                                  final cards = query.isEmpty || matches
+                                      ? (children.isEmpty ? [root] : children)
+                                      : tree
+                                            .descendantsOf(root.id)
+                                            .where(
+                                              (c) => normalizeCategoryName(
+                                                c.name,
+                                              ).contains(query),
+                                            )
+                                            .toList();
+                                  return CategorySection(
+                                    root: root,
+                                    categories: cards,
+                                    onOpen: _open,
+                                  );
+                                },
+                              ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
 
-IconData _categoryIcon(String name) {
-  final value = name.toLowerCase();
-  if (value.contains('لحم') || value.contains('دجاج')) {
-    return Icons.restaurant_rounded;
+class CategorySection extends StatelessWidget {
+  final ProductCategory root;
+  final List<ProductCategory> categories;
+  final ValueChanged<ProductCategory> onOpen;
+  const CategorySection({
+    super.key,
+    required this.root,
+    required this.categories,
+    required this.onOpen,
+  });
+  @override
+  Widget build(BuildContext context) {
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    root.name,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => onOpen(root),
+                  child: const Text(
+                    'عرض الكل',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.primaryDark,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 174 + (scale - 1).clamp(0, 3) * 44,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: categories.length,
+              separatorBuilder: (_, index) => const SizedBox(width: 10),
+              itemBuilder: (_, index) => SizedBox(
+                width: 118,
+                child: CategoryTile(
+                  category: categories[index],
+                  onTap: () => onOpen(categories[index]),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
-  if (value.contains('ألبان') || value.contains('البان')) {
-    return Icons.local_drink_rounded;
-  }
-  if (value.contains('مشروب') || value.contains('قهوة')) {
-    return Icons.local_cafe_rounded;
-  }
-  if (value.contains('منزل') ||
-      value.contains('تنظيف') ||
-      value.contains('غسيل')) {
-    return Icons.cleaning_services_rounded;
-  }
-  if (value.contains('عناية') || value.contains('طفل')) {
-    return Icons.spa_rounded;
-  }
-  if (value.contains('مجمد')) return Icons.ac_unit_rounded;
-  if (value.contains('سناكات') ||
-      value.contains('حلويات') ||
-      value.contains('مكسر')) {
-    return Icons.cookie_rounded;
-  }
-  if (value.contains('بقالة') ||
-      value.contains('أرز') ||
-      value.contains('معكرونة')) {
-    return Icons.shopping_basket_rounded;
-  }
-  return Icons.category_rounded;
 }
