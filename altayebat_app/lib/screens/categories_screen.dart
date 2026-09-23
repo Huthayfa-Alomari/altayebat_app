@@ -52,11 +52,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         if (!categories.any((c) => c.id == _rootId)) _rootId = null;
       });
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _error = 'تعذر تحميل الأقسام. تأكد من الاتصال وحاول مرة ثانية.';
         });
+      }
     }
   }
 
@@ -326,14 +327,14 @@ class CategorySection extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           SizedBox(
-            height: 194 + (scale - 1).clamp(0, 3) * 44,
+            height: 174 + (scale - 1).clamp(0, 3) * 44,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: categories.length,
               separatorBuilder: (_, index) => const SizedBox(width: 10),
               itemBuilder: (_, index) => SizedBox(
-                width: 142,
+                width: 118,
                 child: CategoryTile(
                   category: categories[index],
                   onTap: () => onOpen(categories[index]),

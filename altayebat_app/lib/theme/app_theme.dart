@@ -40,6 +40,7 @@ class AppTheme {
         scrolledUnderElevation: 0,
         centerTitle: true,
         titleTextStyle: TextStyle(
+          fontFamily: 'IBMPlexSansArabic',
           color: AppColors.textPrimary,
           fontSize: 18,
           fontWeight: FontWeight.w900,
@@ -105,7 +106,10 @@ class AppTheme {
           horizontal: 16,
           vertical: 14,
         ),
-        hintStyle: const TextStyle(color: Color(0xFF989FAA), fontSize: 13),
+        hintStyle: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 13,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: const BorderSide(color: AppColors.border),

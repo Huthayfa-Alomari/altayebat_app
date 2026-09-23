@@ -82,7 +82,7 @@ class CategoryArtwork extends StatelessWidget {
   }
 
   Widget _local(int? index) {
-    if (index == null)
+    if (index == null) {
       return const ColoredBox(
         color: AppColors.skySoft,
         child: Icon(
@@ -91,6 +91,7 @@ class CategoryArtwork extends StatelessWidget {
           size: 32,
         ),
       );
+    }
     return ClipRect(
       child: OverflowBox(
         minWidth: size * 6,
@@ -169,7 +170,7 @@ class CategoryTile extends StatelessWidget {
                 Text(
                   category.name,
                   textAlign: TextAlign.center,
-                  maxLines: 2,
+                  maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 12,

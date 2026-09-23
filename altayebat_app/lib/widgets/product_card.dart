@@ -95,9 +95,9 @@ class ProductCard extends StatelessWidget {
                             product.priceLabel,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.primary,
-                              fontSize: 16.5,
+                              fontSize: compact ? 14.5 : 16.5,
                               height: 1.05,
                               fontWeight: FontWeight.w900,
                             ),
@@ -174,7 +174,9 @@ class ProductCard extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
               decoration: BoxDecoration(
-                color: outOfStock ? AppColors.textSecondary : AppColors.skyBlue,
+                color: outOfStock
+                    ? AppColors.textSecondary
+                    : AppColors.skyBlueDark,
                 borderRadius: BorderRadius.circular(99),
               ),
               child: Text(

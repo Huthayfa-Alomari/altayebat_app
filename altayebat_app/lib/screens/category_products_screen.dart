@@ -64,8 +64,9 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
   void _onScroll() {
     if (_scroll.hasClients &&
         _scroll.position.extentAfter < 500 &&
-        _moreError == null)
+        _moreError == null) {
       _loadMore();
+    }
   }
 
   Future<void> _load({
@@ -97,19 +98,21 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
       if (!mounted || generation != _generation) return;
       final page = results.first as CatalogPage;
       setState(() {
-        if (refreshCategories)
+        if (refreshCategories) {
           _categories = results[1] as List<ProductCategory>;
+        }
         _products = page.items;
         _nextOffset = page.nextOffset;
         _hasMore = page.hasMore;
         _loading = false;
       });
     } catch (_) {
-      if (mounted && generation == _generation)
+      if (mounted && generation == _generation) {
         setState(() {
           _loading = false;
           _error = 'تعذر تحميل المنتجات. حاول مرة ثانية.';
         });
+      }
     }
   }
 
@@ -137,11 +140,12 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
         _loadingMore = false;
       });
     } catch (_) {
-      if (mounted && generation == _generation)
+      if (mounted && generation == _generation) {
         setState(() {
           _loadingMore = false;
           _moreError = 'تعذر تحميل المزيد';
         });
+      }
     }
   }
 

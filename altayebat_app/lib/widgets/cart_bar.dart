@@ -29,7 +29,10 @@ class CartBar extends StatelessWidget {
             label:
                 'فتح السلة، $itemCount عنصر، المجموع ${total.toStringAsFixed(2)} دينار',
             child: SizedBox(
-              height: 58,
+              height:
+                  58 +
+                  (MediaQuery.textScalerOf(context).scale(1) - 1).clamp(0, 3) *
+                      36,
               width: double.infinity,
               child: FilledButton(
                 onPressed: () {

@@ -172,6 +172,9 @@ void main() {
       ..addFont(rootBundle.load('assets/fonts/IBMPlexSansArabic-Regular.ttf'))
       ..addFont(rootBundle.load('assets/fonts/IBMPlexSansArabic-Bold.ttf'));
     await loader.load();
+    final icons = FontLoader('MaterialIcons')
+      ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
+    await icons.load();
   });
   test(
     'category hierarchy includes descendants and tolerates orphan/cyclic data',
@@ -232,6 +235,11 @@ void main() {
       await tester.tap(find.text('السعر: الأقل أولًا'));
       await tester.pumpAndSettle();
       expect(repo.calls.last.sort, CatalogSort.priceLow);
+      await tester.ensureVisible(find.text('المتوفر فقط'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('المتوفر فقط'));
+      await tester.pumpAndSettle();
+      expect(repo.calls.last.stock, isTrue);
       expect(repo.calls.last.category, 'oil');
       expect(tester.takeException(), isNull);
     },
@@ -267,8 +275,9 @@ void main() {
       var failed = false;
       final repo = FakeCatalog()
         ..responder = (r) async {
-          if (r.offset == 0)
+          if (r.offset == 0) {
             return page([product('first', 'منتج أول')], more: true, next: 30);
+          }
           if (!failed) {
             failed = true;
             throw Exception('offline');
@@ -308,6 +317,8 @@ void main() {
         ),
         size: size,
       );
+      await tester.ensureVisible(find.text('أضف').first);
+      await tester.pumpAndSettle();
       await tester.tap(find.text('أضف').first);
       await tester.pumpAndSettle();
       expect(cart.itemCount, 1);
@@ -333,6 +344,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     await preview(tester, 'products-large-text');
+  });
+  testWidgets('home fits a narrow screen with enlarged text', (tester) async {
+    await mount(
+      tester,
+      HomeScreen(repository: FakeCatalog()),
+      size: const Size(320, 740),
+      scale: 2,
+    );
+    expect(tester.takeException(), isNull);
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -600));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
   });
   testWidgets('home category artwork opens its live department', (
     tester,

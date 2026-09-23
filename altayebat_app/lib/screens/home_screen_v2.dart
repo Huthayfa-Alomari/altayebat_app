@@ -563,7 +563,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Material(
       color: AppColors.navy,
       child: SizedBox(
-        height: 74,
+        height:
+            74 +
+            (MediaQuery.textScalerOf(context).scale(1) - 1).clamp(0, 3) * 30,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 12),
