@@ -22,33 +22,59 @@ jobs:
       - name: Validate PowerShell syntax
         shell: pwsh
         run: |
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile(
+          $files = @(
             "$env:GITHUB_WORKSPACE\tools\bonanza_scanner\Altayebat-Bonanza-Scanner.ps1",
-            [ref]$tokens,
-            [ref]$errors
-          ) | Out-Null
+            "$env:GITHUB_WORKSPACE\tools\bonanza_scanner\v0.2\Altayebat-Bonanza-SQL-Scanner.ps1"
+          )
 
-          if ($errors.Count -gt 0) {
-            $errors | ForEach-Object { Write-Error $_.Message }
-            exit 1
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $file,
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error "$file :: $($_.Message)" }
+              exit 1
+            }
+
+            Write-Host "PowerShell syntax OK: $file"
           }
 
-          Write-Host "PowerShell syntax OK."
-
-      - name: Build scanner ZIP
+      - name: Build v0.1 scanner ZIP
         shell: pwsh
         run: |
-          $source = "$env:GITHUB_WORKSPACE\tools\bonanza_scanner\*"
+          $stage = "$env:RUNNER_TEMP\bonanza-v01"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item "$env:GITHUB_WORKSPACE\tools\bonanza_scanner\Altayebat-Bonanza-Scanner.ps1" $stage
+          Copy-Item "$env:GITHUB_WORKSPACE\tools\bonanza_scanner\Run-Scanner.bat" $stage
+          Copy-Item "$env:GITHUB_WORKSPACE\tools\bonanza_scanner\README.md" $stage
           $zip = "$env:GITHUB_WORKSPACE\Altayebat_Bonanza_Scanner_v0.1.zip"
+          Compress-Archive -Path "$stage\*" -DestinationPath $zip -CompressionLevel Optimal -Force
+
+      - name: Build v0.2 SQL scanner ZIP
+        shell: pwsh
+        run: |
+          $source = "$env:GITHUB_WORKSPACE\tools\bonanza_scanner\v0.2\*"
+          $zip = "$env:GITHUB_WORKSPACE\Altayebat_Bonanza_SQL_Scanner_v0.2.zip"
           Compress-Archive -Path $source -DestinationPath $zip -CompressionLevel Optimal -Force
           Get-Item $zip | Format-List Name,Length,FullName
 
-      - name: Upload scanner package
+      - name: Upload v0.1 package
         uses: actions/upload-artifact@v4
         with:
           name: altayebat-bonanza-scanner-v0.1
           path: Altayebat_Bonanza_Scanner_v0.1.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload v0.2 SQL package
+        uses: actions/upload-artifact@v4
+        with:
+          name: altayebat-bonanza-sql-scanner-v0.2
+          path: Altayebat_Bonanza_SQL_Scanner_v0.2.zip
           if-no-files-found: error
           retention-days: 14
