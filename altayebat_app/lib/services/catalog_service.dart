@@ -4,6 +4,38 @@ import '../config/app_config.dart';
 import '../models/category.dart';
 import '../models/product.dart';
 
+enum CatalogSort { newest, priceLow, priceHigh, name }
+
+extension CatalogSortLabel on CatalogSort {
+  String get label => switch (this) {
+    CatalogSort.newest => 'الأحدث',
+    CatalogSort.priceLow => 'السعر: الأقل أولًا',
+    CatalogSort.priceHigh => 'السعر: الأعلى أولًا',
+    CatalogSort.name => 'الاسم',
+  };
+}
+
+class CatalogRepository {
+  const CatalogRepository();
+  Future<List<ProductCategory>> categories({bool forceRefresh = false}) =>
+      CatalogService.fetchCategories(forceRefresh: forceRefresh);
+  Future<CatalogPage> products({
+    String? categoryId,
+    String? searchQuery,
+    int offset = 0,
+    CatalogSort sort = CatalogSort.newest,
+    bool inStockOnly = false,
+    bool forceRefresh = false,
+  }) => CatalogService.fetchProductsPage(
+    categoryId: categoryId,
+    searchQuery: searchQuery,
+    offset: offset,
+    sort: sort,
+    inStockOnly: inStockOnly,
+    forceRefresh: forceRefresh,
+  );
+}
+
 class CatalogPage {
   final List<Product> items;
   final bool hasMore;
@@ -50,9 +82,11 @@ class CatalogService {
     required String? searchQuery,
     required int offset,
     required int limit,
+    required CatalogSort sort,
+    required bool inStockOnly,
   }) {
     final search = searchQuery?.trim().toLowerCase() ?? '';
-    return '${categoryId ?? '*'}|$search|$offset|$limit';
+    return '${categoryId ?? '*'}|$search|$offset|$limit|${sort.name}|$inStockOnly';
   }
 
   static Future<List<ProductCategory>> fetchCategories({
@@ -137,6 +171,8 @@ class CatalogService {
     String? searchQuery,
     int offset = 0,
     int limit = defaultPageSize,
+    CatalogSort sort = CatalogSort.newest,
+    bool inStockOnly = false,
     bool forceRefresh = false,
   }) async {
     final safeOffset = offset < 0 ? 0 : offset;
@@ -146,6 +182,8 @@ class CatalogService {
       searchQuery: searchQuery,
       offset: safeOffset,
       limit: safeLimit,
+      sort: sort,
+      inStockOnly: inStockOnly,
     );
 
     if (!forceRefresh) {
@@ -160,6 +198,8 @@ class CatalogService {
       searchQuery: searchQuery,
       offset: safeOffset,
       limit: safeLimit,
+      sort: sort,
+      inStockOnly: inStockOnly,
     );
     _pageInFlight[key] = future;
 
@@ -177,6 +217,8 @@ class CatalogService {
     required String? searchQuery,
     required int offset,
     required int limit,
+    required CatalogSort sort,
+    required bool inStockOnly,
   }) async {
     var query = _client
         .from('products')
@@ -196,8 +238,18 @@ class CatalogService {
       query = query.ilike('name', '%$search%');
     }
 
+    if (inStockOnly) query = query.gt('stock_qty', 0);
+    final sortColumn = switch (sort) {
+      CatalogSort.newest => 'created_at',
+      CatalogSort.priceLow || CatalogSort.priceHigh => 'price_per_unit',
+      CatalogSort.name => 'name',
+    };
     final data = await query
-        .order('created_at', ascending: false)
+        .order(
+          sortColumn,
+          ascending: sort == CatalogSort.priceLow || sort == CatalogSort.name,
+        )
+        .order('id')
         .range(offset, offset + limit - 1);
 
     final items = (data as List)

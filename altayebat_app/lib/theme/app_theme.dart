@@ -9,7 +9,7 @@ class AppColors {
   static const Color background = Color(0xFFF7FAFD);
   static const Color surface = Color(0xFFFFFFFF);
   static const Color textPrimary = Color(0xFF172033);
-  static const Color textSecondary = Color(0xFF7B8493);
+  static const Color textSecondary = Color(0xFF5C687A);
   static const Color border = Color(0xFFE7EDF4);
   static const Color softSurface = Color(0xFFF3F7FB);
   static const Color success = Color(0xFF2E9A52);
@@ -30,6 +30,7 @@ class AppTheme {
       useMaterial3: true,
       scaffoldBackgroundColor: AppColors.background,
       colorScheme: colorScheme,
+      fontFamily: 'IBMPlexSansArabic',
       fontFamilyFallback: const ['Arial', 'sans-serif'],
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.surface,
