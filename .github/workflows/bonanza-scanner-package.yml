@@ -25,7 +25,8 @@ jobs:
           $files = @(
             "$env:GITHUB_WORKSPACE\tools\bonanza_scanner\Altayebat-Bonanza-Scanner.ps1",
             "$env:GITHUB_WORKSPACE\tools\bonanza_scanner\v0.2\Altayebat-Bonanza-SQL-Scanner.ps1",
-            "$env:GITHUB_WORKSPACE\tools\bonanza_scanner\v0.3\Altayebat-Bonanza-SQL-Scanner-v0.3.ps1"
+            "$env:GITHUB_WORKSPACE\tools\bonanza_scanner\v0.3\Altayebat-Bonanza-SQL-Scanner-v0.3.ps1",
+            "$env:GITHUB_WORKSPACE\tools\bonanza_scanner\v0.5\Altayebat-Bonanza-UI-Inspector-v0.5.ps1"
           )
 
           foreach ($file in $files) {
@@ -63,8 +64,13 @@ jobs:
       - name: Build v0.3 SQL scanner ZIP
         shell: pwsh
         run: |
-          $zip = "$env:GITHUB_WORKSPACE\Altayebat_Bonanza_SQL_Scanner_v0.3.zip"
-          Compress-Archive -Path "$env:GITHUB_WORKSPACE\tools\bonanza_scanner\v0.3\*" -DestinationPath $zip -CompressionLevel Optimal -Force
+          Compress-Archive -Path "$env:GITHUB_WORKSPACE\tools\bonanza_scanner\v0.3\*" -DestinationPath "$env:GITHUB_WORKSPACE\Altayebat_Bonanza_SQL_Scanner_v0.3.zip" -CompressionLevel Optimal -Force
+
+      - name: Build v0.5 UI inspector ZIP
+        shell: pwsh
+        run: |
+          $zip = "$env:GITHUB_WORKSPACE\Altayebat_Bonanza_UI_Inspector_v0.5.zip"
+          Compress-Archive -Path "$env:GITHUB_WORKSPACE\tools\bonanza_scanner\v0.5\*" -DestinationPath $zip -CompressionLevel Optimal -Force
           Get-Item $zip | Format-List Name,Length,FullName
 
       - name: Upload v0.1 package
@@ -88,5 +94,13 @@ jobs:
         with:
           name: altayebat-bonanza-sql-scanner-v0.3
           path: Altayebat_Bonanza_SQL_Scanner_v0.3.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload v0.5 UI inspector package
+        uses: actions/upload-artifact@v4
+        with:
+          name: altayebat-bonanza-ui-inspector-v0.5
+          path: Altayebat_Bonanza_UI_Inspector_v0.5.zip
           if-no-files-found: error
           retention-days: 14
