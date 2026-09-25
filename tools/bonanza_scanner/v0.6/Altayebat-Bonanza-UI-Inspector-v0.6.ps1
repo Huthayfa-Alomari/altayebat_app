@@ -100,31 +100,52 @@ function Get-ElementSummary {
   $rect = $null
   try { $rect = $Element.Current.BoundingRectangle } catch {}
 
+  $name = ""
+  $automationId = ""
+  $className = ""
+  $frameworkId = ""
+  $nativeWindowHandle = 0
+  $enabled = $false
+  $offscreen = $false
+  $focusable = $false
+
+  try { $name = [string]$Element.Current.Name } catch {}
+  try { $automationId = [string]$Element.Current.AutomationId } catch {}
+  try { $className = [string]$Element.Current.ClassName } catch {}
+  try { $frameworkId = [string]$Element.Current.FrameworkId } catch {}
+  try { $nativeWindowHandle = [int]$Element.Current.NativeWindowHandle } catch {}
+  try { $enabled = [bool]$Element.Current.IsEnabled } catch {}
+  try { $offscreen = [bool]$Element.Current.IsOffscreen } catch {}
+  try { $focusable = [bool]$Element.Current.IsKeyboardFocusable } catch {}
+
   $legacy = Get-LegacyInfo $Element
+
+  $bounds = $null
+  if ($null -ne $rect) {
+    $bounds = [ordered]@{
+      x = [double]$rect.X
+      y = [double]$rect.Y
+      width = [double]$rect.Width
+      height = [double]$rect.Height
+    }
+  }
 
   return [ordered]@{
     index = $Index
     depth = $Depth
-    name = try { [string]$Element.Current.Name } catch { "" }
-    automation_id = try { [string]$Element.Current.AutomationId } catch { "" }
+    name = $name
+    automation_id = $automationId
     control_type = Get-ControlTypeName $Element
-    class_name = try { [string]$Element.Current.ClassName } catch { "" }
-    framework_id = try { [string]$Element.Current.FrameworkId } catch { "" }
-    native_window_handle = try { [int]$Element.Current.NativeWindowHandle } catch { 0 }
-    enabled = try { [bool]$Element.Current.IsEnabled } catch { $false }
-    offscreen = try { [bool]$Element.Current.IsOffscreen } catch { $false }
-    focusable = try { [bool]$Element.Current.IsKeyboardFocusable } catch { $false }
+    class_name = $className
+    framework_id = $frameworkId
+    native_window_handle = $nativeWindowHandle
+    enabled = $enabled
+    offscreen = $offscreen
+    focusable = $focusable
     value = Get-ElementValue $Element
     supported_patterns = @(Get-PatternNames $Element)
     legacy = $legacy
-    bounds = if ($null -ne $rect) {
-      [ordered]@{
-        x = [double]$rect.X
-        y = [double]$rect.Y
-        width = [double]$rect.Width
-        height = [double]$rect.Height
-      }
-    } else { $null }
+    bounds = $bounds
   }
 }
 
