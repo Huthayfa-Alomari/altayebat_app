@@ -4,6 +4,7 @@ import LogoutButton from "./LogoutButton";
 import OrderDeviceNotifier from "./OrderDeviceNotifier";
 
 const navItems = [
+  { href: "/erp-preview", label: "ERP · نسخة العرض" },
   { href: "/dashboard/invoices", label: "الفواتير والإيصالات" },
   { href: "/dashboard/operations", label: "العمليات والتقارير" },
   { href: "/dashboard", label: "الطلبات" },

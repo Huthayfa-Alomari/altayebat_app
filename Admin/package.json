@@ -9,6 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test:erp": "node --experimental-strip-types --test src/lib/erp/scale-label.test.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
