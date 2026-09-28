@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import '../models/category.dart';
+import '../settings/app_language.dart';
 import '../theme/app_theme.dart';
 
 String normalizeCategoryName(String value) => value
@@ -125,13 +127,14 @@ class CategoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     button: true,
-    label: 'تسوق ${category.name}',
+    label:
+        '${AppLanguage.text(context, 'تسوق', 'Shop')} ${category.displayName(AppLanguage.isEnglish(context))}',
     child: Material(
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.surface,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: InkWell(
         onTap: onTap,
@@ -144,14 +147,14 @@ class CategoryTile extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.all(4),
                   child: Text(
-                    category.name,
+                    category.displayName(AppLanguage.isEnglish(context)),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       height: 1.35,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -168,15 +171,15 @@ class CategoryTile extends StatelessWidget {
               ),
               if (compact)
                 Text(
-                  category.name,
+                  category.displayName(AppLanguage.isEnglish(context)),
                   textAlign: TextAlign.center,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     height: 1.3,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.navy,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
             ],

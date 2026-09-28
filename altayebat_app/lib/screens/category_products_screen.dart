@@ -1,11 +1,14 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../models/category.dart';
 import '../models/category_tree.dart';
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
 import '../services/catalog_service.dart';
+import '../settings/app_language.dart';
 import '../theme/app_theme.dart';
 import '../widgets/cart_bar.dart';
 import '../widgets/category_artwork.dart';
@@ -230,16 +233,22 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                     ExpansionTile(
                       initiallyExpanded: root.id == _root.id,
                       leading: CategoryArtwork(category: root, size: 44),
-                      title: Text(root.name),
+                      title: Text(
+                        root.displayName(AppLanguage.isEnglish(context)),
+                      ),
                       children: [
                         ListTile(
-                          title: Text('عرض كل ${root.name}'),
+                          title: Text(
+                            '${AppLanguage.text(context, 'عرض كل', 'View all')} ${root.displayName(AppLanguage.isEnglish(context))}',
+                          ),
                           onTap: () => Navigator.pop(context, root),
                         ),
                         for (final child in tree.descendantsOf(root.id))
                           ListTile(
                             leading: CategoryArtwork(category: child, size: 40),
-                            title: Text(child.name),
+                            title: Text(
+                              child.displayName(AppLanguage.isEnglish(context)),
+                            ),
                             selected: child.id == _selected.id,
                             onTap: () => Navigator.pop(context, child),
                           ),
@@ -260,216 +269,246 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
     final root = _root;
     final options = [root, ..._tree.descendantsOf(root.id)];
     final scale = MediaQuery.textScalerOf(context).scale(1);
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          title: Text(
-            root.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontWeight: FontWeight.w900,
-              color: AppColors.navy,
+    final english = AppLanguage.isEnglish(context);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          root.displayName(english),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        actions: [
+          Selector<CartProvider, int>(
+            selector: (_, cart) => cart.itemCount,
+            builder: (context, count, child) => IconButton(
+              tooltip: AppLanguage.text(context, 'السلة', 'Cart'),
+              onPressed: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const CartScreen())),
+              icon: Badge.count(
+                count: count,
+                isLabelVisible: count > 0,
+                child: const Icon(
+                  Icons.shopping_cart_outlined,
+                  color: AppColors.navy,
+                ),
+              ),
             ),
           ),
-          actions: [
-            Selector<CartProvider, int>(
-              selector: (_, cart) => cart.itemCount,
-              builder: (context, count, child) => IconButton(
-                tooltip: 'السلة',
-                onPressed: () => Navigator.of(
-                  context,
-                ).push(MaterialPageRoute(builder: (_) => const CartScreen())),
-                icon: Badge.count(
-                  count: count,
-                  isLabelVisible: count > 0,
-                  child: const Icon(
-                    Icons.shopping_cart_outlined,
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: SafeArea(
+        top: false,
+        bottom: false,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: TextField(
+                controller: _search,
+                onChanged: _searchChanged,
+                onSubmitted: (_) {
+                  FocusScope.of(context).unfocus();
+                  _load();
+                },
+                onTapOutside: (_) => FocusScope.of(context).unfocus(),
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: AppLanguage.text(
+                    context,
+                    'ابحث داخل القسم…',
+                    'Search this category…',
+                  ),
+                  fillColor: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest,
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
                     color: AppColors.navy,
                   ),
+                  suffixIcon: _search.text.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'مسح البحث',
+                          icon: const Icon(Icons.close),
+                          onPressed: () {
+                            _search.clear();
+                            _load();
+                          },
+                        ),
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-          ],
-        ),
-        body: SafeArea(
-          top: false,
-          bottom: false,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: TextField(
-                  controller: _search,
-                  onChanged: _searchChanged,
-                  onSubmitted: (_) {
-                    FocusScope.of(context).unfocus();
-                    _load();
-                  },
-                  onTapOutside: (_) => FocusScope.of(context).unfocus(),
-                  textInputAction: TextInputAction.search,
-                  decoration: InputDecoration(
-                    hintText: 'ابحث داخل القسم…',
-                    fillColor: AppColors.softSurface,
-                    prefixIcon: const Icon(
-                      Icons.search_rounded,
-                      color: AppColors.navy,
-                    ),
-                    suffixIcon: _search.text.isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: 'مسح البحث',
-                            icon: const Icon(Icons.close),
-                            onPressed: () {
-                              _search.clear();
-                              _load();
-                            },
-                          ),
-                  ),
-                ),
-              ),
-              const Divider(),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final rail = constraints.maxWidth >= 360 && scale <= 1.3;
-                    return Column(
-                      children: [
-                        if (!rail)
-                          SizedBox(
-                            height: 64 + (scale - 1).clamp(0, 3) * 18,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
+            const Divider(),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final rail = constraints.maxWidth >= 360 && scale <= 1.3;
+                  return Column(
+                    children: [
+                      if (!rail)
+                        SizedBox(
+                          height: 64 + (scale - 1).clamp(0, 3) * 18,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            itemCount: options.length,
+                            separatorBuilder: (_, i) =>
+                                const SizedBox(width: 8),
+                            itemBuilder: (_, i) => ChoiceChip(
+                              label: Text(
+                                i == 0
+                                    ? AppLanguage.text(context, 'الكل', 'All')
+                                    : options[i].displayName(english),
                               ),
-                              itemCount: options.length,
-                              separatorBuilder: (_, i) =>
-                                  const SizedBox(width: 8),
-                              itemBuilder: (_, i) => ChoiceChip(
-                                label: Text(i == 0 ? 'الكل' : options[i].name),
-                                selected: options[i].id == _selected.id,
-                                selectedColor: AppColors.skySoft,
-                                onSelected: (_) => _select(options[i]),
-                              ),
+                              selected: options[i].id == _selected.id,
+                              selectedColor: Theme.of(
+                                context,
+                              ).colorScheme.primaryContainer,
+                              onSelected: (_) => _select(options[i]),
                             ),
                           ),
-                        Expanded(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              if (rail)
-                                SizedBox(
-                                  width: constraints.maxWidth >= 600 ? 108 : 80,
-                                  child: ColoredBox(
-                                    color: AppColors.softSurface,
-                                    child: ListView.builder(
-                                      itemCount: options.length,
-                                      itemBuilder: (_, i) => _RailItem(
-                                        category: options[i],
-                                        selected: options[i].id == _selected.id,
-                                        isAll: i == 0,
-                                        onTap: () => _select(options[i]),
-                                      ),
+                        ),
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (rail)
+                              SizedBox(
+                                width: constraints.maxWidth >= 600 ? 108 : 80,
+                                child: ColoredBox(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHighest,
+                                  child: ListView.builder(
+                                    itemCount: options.length,
+                                    itemBuilder: (_, i) => _RailItem(
+                                      category: options[i],
+                                      selected: options[i].id == _selected.id,
+                                      isAll: i == 0,
+                                      onTap: () => _select(options[i]),
                                     ),
                                   ),
                                 ),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    SingleChildScrollView(
-                                      scrollDirection: Axis.horizontal,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 8,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          OutlinedButton.icon(
-                                            onPressed: _chooseSort,
-                                            icon: const Icon(
-                                              Icons.swap_vert_rounded,
-                                              size: 19,
-                                            ),
-                                            label: Text(
-                                              _sort == CatalogSort.newest
-                                                  ? 'ترتيب'
-                                                  : _sort.label,
-                                            ),
-                                            style: OutlinedButton.styleFrom(
-                                              minimumSize: const Size(48, 48),
-                                              foregroundColor: AppColors.navy,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          OutlinedButton.icon(
-                                            onPressed: _chooseCategory,
-                                            icon: const Icon(
-                                              Icons.grid_view_rounded,
-                                              size: 18,
-                                            ),
-                                            label: const Text('الأقسام'),
-                                            style: OutlinedButton.styleFrom(
-                                              minimumSize: const Size(48, 48),
-                                              foregroundColor: AppColors.navy,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          FilterChip(
-                                            label: const Text('المتوفر فقط'),
-                                            selected: _inStockOnly,
-                                            selectedColor: AppColors.skySoft,
-                                            onSelected: (value) {
-                                              setState(
-                                                () => _inStockOnly = value,
-                                              );
-                                              _load();
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.fromLTRB(
-                                        12,
-                                        0,
-                                        12,
-                                        8,
-                                      ),
-                                      child: Text(
-                                        _selected.id == root.id
-                                            ? 'كل ${root.name}'
-                                            : _selected.name,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w800,
-                                          color: AppColors.navy,
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(child: _productList()),
-                                  ],
-                                ),
                               ),
-                            ],
-                          ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 8,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        OutlinedButton.icon(
+                                          onPressed: _chooseSort,
+                                          icon: const Icon(
+                                            Icons.swap_vert_rounded,
+                                            size: 19,
+                                          ),
+                                          label: Text(
+                                            _sort == CatalogSort.newest
+                                                ? AppLanguage.text(
+                                                    context,
+                                                    'ترتيب',
+                                                    'Sort',
+                                                  )
+                                                : _sort.label,
+                                          ),
+                                          style: OutlinedButton.styleFrom(
+                                            minimumSize: const Size(48, 48),
+                                            foregroundColor: AppColors.navy,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        OutlinedButton.icon(
+                                          onPressed: _chooseCategory,
+                                          icon: const Icon(
+                                            Icons.grid_view_rounded,
+                                            size: 18,
+                                          ),
+                                          label: Text(
+                                            AppLanguage.text(
+                                              context,
+                                              'الأقسام',
+                                              'Categories',
+                                            ),
+                                          ),
+                                          style: OutlinedButton.styleFrom(
+                                            minimumSize: const Size(48, 48),
+                                            foregroundColor: AppColors.navy,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        FilterChip(
+                                          label: Text(
+                                            AppLanguage.text(
+                                              context,
+                                              'المتوفر فقط',
+                                              'In stock only',
+                                            ),
+                                          ),
+                                          selected: _inStockOnly,
+                                          selectedColor: Theme.of(
+                                            context,
+                                          ).colorScheme.primaryContainer,
+                                          onSelected: (value) {
+                                            setState(
+                                              () => _inStockOnly = value,
+                                            );
+                                            _load();
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      12,
+                                      0,
+                                      12,
+                                      8,
+                                    ),
+                                    child: Text(
+                                      _selected.id == root.id
+                                          ? '${AppLanguage.text(context, 'كل', 'All')} ${root.displayName(english)}'
+                                          : _selected.displayName(english),
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(child: _productList()),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    );
-                  },
-                ),
+                      ),
+                    ],
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-        bottomNavigationBar: const CartBar(),
       ),
+      bottomNavigationBar: const CartBar(),
     );
   }
 
@@ -590,7 +629,13 @@ class _RailItem extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     selected: selected,
     button: true,
-    label: isAll ? 'كل منتجات القسم' : category.name,
+    label: isAll
+        ? AppLanguage.text(
+            context,
+            'كل منتجات القسم',
+            'All products in category',
+          )
+        : category.displayName(AppLanguage.isEnglish(context)),
     child: Material(
       color: selected ? Colors.white : Colors.transparent,
       child: InkWell(
@@ -628,7 +673,9 @@ class _RailItem extends StatelessWidget {
               ),
               const SizedBox(height: 7),
               Text(
-                isAll ? 'الكل' : category.name,
+                isAll
+                    ? AppLanguage.text(context, 'الكل', 'All')
+                    : category.displayName(AppLanguage.isEnglish(context)),
                 textAlign: TextAlign.center,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,

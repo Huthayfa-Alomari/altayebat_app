@@ -1,6 +1,18 @@
 # Altayebat Release Readiness
 
-Updated: 2026-09-20
+Updated: 2026-09-28
+
+## Store submission update (2026-09-28)
+
+- [x] Android Play build is API 36 and requires permanent upload-key secrets.
+- [x] iOS validation workflow generates the Flutter platform and verifies an unsigned iPhone build.
+- [x] Separate iOS App Store workflow is configured to build a signed IPA from an Apple Distribution certificate and matching App Store provisioning profile; it does not upload it.
+- [x] Store icon exports and a Google Play feature graphic are in `store_assets/`.
+- [x] Arabic listing draft and operator-owned console requirements are in `docs/STORE_SUBMISSION_2026.md`.
+- [x] Public `/support`, `/privacy`, and `/account-deletion` page sources are present.
+- [ ] Run both CI workflows, review their artifacts and install release candidates on real Android and iPhone devices.
+- [ ] Verify the three public routes on the actual deployed domain and complete both consoles' privacy/disclosure forms.
+- [ ] Capture real device screenshots, check full English UI and dark mode, and verify live checkout before publication.
 
 ## Production code and database status
 
@@ -39,7 +51,7 @@ These items require private credentials, a third-party console action, or real s
 - [ ] Enable/confirm Play App Signing and run the `Android Play Release` workflow successfully with the permanent upload key.
 - [ ] Verify the deployed public URLs for `/privacy` and `/account-deletion`, then enter them in Google Play Console.
 - [ ] Complete the Google Play Data Safety form using `docs/GOOGLE_PLAY_DATA_SAFETY.md`, re-checking the answers against the exact production build.
-- [ ] Import real GTIN/EAN values from packaging, supplier feeds, or the POS. Production currently has 683 products and 0 populated product barcodes. Never fabricate or infer GTIN values.
+- [ ] Confirm live GTIN/EAN coverage against the current POS/catalogue source; the 2026-09-20 snapshot had 683 products and 0 populated barcodes and may no longer represent production. Never fabricate or infer GTIN values.
 - [ ] Run one real in-app AI request after installing the latest release candidate and verify `ai_basket_requests.result.provider` is `openrouter:<model>` to prove the configured OpenRouter secret works upstream.
 - [ ] Review/replace reused catalog images and fill optional content gaps (descriptions / English names) as merchandising polish.
 - [ ] Confirm delivery zones and active rider capacity match the actual launch coverage.

@@ -3,6 +3,7 @@ enum ProductSaleType { piece, weight, volume }
 class Product {
   final String id;
   final String name;
+  final String? nameEn;
   final String? description;
 
   /// Price of one atomic checkout unit.
@@ -27,6 +28,7 @@ class Product {
   Product({
     required this.id,
     required this.name,
+    this.nameEn,
     this.description,
     required this.price,
     this.imageUrl,
@@ -43,6 +45,8 @@ class Product {
   }) : pricePerUnit = pricePerUnit ?? price;
 
   bool get isMeasured => saleType != ProductSaleType.piece;
+  String displayName(bool english) =>
+      english && (nameEn?.trim().isNotEmpty ?? false) ? nameEn!.trim() : name;
   bool get isWeight => saleType == ProductSaleType.weight;
   bool get isVolume => saleType == ProductSaleType.volume;
 
@@ -110,6 +114,7 @@ class Product {
     return Product(
       id: map['id'] as String,
       name: map['name'] as String,
+      nameEn: map['name_en']?.toString(),
       description: map['description'] as String?,
       price: atomicPrice,
       imageUrl: map['image_url'] as String?,

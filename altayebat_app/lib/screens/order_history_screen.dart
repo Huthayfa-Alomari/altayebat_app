@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/cart_item.dart';
 import '../providers/cart_provider.dart';
 import '../services/growth_service.dart';
+import '../settings/app_language.dart';
 import '../theme/app_theme.dart';
 import 'cart_screen.dart';
 import 'order_tracking_screen.dart';
@@ -175,8 +176,10 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('طلباتي'), centerTitle: true),
+      appBar: AppBar(
+        title: Text(AppLanguage.text(context, 'طلباتي', 'My orders')),
+        centerTitle: true,
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -205,7 +208,12 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          _error ?? 'أول طلب إلك راح يظهر هون',
+                          _error ??
+                              AppLanguage.text(
+                                context,
+                                'أول طلب إلك راح يظهر هون',
+                                'Your first order will appear here',
+                              ),
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 16,
@@ -236,9 +244,13 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
 
                         return Container(
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.surface,
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: AppColors.border),
+                            border: Border.all(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.outlineVariant,
+                            ),
                             boxShadow: [
                               BoxShadow(
                                 color: AppColors.navy.withValues(alpha: 0.04),

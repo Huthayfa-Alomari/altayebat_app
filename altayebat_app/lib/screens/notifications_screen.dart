@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../services/growth_service.dart';
+import '../settings/app_language.dart';
 import '../theme/app_theme.dart';
 import 'order_tracking_screen.dart';
 
@@ -78,8 +79,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('الإشعارات'), centerTitle: true),
+      appBar: AppBar(
+        title: Text(AppLanguage.text(context, 'الإشعارات', 'Notifications')),
+        centerTitle: true,
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -108,7 +111,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          _error ?? 'ما عندك إشعارات جديدة',
+                          _error ??
+                              AppLanguage.text(
+                                context,
+                                'ما عندك إشعارات جديدة',
+                                'No new notifications',
+                              ),
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 16,
@@ -131,7 +139,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             : AppColors.primary;
 
                         return Material(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(18),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(18),
@@ -143,7 +151,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 border: Border.all(
                                   color: unread
                                       ? accent.withValues(alpha: 0.22)
-                                      : AppColors.border,
+                                      : Theme.of(
+                                          context,
+                                        ).colorScheme.outlineVariant,
                                 ),
                                 boxShadow: [
                                   BoxShadow(

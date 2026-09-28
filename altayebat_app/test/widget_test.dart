@@ -7,6 +7,7 @@ void main() {
       final product = Product.fromMap({
         'id': 'product-1',
         'name': 'حليب طازج',
+        'name_en': 'Fresh milk',
         'description': '1 لتر',
         'price': 1.25,
         'image_url': null,
@@ -17,6 +18,8 @@ void main() {
 
       expect(product.id, 'product-1');
       expect(product.name, 'حليب طازج');
+      expect(product.displayName(true), 'Fresh milk');
+      expect(product.displayName(false), 'حليب طازج');
       expect(product.price, 1.25);
       expect(product.stockQty, 8);
       expect(product.isAvailable, isTrue);
@@ -35,6 +38,7 @@ void main() {
       expect(product.description, isNull);
       expect(product.imageUrl, isNull);
       expect(product.categoryId, isNull);
+      expect(product.displayName(true), 'مياه');
     });
   });
 }

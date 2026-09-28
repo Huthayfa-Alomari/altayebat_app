@@ -67,7 +67,7 @@ class CatalogService {
   static const Duration _productPageTtl = Duration(minutes: 2);
 
   static const String _productColumns =
-      'id,name,description,price,image_url,stock_qty,is_available,category_id,'
+      'id,name,name_en,description,price,image_url,stock_qty,is_available,category_id,'
       'sale_type,base_unit,inventory_scale,price_per_unit,min_qty,qty_step,'
       'allow_amount_purchase';
 
@@ -113,7 +113,7 @@ class CatalogService {
   static Future<List<ProductCategory>> _loadCategories() async {
     final data = await _client
         .from('categories')
-        .select('id,name,sort_order,image_url,parent_id')
+        .select('id,name,name_en,sort_order,image_url,parent_id')
         .eq('store_id', AppConfig.storeId)
         .eq('is_active', true)
         .order('sort_order')

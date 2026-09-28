@@ -1,10 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'providers/cart_provider.dart';
+import 'settings/app_language.dart';
+import 'settings/app_preferences.dart';
 import 'screens/storefront_root_screen.dart';
 import 'services/driver_deep_link_navigator_observer.dart';
 import 'services/push_notification_service.dart';
@@ -13,6 +16,7 @@ import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final preferences = await AppPreferences.load();
 
   Object? bootstrapError;
   try {
@@ -39,7 +43,9 @@ Future<void> main() async {
     );
   }
 
-  runApp(AltayebatApp(bootstrapError: bootstrapError));
+  runApp(
+    AltayebatApp(bootstrapError: bootstrapError, preferences: preferences),
+  );
 
   // Push permission, token retrieval and registration may involve Firebase and
   // network round-trips. They are optional for shopping, so never delay the
@@ -51,29 +57,40 @@ Future<void> main() async {
 
 class AltayebatApp extends StatelessWidget {
   final Object? bootstrapError;
+  final AppPreferences? preferences;
 
-  const AltayebatApp({super.key, this.bootstrapError});
+  const AltayebatApp({super.key, this.bootstrapError, this.preferences});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => CartProvider(),
-      child: MaterialApp(
-        navigatorKey: PushNotificationService.navigatorKey,
-        navigatorObservers: [DriverDeepLinkNavigatorObserver.instance],
-        title: 'أسواق الطيبات',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        locale: const Locale('ar'),
-        builder: (context, child) {
-          return Directionality(
-            textDirection: TextDirection.rtl,
-            child: child ?? const SizedBox.shrink(),
-          );
-        },
-        home: bootstrapError != null
-            ? const _BootstrapErrorScreen()
-            : const StorefrontRootScreen(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider<AppPreferences>(
+          create: (_) => preferences ?? AppPreferences(),
+        ),
+      ],
+      child: Consumer<AppPreferences>(
+        builder: (context, preferences, _) => MaterialApp(
+          navigatorKey: PushNotificationService.navigatorKey,
+          navigatorObservers: [DriverDeepLinkNavigatorObserver.instance],
+          onGenerateTitle: (context) =>
+              AppLanguage.text(context, 'أسواق الطيبات', 'Altayebat Markets'),
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: preferences.themeMode,
+          locale: preferences.locale,
+          supportedLocales: const [Locale('ar'), Locale('en')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: bootstrapError != null
+              ? const _BootstrapErrorScreen()
+              : const StorefrontRootScreen(),
+        ),
       ),
     );
   }

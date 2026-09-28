@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/cart_item.dart';
 import '../providers/cart_provider.dart';
 import '../services/supabase_service.dart';
+import '../settings/app_language.dart';
 import '../theme/app_theme.dart';
 import '../widgets/measured_product_sheet.dart';
 import '../widgets/store_open_banner.dart';
@@ -24,8 +25,7 @@ class CartScreen extends StatelessWidget {
     final subtotal = cart.total;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('السلة')),
+      appBar: AppBar(title: Text(AppLanguage.text(context, 'السلة', 'Cart'))),
       body: Column(
         children: [
           const StoreOpenBanner(),
@@ -63,24 +63,18 @@ class CartScreen extends StatelessWidget {
           : SafeArea(
               top: false,
               child: Material(
-                color: Colors.white,
+                color: theme.colorScheme.surface,
                 elevation: 16,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
                   child: Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topRight,
-                        end: Alignment.bottomLeft,
-                        colors: [
-                          Color(0xFFFFF5F6),
-                          Colors.white,
-                          Color(0xFFF2F8FF),
-                        ],
-                      ),
+                      color: theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.border),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant,
+                      ),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -92,17 +86,23 @@ class CartScreen extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
-                                    'ملخص السلة',
+                                  Text(
+                                    AppLanguage.text(
+                                      context,
+                                      'ملخص السلة',
+                                      'Cart summary',
+                                    ),
                                     style: TextStyle(
-                                      color: AppColors.navy,
+                                      color: theme.colorScheme.onSurface,
                                       fontSize: 15,
                                       fontWeight: FontWeight.w900,
                                     ),
                                   ),
                                   const SizedBox(height: 3),
                                   Text(
-                                    '$totalLines ${totalLines == 1 ? 'صنف' : 'أصناف'}',
+                                    AppLanguage.isEnglish(context)
+                                        ? '$totalLines ${totalLines == 1 ? 'item' : 'items'}'
+                                        : '$totalLines ${totalLines == 1 ? 'صنف' : 'أصناف'}',
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: AppColors.textSecondary,
                                       fontWeight: FontWeight.w700,
@@ -122,10 +122,14 @@ class CartScreen extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 7),
-                        const Align(
+                        Align(
                           alignment: AlignmentDirectional.centerStart,
                           child: Text(
-                            'رسوم التوصيل والسعر النهائي تظهر قبل تأكيد الطلب.',
+                            AppLanguage.text(
+                              context,
+                              'رسوم التوصيل والسعر النهائي تظهر قبل تأكيد الطلب.',
+                              'Delivery fees and final total appear before confirming.',
+                            ),
                             style: TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 10.5,
@@ -148,8 +152,14 @@ class CartScreen extends StatelessWidget {
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
-                            icon: const Icon(Icons.arrow_back_rounded),
-                            label: const Text('متابعة لإتمام الطلب'),
+                            icon: const Icon(Icons.arrow_forward_rounded),
+                            label: Text(
+                              AppLanguage.text(
+                                context,
+                                'متابعة لإتمام الطلب',
+                                'Continue to checkout',
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -252,7 +262,7 @@ class CartScreen extends StatelessWidget {
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (sheetContext) {
         return SafeArea(
           child: Padding(
@@ -388,13 +398,13 @@ class _CartLineCard extends StatelessWidget {
     return Semantics(
       container: true,
       label:
-          '${product.name}، الكمية ${item.quantityLabel}، المجموع ${lineTotal.toStringAsFixed(2)} دينار',
+          '${product.displayName(AppLanguage.isEnglish(context))}، ${item.quantityLabel}، ${lineTotal.toStringAsFixed(2)}',
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: theme.colorScheme.outlineVariant),
           boxShadow: [
             BoxShadow(
               color: AppColors.navy.withValues(alpha: 0.04),
@@ -417,7 +427,7 @@ class _CartLineCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          product.name,
+                          product.displayName(AppLanguage.isEnglish(context)),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodyLarge?.copyWith(
@@ -658,21 +668,29 @@ class _EmptyCart extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
-              'سلتك فاضية',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+            Text(
+              AppLanguage.text(context, 'سلتك فاضية', 'Your cart is empty'),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'أضف المنتجات من المتجر أو امسح باركود المنتج مباشرة.',
+            Text(
+              AppLanguage.text(
+                context,
+                'أضف المنتجات من المتجر أو امسح باركود المنتج مباشرة.',
+                'Add products from the store or scan a barcode.',
+              ),
               textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF6B7280)),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 18),
             FilledButton.icon(
               onPressed: onScan,
               icon: const Icon(Icons.qr_code_scanner),
-              label: const Text('امسح باركود'),
+              label: Text(
+                AppLanguage.text(context, 'امسح باركود', 'Scan barcode'),
+              ),
             ),
           ],
         ),
