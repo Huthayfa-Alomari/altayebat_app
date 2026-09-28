@@ -203,12 +203,14 @@ class ProductCard extends StatelessWidget {
   }
 
   String _stockText(BuildContext context, bool outOfStock) {
-    if (outOfStock)
+    if (outOfStock) {
       return AppLanguage.text(context, 'غير متوفر حاليًا', 'Out of stock');
-    if (product.stockQty <= 3)
+    }
+    if (product.stockQty <= 3) {
       return AppLanguage.isEnglish(context)
           ? 'Only ${product.stockQty} left'
           : 'متبقي ${product.stockQty} فقط';
+    }
     return AppLanguage.text(context, 'متوفر الآن', 'In stock');
   }
 

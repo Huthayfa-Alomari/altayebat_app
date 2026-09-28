@@ -983,8 +983,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final id = _selectedCategoryId;
     if (id == null) return null;
     for (final category in _categories) {
-      if (category.id == id)
+      if (category.id == id) {
         return category.displayName(AppLanguage.isEnglish(context));
+      }
     }
     return null;
   }
