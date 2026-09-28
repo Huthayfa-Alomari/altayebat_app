@@ -147,12 +147,14 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         notes.add('${result.adjustedCount} كمية عُدلت حسب المخزون الحالي');
       }
 
-      await Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const CartScreen()));
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const CartScreen()));
 
       if (mounted && notes.isNotEmpty) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(notes.join(' • '))));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(notes.join(' • '))));
       }
     } catch (error) {
       if (!mounted) return;
@@ -245,9 +247,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                             color: Theme.of(context).colorScheme.surface,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .outlineVariant,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.outlineVariant,
                             ),
                             boxShadow: [
                               BoxShadow(

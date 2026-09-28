@@ -711,9 +711,9 @@ class _RelatedProductTile extends StatelessWidget {
                             'Open to choose quantity',
                           ),
                           style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                             fontSize: 9.5,
                           ),
                         ),

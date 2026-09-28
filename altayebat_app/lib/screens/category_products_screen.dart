@@ -286,8 +286,9 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
             selector: (_, cart) => cart.itemCount,
             builder: (context, count, child) => IconButton(
               tooltip: AppLanguage.text(context, 'السلة', 'Cart'),
-              onPressed: () => Navigator.of(context)
-                  .push(MaterialPageRoute(builder: (_) => const CartScreen())),
+              onPressed: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const CartScreen())),
               icon: Badge.count(
                 count: count,
                 isLabelVisible: count > 0,
@@ -323,9 +324,9 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                     'ابحث داخل القسم…',
                     'Search this category…',
                   ),
-                  fillColor: Theme.of(context)
-                      .colorScheme
-                      .surfaceContainerHighest,
+                  fillColor: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest,
                   prefixIcon: const Icon(
                     Icons.search_rounded,
                     color: AppColors.navy,
@@ -369,9 +370,9 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                                     : options[i].displayName(english),
                               ),
                               selected: options[i].id == _selected.id,
-                              selectedColor: Theme.of(context)
-                                  .colorScheme
-                                  .primaryContainer,
+                              selectedColor: Theme.of(
+                                context,
+                              ).colorScheme.primaryContainer,
                               onSelected: (_) => _select(options[i]),
                             ),
                           ),
@@ -384,9 +385,9 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                               SizedBox(
                                 width: constraints.maxWidth >= 600 ? 108 : 80,
                                 child: ColoredBox(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .surfaceContainerHighest,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHighest,
                                   child: ListView.builder(
                                     itemCount: options.length,
                                     itemBuilder: (_, i) => _RailItem(
@@ -459,9 +460,9 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                                             ),
                                           ),
                                           selected: _inStockOnly,
-                                          selectedColor: Theme.of(context)
-                                              .colorScheme
-                                              .primaryContainer,
+                                          selectedColor: Theme.of(
+                                            context,
+                                          ).colorScheme.primaryContainer,
                                           onSelected: (value) {
                                             setState(
                                               () => _inStockOnly = value,
@@ -486,9 +487,9 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                                       style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w800,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurface,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface,
                                       ),
                                     ),
                                   ),

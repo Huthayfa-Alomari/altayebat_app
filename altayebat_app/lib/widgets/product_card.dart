@@ -87,9 +87,9 @@ class ProductCard extends StatelessWidget {
                             style: TextStyle(
                               color: outOfStock
                                   ? AppColors.primary
-                                  : Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
                               fontSize: 11.5,
                               fontWeight: FontWeight.w600,
                             ),

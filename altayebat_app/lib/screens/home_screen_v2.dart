@@ -260,8 +260,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openNotifications() async {
-    await Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const NotificationsScreen()));
     final count = await GrowthService.unreadNotificationCount(
       forceRefresh: true,
     );
@@ -269,13 +270,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openOrders() async {
-    await Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => const OrderHistoryScreen()));
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const OrderHistoryScreen()));
   }
 
   Future<void> _openCart() async {
-    await Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => const CartScreen()));
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const CartScreen()));
   }
 
   Future<void> _openOffer(StoreOffer offer) async {

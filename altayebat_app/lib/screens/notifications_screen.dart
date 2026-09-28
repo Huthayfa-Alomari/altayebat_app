@@ -151,9 +151,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 border: Border.all(
                                   color: unread
                                       ? accent.withValues(alpha: 0.22)
-                                      : Theme.of(context)
-                                            .colorScheme
-                                            .outlineVariant,
+                                      : Theme.of(
+                                          context,
+                                        ).colorScheme.outlineVariant,
                                 ),
                                 boxShadow: [
                                   BoxShadow(

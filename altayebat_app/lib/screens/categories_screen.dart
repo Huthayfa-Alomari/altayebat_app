@@ -83,14 +83,15 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           (root) =>
               (_rootId == null || root.id == _rootId) &&
               (query.isEmpty ||
-                  normalizeCategoryName(root.displayName(english))
-                      .contains(query) ||
+                  normalizeCategoryName(
+                    root.displayName(english),
+                  ).contains(query) ||
                   tree
                       .descendantsOf(root.id)
                       .any(
-                        (c) =>
-                            normalizeCategoryName(c.displayName(english))
-                                .contains(query),
+                        (c) => normalizeCategoryName(
+                          c.displayName(english),
+                        ).contains(query),
                       )),
         )
         .toList();
@@ -195,9 +196,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         root?.displayName(english) ?? t('الكل', 'All'),
                       ),
                       selected: _rootId == root?.id,
-                      selectedColor: Theme.of(context)
-                          .colorScheme
-                          .primaryContainer,
+                      selectedColor: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer,
                       onSelected: (_) => setState(() => _rootId = root?.id),
                     );
                   },

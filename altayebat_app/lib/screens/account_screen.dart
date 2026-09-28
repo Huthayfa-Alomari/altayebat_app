@@ -69,15 +69,17 @@ class _AccountScreenState extends State<AccountScreen> {
       (_name?.isNotEmpty ?? false) && (_phone?.isNotEmpty ?? false);
 
   Future<void> _openSupport() async {
-    await Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => const SupportScreen()));
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SupportScreen()));
   }
 
   Future<void> _openExternal(String url, String source) async {
     final opened = await CustomerSupportService.openWeb(url, source: source);
     if (!opened && mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('تعذر فتح الرابط.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تعذر فتح الرابط.')));
     }
   }
 
@@ -153,8 +155,9 @@ class _AccountScreenState extends State<AccountScreen> {
     );
 
     if (!opened && mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('تعذر فتح المشاركة.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تعذر فتح المشاركة.')));
     }
   }
 
