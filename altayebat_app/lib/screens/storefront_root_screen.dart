@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/cart_provider.dart';
 import '../services/store_settings_service.dart';
+import '../settings/app_language.dart';
 import '../theme/app_theme.dart';
 import '../widgets/sponsored_ad_strip.dart';
 import '../widgets/store_announcement_banner.dart';
@@ -62,114 +63,112 @@ class _StorefrontRootScreenState extends State<StorefrontRootScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Column(
-          children: [
-            Expanded(
-              child: IndexedStack(
-                index: _index,
-                children: [
-                  HomeScreen(settings: _settings),
-                  const CategoriesScreen(),
-                  const OrderHistoryScreen(),
-                  const AccountScreen(),
-                  const CartScreen(),
-                ],
+    String t(String ar, String en) => AppLanguage.text(context, ar, en);
+    final colors = Theme.of(context).colorScheme;
+    return Scaffold(
+      body: Column(
+        children: [
+          Expanded(
+            child: IndexedStack(
+              index: _index,
+              children: [
+                HomeScreen(settings: _settings),
+                const CategoriesScreen(),
+                const OrderHistoryScreen(),
+                const AccountScreen(),
+                const CartScreen(),
+              ],
+            ),
+          ),
+          if (_index == 0) ...[
+            StoreAnnouncementBanner(settings: _settings),
+            if (_settings.storeStatus != 'open' ||
+                _settings.statusMessage.isNotEmpty)
+              _StoreStatusStrip(settings: _settings),
+            if (_settings.featureAds) const SponsoredAdStrip(),
+          ],
+        ],
+      ),
+      floatingActionButton: _settings.featureAi
+          ? FloatingActionButton.small(
+              heroTag: 'storefront-ai',
+              tooltip: t('المساعد الذكي', 'Shopping assistant'),
+              onPressed: _openAiAssistant,
+              backgroundColor: AppColors.navy,
+              foregroundColor: Colors.white,
+              child: const Icon(Icons.auto_awesome_rounded),
+            )
+          : null,
+      bottomNavigationBar: Selector<CartProvider, int>(
+        selector: (_, cart) => cart.itemCount,
+        builder: (context, cartCount, child) {
+          final destinations = <NavigationDestination>[
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home_rounded),
+              label: t('الرئيسية', 'Home'),
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.grid_view_outlined),
+              selectedIcon: Icon(Icons.grid_view_rounded),
+              label: t('التصنيفات', 'Categories'),
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(Icons.receipt_long_rounded),
+              label: t('طلباتي', 'Orders'),
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person_outline_rounded),
+              selectedIcon: Icon(Icons.person_rounded),
+              label: t('حسابي', 'Account'),
+            ),
+            NavigationDestination(
+              icon: Badge.count(
+                count: cartCount,
+                isLabelVisible: cartCount > 0,
+                backgroundColor: AppColors.primary,
+                child: const Icon(Icons.shopping_cart_outlined),
+              ),
+              selectedIcon: Badge.count(
+                count: cartCount,
+                isLabelVisible: cartCount > 0,
+                backgroundColor: AppColors.primary,
+                child: const Icon(Icons.shopping_cart_rounded),
+              ),
+              label: t('السلة', 'Cart'),
+            ),
+          ];
+
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF11213B).withValues(alpha: 0.08),
+                  blurRadius: 22,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              top: false,
+              child: NavigationBar(
+                selectedIndex: _index,
+                onDestinationSelected: (value) {
+                  if (_index == value) return;
+                  setState(() => _index = value);
+                },
+                height: 76,
+                elevation: 0,
+                backgroundColor: colors.surface,
+                indicatorColor: AppColors.primary.withValues(alpha: 0.10),
+                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                destinations: destinations,
               ),
             ),
-            if (_index == 0) ...[
-              StoreAnnouncementBanner(settings: _settings),
-              if (_settings.storeStatus != 'open' ||
-                  _settings.statusMessage.isNotEmpty)
-                _StoreStatusStrip(settings: _settings),
-              if (_settings.featureAds) const SponsoredAdStrip(),
-            ],
-          ],
-        ),
-        floatingActionButton: _settings.featureAi
-            ? FloatingActionButton.small(
-                heroTag: 'storefront-ai',
-                tooltip: 'المساعد الذكي',
-                onPressed: _openAiAssistant,
-                backgroundColor: AppColors.navy,
-                foregroundColor: Colors.white,
-                child: const Icon(Icons.auto_awesome_rounded),
-              )
-            : null,
-        bottomNavigationBar: Selector<CartProvider, int>(
-          selector: (_, cart) => cart.itemCount,
-          builder: (context, cartCount, child) {
-            final destinations = <NavigationDestination>[
-              const NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home_rounded),
-                label: 'الرئيسية',
-              ),
-              const NavigationDestination(
-                icon: Icon(Icons.grid_view_outlined),
-                selectedIcon: Icon(Icons.grid_view_rounded),
-                label: 'التصنيفات',
-              ),
-              const NavigationDestination(
-                icon: Icon(Icons.receipt_long_outlined),
-                selectedIcon: Icon(Icons.receipt_long_rounded),
-                label: 'طلباتي',
-              ),
-              const NavigationDestination(
-                icon: Icon(Icons.person_outline_rounded),
-                selectedIcon: Icon(Icons.person_rounded),
-                label: 'حسابي',
-              ),
-              NavigationDestination(
-                icon: Badge.count(
-                  count: cartCount,
-                  isLabelVisible: cartCount > 0,
-                  backgroundColor: AppColors.primary,
-                  child: const Icon(Icons.shopping_cart_outlined),
-                ),
-                selectedIcon: Badge.count(
-                  count: cartCount,
-                  isLabelVisible: cartCount > 0,
-                  backgroundColor: AppColors.primary,
-                  child: const Icon(Icons.shopping_cart_rounded),
-                ),
-                label: 'السلة',
-              ),
-            ];
-
-            return DecoratedBox(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF11213B).withValues(alpha: 0.08),
-                    blurRadius: 22,
-                    offset: const Offset(0, -5),
-                  ),
-                ],
-              ),
-              child: SafeArea(
-                top: false,
-                child: NavigationBar(
-                  selectedIndex: _index,
-                  onDestinationSelected: (value) {
-                    if (_index == value) return;
-                    setState(() => _index = value);
-                  },
-                  height: 76,
-                  elevation: 0,
-                  backgroundColor: Colors.white,
-                  indicatorColor: AppColors.primary.withValues(alpha: 0.10),
-                  labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-                  destinations: destinations,
-                ),
-              ),
-            );
-          },
-        ),
+          );
+        },
       ),
     );
   }

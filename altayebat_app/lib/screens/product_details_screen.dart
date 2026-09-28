@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
 import '../services/catalog_service.dart';
+import '../settings/app_language.dart';
 import '../theme/app_theme.dart';
 import '../widgets/measured_product_sheet.dart';
 import 'cart_screen.dart';
@@ -61,9 +62,10 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     final outOfStock = !product.isAvailable || product.stockQty <= 0;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('تفاصيل المنتج'),
+        title: Text(
+          AppLanguage.text(context, 'تفاصيل المنتج', 'Product details'),
+        ),
         actions: [
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 8),
@@ -71,7 +73,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               count: cart.itemCount,
               isLabelVisible: cart.itemCount > 0,
               child: IconButton(
-                tooltip: 'السلة',
+                tooltip: AppLanguage.text(context, 'السلة', 'Cart'),
                 onPressed: () {
                   Navigator.of(
                     context,
@@ -91,9 +93,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
               boxShadow: [
                 BoxShadow(
                   color: AppColors.navy.withValues(alpha: 0.045),
@@ -106,9 +110,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  product.name,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
+                  product.displayName(AppLanguage.isEnglish(context)),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 21,
                     height: 1.25,
                     fontWeight: FontWeight.w900,
@@ -136,7 +140,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                   children: [
                     _ProductFeatureChip(
                       icon: Icons.verified_outlined,
-                      label: 'من الطيبات',
+                      label: AppLanguage.text(
+                        context,
+                        'من الطيبات',
+                        'Altayebat',
+                      ),
                       color: AppColors.primary,
                     ),
                     const SizedBox(width: 8),
@@ -154,10 +162,10 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           ),
           if (product.description?.trim().isNotEmpty == true) ...[
             const SizedBox(height: 18),
-            const Text(
-              'عن المنتج',
+            Text(
+              AppLanguage.text(context, 'عن المنتج', 'About this product'),
               style: TextStyle(
-                color: AppColors.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
               ),
@@ -165,8 +173,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             const SizedBox(height: 7),
             Text(
               product.description!.trim(),
-              style: const TextStyle(
-                color: AppColors.textSecondary,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontSize: 14,
                 height: 1.55,
               ),
@@ -179,7 +187,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       bottomNavigationBar: SafeArea(
         top: false,
         child: Material(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           elevation: 14,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -203,7 +211,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         child: FilledButton.icon(
           onPressed: null,
           icon: const Icon(Icons.block_outlined),
-          label: const Text('غير متوفر حاليًا'),
+          label: Text(
+            AppLanguage.text(context, 'غير متوفر حاليًا', 'Out of stock'),
+          ),
         ),
       );
     }
@@ -217,7 +227,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           label: Text(
             qty > 0
                 ? 'تعديل الكمية • ${product.formatQuantity(qty)}'
-                : 'اختر الكمية',
+                : AppLanguage.text(context, 'اختر الكمية', 'Choose quantity'),
           ),
         ),
       );
@@ -231,7 +241,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               ? () => _addCurrentProduct(cart)
               : null,
           icon: const Icon(Icons.add_shopping_cart_rounded),
-          label: const Text('أضف للسلة'),
+          label: Text(AppLanguage.text(context, 'أضف للسلة', 'Add to cart')),
         ),
       );
     }
@@ -259,8 +269,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
-                  'في السلة',
+                Text(
+                  AppLanguage.text(context, 'في السلة', 'In cart'),
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 10,
@@ -319,18 +329,29 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'عادةً يُشترى معه',
+        Text(
+          AppLanguage.text(
+            context,
+            'عادةً يُشترى معه',
+            'Frequently bought together',
+          ),
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 18,
             fontWeight: FontWeight.w900,
           ),
         ),
         const SizedBox(height: 5),
-        const Text(
-          'اختيارات تكمل المنتج وتوفّر عليك البحث',
-          style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+        Text(
+          AppLanguage.text(
+            context,
+            'اختيارات تكمل المنتج وتوفّر عليك البحث',
+            'More products you may need',
+          ),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontSize: 12.5,
+          ),
         ),
         const SizedBox(height: 12),
         ..._related.map(
@@ -610,7 +631,7 @@ class _RelatedProductTile extends StatelessWidget {
     final hasImage = product.imageUrl?.trim().isNotEmpty == true;
 
     return Material(
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onOpen,
@@ -619,7 +640,9 @@ class _RelatedProductTile extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
           ),
           child: Row(
             children: [
@@ -637,7 +660,7 @@ class _RelatedProductTile extends StatelessWidget {
                 height: 66,
                 padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
-                  color: AppColors.softSurface,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: hasImage
@@ -660,11 +683,11 @@ class _RelatedProductTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      product.name,
+                      product.displayName(AppLanguage.isEnglish(context)),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
                       ),
@@ -679,12 +702,18 @@ class _RelatedProductTile extends StatelessWidget {
                       ),
                     ),
                     if (product.isMeasured)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 3),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3),
                         child: Text(
-                          'افتح المنتج لاختيار الكمية',
+                          AppLanguage.text(
+                            context,
+                            'افتح المنتج لاختيار الكمية',
+                            'Open to choose quantity',
+                          ),
                           style: TextStyle(
-                            color: AppColors.textSecondary,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
                             fontSize: 9.5,
                           ),
                         ),

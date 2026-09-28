@@ -70,17 +70,15 @@ jobs:
           test -f "$AAB"
           jarsigner -verify "$AAB"
           sha256sum "$AAB" | tee "$AAB.sha256"
-          cp "$AAB" build/app/outputs/bundle/release/Altayebat-0.2.0-play.aab
-          cp "$AAB.sha256" build/app/outputs/bundle/release/Altayebat-0.2.0-play.aab.sha256
           printf '%s\n' "$GITHUB_SHA" > build/SOURCE_COMMIT.txt
 
       - name: Upload Play artifact
         uses: actions/upload-artifact@v7
         with:
-          name: Altayebat-0.2.0-play-aab
+          name: Altayebat-signed-play-aab
           path: |
-            altayebat_app/build/app/outputs/bundle/release/Altayebat-0.2.0-play.aab
-            altayebat_app/build/app/outputs/bundle/release/Altayebat-0.2.0-play.aab.sha256
+            altayebat_app/build/app/outputs/bundle/release/app-release.aab
+            altayebat_app/build/app/outputs/bundle/release/app-release.aab.sha256
             altayebat_app/build/SOURCE_COMMIT.txt
           if-no-files-found: error
           retention-days: 14

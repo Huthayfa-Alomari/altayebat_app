@@ -16,7 +16,96 @@ class AppColors {
   static const Color navy = Color(0xFF0E3C78);
 }
 
+class DarkColors {
+  static const background = Color(0xFF101722);
+  static const surface = Color(0xFF1B2634);
+  static const textPrimary = Color(0xFFF2F5FA);
+  static const textSecondary = Color(0xFFBAC6D6);
+  static const border = Color(0xFF34465B);
+  static const softSurface = Color(0xFF22364A);
+  static const primary = Color(0xFFFF6673);
+  static const blue = Color(0xFF74C3FF);
+}
+
 class AppTheme {
+  static ThemeData get dark {
+    final scheme = ColorScheme.fromSeed(
+      seedColor: AppColors.primary,
+      brightness: Brightness.dark,
+      primary: DarkColors.primary,
+      secondary: DarkColors.blue,
+      surface: DarkColors.surface,
+    );
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: DarkColors.background,
+      fontFamily: 'IBMPlexSansArabic',
+      fontFamilyFallback: const ['Arial', 'sans-serif'],
+      appBarTheme: const AppBarTheme(
+        backgroundColor: DarkColors.surface,
+        foregroundColor: DarkColors.textPrimary,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        titleTextStyle: TextStyle(
+          fontFamily: 'IBMPlexSansArabic',
+          color: DarkColors.textPrimary,
+          fontSize: 18,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        height: 74,
+        backgroundColor: DarkColors.surface,
+        indicatorColor: DarkColors.primary.withValues(alpha: 0.20),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: DarkColors.surface,
+        hintStyle: const TextStyle(color: DarkColors.textSecondary),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: DarkColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: DarkColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: DarkColors.blue, width: 1.3),
+        ),
+      ),
+      cardTheme: CardThemeData(
+        color: DarkColors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: DarkColors.border),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(color: DarkColors.border),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: DarkColors.primary,
+          foregroundColor: DarkColors.background,
+          minimumSize: const Size(48, 50),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: DarkColors.primary,
+          foregroundColor: DarkColors.background,
+          minimumSize: const Size(48, 50),
+        ),
+      ),
+    );
+  }
+
   static ThemeData get light {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: AppColors.primary,

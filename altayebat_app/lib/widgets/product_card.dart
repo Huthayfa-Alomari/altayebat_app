@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
 import '../screens/product_details_screen.dart';
+import '../settings/app_language.dart';
 import '../theme/app_theme.dart';
 import 'measured_product_sheet.dart';
 
@@ -26,13 +27,14 @@ class ProductCard extends StatelessWidget {
     return Semantics(
       container: true,
       button: true,
-      label: '${product.name}، ${product.priceLabel}، افتح تفاصيل المنتج',
+      label:
+          '${product.displayName(AppLanguage.isEnglish(context))}، ${product.priceLabel}، ${AppLanguage.text(context, 'افتح تفاصيل المنتج', 'Open product details')}',
       child: Material(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: AppColors.border),
+          side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
         ),
         child: InkWell(
           onTap: () => _openDetails(context),
@@ -65,11 +67,11 @@ class ProductCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            product.name,
+                            product.displayName(AppLanguage.isEnglish(context)),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontSize: 12.5,
                               height: 1.25,
                               fontWeight: FontWeight.w800,
@@ -79,13 +81,15 @@ class ProductCard extends StatelessWidget {
                           Text(
                             product.isMeasured
                                 ? product.unitLabel
-                                : _stockText(outOfStock),
+                                : _stockText(context, outOfStock),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: outOfStock
                                   ? AppColors.primary
-                                  : AppColors.textSecondary,
+                                  : Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
                               fontSize: 11.5,
                               fontWeight: FontWeight.w600,
                             ),
@@ -198,10 +202,14 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  String _stockText(bool outOfStock) {
-    if (outOfStock) return 'غير متوفر حاليًا';
-    if (product.stockQty <= 3) return 'متبقي ${product.stockQty} فقط';
-    return 'متوفر الآن';
+  String _stockText(BuildContext context, bool outOfStock) {
+    if (outOfStock)
+      return AppLanguage.text(context, 'غير متوفر حاليًا', 'Out of stock');
+    if (product.stockQty <= 3)
+      return AppLanguage.isEnglish(context)
+          ? 'Only ${product.stockQty} left'
+          : 'متبقي ${product.stockQty} فقط';
+    return AppLanguage.text(context, 'متوفر الآن', 'In stock');
   }
 
   void _openDetails(BuildContext context) {
@@ -237,10 +245,10 @@ class ProductCard extends StatelessWidget {
         ),
         label: Text(
           outOfStock
-              ? 'غير متوفر'
+              ? AppLanguage.text(context, 'غير متوفر', 'Unavailable')
               : hasSelection
               ? product.formatQuantity(qty)
-              : 'اختر الكمية',
+              : AppLanguage.text(context, 'اختر الكمية', 'Choose quantity'),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
@@ -295,7 +303,7 @@ class ProductCard extends StatelessWidget {
         ),
         label: Text(
           outOfStock
-              ? 'غير متوفر'
+              ? AppLanguage.text(context, 'غير متوفر', 'Unavailable')
               : compact
               ? 'أضف'
               : 'أضف للسلة',

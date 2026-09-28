@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/supabase_service.dart';
+import '../settings/app_language.dart';
 
 class StoreOpenBanner extends StatelessWidget {
   const StoreOpenBanner({super.key});
@@ -36,7 +37,17 @@ class StoreOpenBanner extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  open ? 'المتجر يستقبل الطلبات الآن' : 'الطلبات متوقفة حاليًا',
+                  open
+                      ? AppLanguage.text(
+                          context,
+                          'المتجر يستقبل الطلبات الآن',
+                          'The store is accepting orders',
+                        )
+                      : AppLanguage.text(
+                          context,
+                          'الطلبات متوقفة حاليًا',
+                          'Orders are paused',
+                        ),
                   style: TextStyle(
                     color: open
                         ? const Color(0xFF166534)

@@ -10,6 +10,7 @@ import '../providers/cart_provider.dart';
 import '../services/catalog_service.dart';
 import '../services/growth_service.dart';
 import '../services/store_settings_service.dart';
+import '../settings/app_language.dart';
 import '../theme/app_theme.dart';
 import '../widgets/altayebat_brand.dart';
 import '../widgets/call_fab.dart';
@@ -259,9 +260,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openNotifications() async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const NotificationsScreen()));
     final count = await GrowthService.unreadNotificationCount(
       forceRefresh: true,
     );
@@ -269,15 +269,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openOrders() async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const OrderHistoryScreen()));
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const OrderHistoryScreen()));
   }
 
   Future<void> _openCart() async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const CartScreen()));
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const CartScreen()));
   }
 
   Future<void> _openOffer(StoreOffer offer) async {
@@ -305,7 +303,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -426,7 +423,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               IconButton(
-                tooltip: 'الإشعارات',
+                tooltip: AppLanguage.text(
+                  context,
+                  'الإشعارات',
+                  'Notifications',
+                ),
                 onPressed: _openNotifications,
                 icon: Badge.count(
                   count: _unreadNotifications,
@@ -438,7 +439,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               IconButton(
-                tooltip: 'السلة',
+                tooltip: AppLanguage.text(context, 'السلة', 'Cart'),
                 onPressed: _openCart,
                 icon: Badge.count(
                   count: count,
@@ -462,7 +463,11 @@ class _HomeScreenState extends State<HomeScreen> {
             onChanged: _onSearchChanged,
             onTapOutside: (_) => FocusScope.of(context).unfocus(),
             decoration: InputDecoration(
-              hintText: 'ابحث عن منتج أو علامة تجارية…',
+              hintText: AppLanguage.text(
+                context,
+                'ابحث عن منتج أو علامة تجارية…',
+                'Search products or brands…',
+              ),
               prefixIcon: const Icon(
                 Icons.search_rounded,
                 color: AppColors.navy,
@@ -592,7 +597,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 7),
                     Text(
-                      i == 0 ? 'الكل' : categories[i - 1].name,
+                      i == 0
+                          ? AppLanguage.text(context, 'الكل', 'All')
+                          : categories[i - 1].displayName(
+                              AppLanguage.isEnglish(context),
+                            ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -697,7 +706,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
       child: Material(
-        color: const Color(0xFFE7F4FF),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
           onTap: _openOrders,
@@ -721,27 +730,35 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(width: 11),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'إعادة طلب سابق بسرعة',
+                        AppLanguage.text(
+                          context,
+                          'إعادة طلب سابق بسرعة',
+                          'Reorder quickly',
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: AppColors.navy,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
-                        'اطلب نفس المنتجات من طلبك الأخير',
+                        AppLanguage.text(
+                          context,
+                          'اطلب نفس المنتجات من طلبك الأخير',
+                          'Get the products from your last order',
+                        ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontSize: 11.5,
                           height: 1.3,
                           fontWeight: FontWeight.w600,
@@ -796,20 +813,20 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 14),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Row(
               children: [
                 Text(
-                  'عروض اليوم',
+                  AppLanguage.text(context, 'عروض اليوم', 'Today’s offers'),
                   style: TextStyle(
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                Spacer(),
-                Icon(
+                const Spacer(),
+                const Icon(
                   Icons.local_offer_rounded,
                   color: AppColors.primary,
                   size: 20,
@@ -830,7 +847,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 return SizedBox(
                   width: 198,
                   child: Material(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(18),
                     child: InkWell(
                       onTap: () => _openOffer(offer),
@@ -839,7 +856,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
                         ),
                         child: Row(
                           children: [
@@ -922,8 +941,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 19,
                     fontWeight: FontWeight.w900,
                   ),
@@ -948,8 +967,8 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.chevron_left_rounded, size: 18),
             label: Text(
               _selectedCategoryId == null
-                  ? '${_products.length}${_hasMore ? '+' : ''} منتج'
-                  : 'عرض الكل',
+                  ? '${_products.length}${_hasMore ? '+' : ''} ${AppLanguage.text(context, 'منتج', 'products')}'
+                  : AppLanguage.text(context, 'عرض الكل', 'View all'),
             ),
           ),
         ],
@@ -961,7 +980,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final id = _selectedCategoryId;
     if (id == null) return null;
     for (final category in _categories) {
-      if (category.id == id) return category.name;
+      if (category.id == id)
+        return category.displayName(AppLanguage.isEnglish(context));
     }
     return null;
   }

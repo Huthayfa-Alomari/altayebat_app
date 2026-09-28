@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -6,6 +7,8 @@ import '../config/app_config.dart';
 import '../services/analytics_service.dart';
 import '../services/customer_support_service.dart';
 import '../services/store_settings_service.dart';
+import '../settings/app_language.dart';
+import '../settings/app_preferences.dart';
 import '../theme/app_theme.dart';
 import '../widgets/altayebat_brand.dart';
 import 'customer_auth_screen.dart';
@@ -66,17 +69,15 @@ class _AccountScreenState extends State<AccountScreen> {
       (_name?.isNotEmpty ?? false) && (_phone?.isNotEmpty ?? false);
 
   Future<void> _openSupport() async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const SupportScreen()));
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const SupportScreen()));
   }
 
   Future<void> _openExternal(String url, String source) async {
     final opened = await CustomerSupportService.openWeb(url, source: source);
     if (!opened && mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تعذر فتح الرابط.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('تعذر فتح الرابط.')));
     }
   }
 
@@ -152,17 +153,18 @@ class _AccountScreenState extends State<AccountScreen> {
     );
 
     if (!opened && mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تعذر فتح المشاركة.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('تعذر فتح المشاركة.')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final preferences = context.watch<AppPreferences>();
+    String t(String ar, String en) => AppLanguage.text(context, ar, en);
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('حسابي')),
+      appBar: AppBar(title: Text(t('حسابي', 'My account'))),
       body: RefreshIndicator(
         onRefresh: _loadProfile,
         child: ListView(
@@ -172,32 +174,73 @@ class _AccountScreenState extends State<AccountScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: colors.outlineVariant),
               ),
               child: const AltayebatBrandLogo(markSize: 118),
             ),
             const SizedBox(height: 14),
             _profileCard(),
             const SizedBox(height: 20),
-            const _AccountSectionTitle(
-              title: 'التسوق والحساب',
+            _AccountSectionTitle(
+              title: t('التفضيلات', 'Preferences'),
+              icon: Icons.tune_rounded,
+            ),
+            const SizedBox(height: 10),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      t('اللغة', 'Language'),
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 10),
+                    SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(value: 'ar', label: Text('العربية')),
+                        ButtonSegment(value: 'en', label: Text('English')),
+                      ],
+                      selected: {preferences.locale.languageCode},
+                      onSelectionChanged: (selection) =>
+                          preferences.setLanguage(selection.first),
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const Icon(Icons.dark_mode_outlined),
+                      title: Text(t('الوضع الداكن', 'Dark mode')),
+                      value: preferences.darkMode,
+                      onChanged: preferences.setDarkMode,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            _AccountSectionTitle(
+              title: t('التسوق والحساب', 'Shopping & account'),
               icon: Icons.shopping_bag_outlined,
             ),
             const SizedBox(height: 10),
             _AccountTile(
               icon: Icons.receipt_long_outlined,
-              title: 'طلباتي',
-              subtitle: 'تابع الطلبات الحالية والسابقة',
+              title: t('طلباتي', 'My orders'),
+              subtitle: t(
+                'تابع الطلبات الحالية والسابقة',
+                'Track current and past orders',
+              ),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const OrderHistoryScreen()),
               ),
             ),
             _AccountTile(
               icon: Icons.notifications_none_rounded,
-              title: 'الإشعارات',
-              subtitle: 'العروض وتحديثات الطلب',
+              title: t('الإشعارات', 'Notifications'),
+              subtitle: t('العروض وتحديثات الطلب', 'Offers and order updates'),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const NotificationsScreen()),
               ),
@@ -205,8 +248,11 @@ class _AccountScreenState extends State<AccountScreen> {
             if (_settings.featureLoyalty)
               _AccountTile(
                 icon: Icons.workspace_premium_outlined,
-                title: 'مكافآتي',
-                subtitle: 'تابع السلال والمكافآت المتاحة',
+                title: t('مكافآتي', 'My rewards'),
+                subtitle: t(
+                  'تابع السلال والمكافآت المتاحة',
+                  'See available rewards',
+                ),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const LoyaltyScreen()),
                 ),
@@ -214,63 +260,81 @@ class _AccountScreenState extends State<AccountScreen> {
             if (_settings.featureReferral)
               _AccountTile(
                 icon: Icons.card_giftcard_rounded,
-                title: 'ادعُ صديقك',
-                subtitle: 'شارك كودك واكسبوا المكافآت',
+                title: t('ادعُ صديقك', 'Invite a friend'),
+                subtitle: t(
+                  'شارك كودك واكسبوا المكافآت',
+                  'Share your code and earn rewards',
+                ),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const ReferralScreen()),
                 ),
               ),
             const SizedBox(height: 10),
-            const _AccountSectionTitle(
-              title: 'المساعدة والتطبيق',
+            _AccountSectionTitle(
+              title: t('المساعدة والتطبيق', 'Help & app'),
               icon: Icons.support_agent_outlined,
             ),
             const SizedBox(height: 10),
             _AccountTile(
               icon: Icons.support_agent_rounded,
-              title: 'خدمة العملاء',
-              subtitle: 'مشكلة طلب، توصيل، دفع أو استفسار',
+              title: t('خدمة العملاء', 'Customer support'),
+              subtitle: t(
+                'مشكلة طلب، توصيل، دفع أو استفسار',
+                'Orders, delivery, payments and questions',
+              ),
               onTap: _openSupport,
             ),
             _AccountTile(
               icon: Icons.share_rounded,
-              title: 'شارك التطبيق',
-              subtitle: 'شارك أسواق الطيبات مع أصدقائك',
+              title: t('شارك التطبيق', 'Share the app'),
+              subtitle: t(
+                'شارك أسواق الطيبات مع أصدقائك',
+                'Share Altayebat with friends',
+              ),
               onTap: _shareApp,
             ),
             if (_settings.websiteEnabled && _settings.websiteUrl.isNotEmpty)
               _AccountTile(
                 icon: Icons.language_rounded,
-                title: 'الموقع الإلكتروني',
-                subtitle: 'افتح موقع المتجر',
+                title: t('الموقع الإلكتروني', 'Website'),
+                subtitle: t('افتح موقع المتجر', 'Open the store website'),
                 onTap: () => _openExternal(_settings.websiteUrl, 'website'),
               ),
             if (_settings.privacyPolicyUrl.isNotEmpty)
               _AccountTile(
                 icon: Icons.privacy_tip_outlined,
-                title: 'سياسة الخصوصية',
-                subtitle: 'كيف نتعامل مع بياناتك',
+                title: t('سياسة الخصوصية', 'Privacy policy'),
+                subtitle: t('كيف نتعامل مع بياناتك', 'How we handle your data'),
                 onTap: () =>
                     _openExternal(_settings.privacyPolicyUrl, 'privacy_policy'),
               ),
             if (_settings.termsUrl.isNotEmpty)
               _AccountTile(
                 icon: Icons.gavel_outlined,
-                title: 'الشروط والأحكام',
-                subtitle: 'شروط استخدام التطبيق والطلبات',
+                title: t('الشروط والأحكام', 'Terms & conditions'),
+                subtitle: t(
+                  'شروط استخدام التطبيق والطلبات',
+                  'App and order terms',
+                ),
                 onTap: () => _openExternal(_settings.termsUrl, 'terms'),
               ),
             if (Supabase.instance.client.auth.currentUser != null)
               _AccountTile(
                 icon: Icons.delete_outline_rounded,
-                title: 'حذف الحساب وبياناتي',
-                subtitle: 'إرسال طلب موثّق لحذف الحساب والبيانات المرتبطة',
+                title: t('حذف الحساب وبياناتي', 'Delete my account'),
+                subtitle: t(
+                  'إرسال طلب موثّق لحذف الحساب والبيانات المرتبطة',
+                  'Request deletion of your account and data',
+                ),
                 onTap: _requestAccountDeletion,
               ),
             _AccountTile(
               icon: Icons.delivery_dining_rounded,
-              title: 'وضع المندوب',
-              subtitle: 'دخول المندوب وإدارة طلبات التوصيل',
+              title: t('وضع المندوب', 'Courier mode'),
+              subtitle: t(
+                'دخول المندوب وإدارة طلبات التوصيل',
+                'Courier sign in and deliveries',
+              ),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const RiderModeScreen()),
               ),
@@ -279,21 +343,24 @@ class _AccountScreenState extends State<AccountScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.skySoft,
+                color: colors.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.verified_user_outlined,
                     color: AppColors.skyBlueDark,
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'بياناتك تستخدم فقط لتجهيز الطلب والتوصيل ومتابعة الحالة.',
+                      t(
+                        'بياناتك تستخدم فقط لتجهيز الطلب والتوصيل ومتابعة الحالة.',
+                        'Your information is used to prepare, deliver and track your order.',
+                      ),
                       style: TextStyle(
-                        color: AppColors.textSecondary,
+                        color: colors.onSurfaceVariant,
                         fontSize: 11.5,
                         height: 1.4,
                         fontWeight: FontWeight.w600,
@@ -310,16 +377,13 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   Widget _profileCard() {
+    final colors = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [Color(0xFFFFF3F5), Colors.white, Color(0xFFF0F8FF)],
-        ),
+        color: colors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.outlineVariant),
         boxShadow: [
           BoxShadow(
             color: AppColors.navy.withValues(alpha: 0.05),
@@ -339,7 +403,7 @@ class _AccountScreenState extends State<AccountScreen> {
                   width: 58,
                   height: 58,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: colors.surfaceContainerHighest,
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: AppColors.primary.withValues(alpha: 0.14),
@@ -357,11 +421,17 @@ class _AccountScreenState extends State<AccountScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _hasProfile ? _name! : 'أنت تتصفح كضيف',
+                        _hasProfile
+                            ? _name!
+                            : AppLanguage.text(
+                                context,
+                                'أنت تتصفح كضيف',
+                                'Browsing as a guest',
+                              ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
+                        style: TextStyle(
+                          color: colors.onSurface,
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
                         ),
@@ -370,9 +440,13 @@ class _AccountScreenState extends State<AccountScreen> {
                       Text(
                         _hasProfile
                             ? _phone!
-                            : 'تصفح وتسوق براحتك، وسنطلب OTP فقط عند إتمام الشراء',
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
+                            : AppLanguage.text(
+                                context,
+                                'تصفح وتسوق براحتك، وسنطلب OTP فقط عند إتمام الشراء',
+                                'Browse freely. We will verify your phone at checkout.',
+                              ),
+                        style: TextStyle(
+                          color: colors.onSurfaceVariant,
                           fontSize: 11.5,
                         ),
                       ),
@@ -382,7 +456,11 @@ class _AccountScreenState extends State<AccountScreen> {
                 const SizedBox(width: 8),
                 FilledButton.tonal(
                   onPressed: _editProfile,
-                  child: Text(_hasProfile ? 'تعديل' : 'تسجيل / دخول'),
+                  child: Text(
+                    _hasProfile
+                        ? AppLanguage.text(context, 'تعديل', 'Edit')
+                        : AppLanguage.text(context, 'تسجيل / دخول', 'Sign in'),
+                  ),
                 ),
               ],
             ),
@@ -422,8 +500,8 @@ class _AccountSectionTitle extends StatelessWidget {
         const SizedBox(width: 6),
         Text(
           title,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 15,
             fontWeight: FontWeight.w900,
           ),
@@ -448,6 +526,7 @@ class _AccountTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final accent = icon.codePoint.isEven
         ? AppColors.primary
         : AppColors.skyBlueDark;
@@ -455,7 +534,7 @@ class _AccountTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
@@ -464,7 +543,7 @@ class _AccountTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: colors.outlineVariant),
             ),
             child: Row(
               children: [
@@ -484,8 +563,8 @@ class _AccountTile extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
+                        style: TextStyle(
+                          color: colors.onSurface,
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
                         ),
@@ -493,17 +572,19 @@ class _AccountTile extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
+                        style: TextStyle(
+                          color: colors.onSurfaceVariant,
                           fontSize: 10.5,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  color: AppColors.textSecondary,
+                Icon(
+                  Directionality.of(context) == TextDirection.rtl
+                      ? Icons.arrow_back_ios_new_rounded
+                      : Icons.arrow_forward_ios_rounded,
+                  color: colors.onSurfaceVariant,
                   size: 16,
                 ),
               ],

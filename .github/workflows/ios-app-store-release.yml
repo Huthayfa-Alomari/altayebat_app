@@ -1,0 +1,112 @@
+name: iOS App Store Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-app-store-ipa:
+    name: Build signed App Store IPA
+    runs-on: macos-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: altayebat_app
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.4"
+          channel: stable
+          cache: true
+      - name: Require permanent Apple and Firebase credentials
+        shell: bash
+        env:
+          CERT: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          PROFILE: ${{ secrets.APPLE_APP_STORE_PROFILE_BASE64 }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          KEYCHAIN_PASSWORD: ${{ secrets.APPLE_CI_KEYCHAIN_PASSWORD }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_IOS_APP_ID: ${{ secrets.FIREBASE_IOS_APP_ID }}
+        run: |
+          set -euo pipefail
+          for value in CERT CERT_PASSWORD PROFILE TEAM_ID KEYCHAIN_PASSWORD FIREBASE_API_KEY FIREBASE_IOS_APP_ID; do
+            test -n "${!value:-}" || { echo "Missing $value secret"; exit 1; }
+          done
+          test "$(xcodebuild -version | awk '/Xcode/{print int($2)}')" -ge 26
+      - name: Install distribution certificate and provisioning profile
+        shell: bash
+        env:
+          CERT: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          PROFILE: ${{ secrets.APPLE_APP_STORE_PROFILE_BASE64 }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          KEYCHAIN_PASSWORD: ${{ secrets.APPLE_CI_KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$CERT" | base64 -D > "$RUNNER_TEMP/distribution.p12"
+          printf '%s' "$PROFILE" | base64 -D > "$RUNNER_TEMP/distribution.mobileprovision"
+          security cms -D -i "$RUNNER_TEMP/distribution.mobileprovision" > "$RUNNER_TEMP/profile.plist"
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c 'Print :Name' "$RUNNER_TEMP/profile.plist")
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$RUNNER_TEMP/profile.plist")
+          PROFILE_APP_ID=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' "$RUNNER_TEMP/profile.plist")
+          PROFILE_TEAM=$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' "$RUNNER_TEMP/profile.plist")
+          [[ "$PROFILE_NAME" =~ ^[A-Za-z0-9._\ \(\)-]+$ ]]
+          test "$PROFILE_TEAM" = "$TEAM_ID"
+          test "$PROFILE_APP_ID" = "$TEAM_ID.com.altayebat.app"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:aps-environment' "$RUNNER_TEMP/profile.plist")" = production
+          test "$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:get-task-allow' "$RUNNER_TEMP/profile.plist")" = false
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$RUNNER_TEMP/distribution.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+          KEYCHAIN="$RUNNER_TEMP/altayebat-build.keychain-db"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN"
+          security import "$RUNNER_TEMP/distribution.p12" -k "$KEYCHAIN" -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+          security find-identity -v -p codesigning "$KEYCHAIN" | grep -q 'Apple Distribution'
+          echo "APPLE_PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
+      - name: Generate configured iOS project
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          flutter create --platforms=ios --org com.altayebat --project-name altayebat_app .
+          python3 tool/prepare_ios_release.py --team-id "$TEAM_ID" --profile-name "$APPLE_PROFILE_NAME"
+      - run: flutter pub get
+      - name: Check source
+        run: |
+          dart format --output=none --set-exit-if-changed lib test
+          flutter analyze
+          flutter test
+      - name: Build signed App Store IPA
+        env:
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_IOS_APP_ID: ${{ secrets.FIREBASE_IOS_APP_ID }}
+        run: |
+          flutter build ipa --release \
+            --export-options-plist=ios/ExportOptions.plist \
+            --dart-define=FIREBASE_API_KEY="$FIREBASE_API_KEY" \
+            --dart-define=FIREBASE_IOS_APP_ID="$FIREBASE_IOS_APP_ID"
+      - name: Verify archive and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          IPA=$(find build/ios/ipa -maxdepth 1 -name '*.ipa' -print -quit)
+          test -n "$IPA"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app/Info.plist | grep -qx com.altayebat.app
+          codesign --verify --deep --strict --verbose=2 build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app
+          shasum -a 256 "$IPA" > "$IPA.sha256"
+          printf '%s\n' "$GITHUB_SHA" > build/SOURCE_COMMIT.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Altayebat-signed-App-Store-IPA
+          path: |
+            altayebat_app/build/ios/ipa/*.ipa
+            altayebat_app/build/ios/ipa/*.ipa.sha256
+            altayebat_app/build/SOURCE_COMMIT.txt
+          if-no-files-found: error
+          retention-days: 14
