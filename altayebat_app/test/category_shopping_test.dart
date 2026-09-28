@@ -12,6 +12,7 @@ import 'package:altayebat_app/services/catalog_service.dart';
 import 'package:altayebat_app/theme/app_theme.dart';
 import 'package:altayebat_app/widgets/category_artwork.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -123,6 +124,13 @@ Future<CartProvider> mount(
     ChangeNotifierProvider.value(
       value: cart,
       child: MaterialApp(
+        locale: const Locale('ar'),
+        supportedLocales: const [Locale('ar'), Locale('en')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         theme: AppTheme.light,
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context).copyWith(
